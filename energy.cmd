@@ -1,0 +1,1 @@
+analyzeE fq44100 scm1 win5 n65536 loop mfft ud %1 %2 %3 %4

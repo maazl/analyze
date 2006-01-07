@@ -1,0 +1,18 @@
+i={0,1}
+set grid
+set multiplot
+set size .5,.5
+set origin 0,.5
+plot [] [.9:1.1] 'zero.dat' u ($0*fsamp/fftlen):9 t 'Cll.arg' w l, \
+                 'zero.dat' u ($0*fsamp/fftlen):15 t 'Crr.arg' w l 
+set origin 0,0
+plot [] [-10:10] 'zero.dat' u ($0*fsamp/fftlen):10 t 'Cll.phi' w l, \
+                 'zero.dat' u ($0*fsamp/fftlen):16 t 'Crr.phi' w l 
+set origin .5,.5
+plot [] [-.02:.02] 'zero.dat' u ($0*fsamp/fftlen):11 t 'Clr.arg' w l, \
+                   'zero.dat' u ($0*fsamp/fftlen):13 t 'Crl.arg' w l 
+set origin .5,0
+plot [] [-180:180] 'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($3+$4*i)) t 'Clr.phi' w p pt 0, \
+                   'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($5+$6*i)) t 'Crl.phi' w p pt 0 
+unset multiplot
+

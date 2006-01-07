@@ -1,0 +1,1 @@
+perl energydist.pl dataE.bak 2 90 1000 5000 ..\ls\McGT3060.imp ..\ls\Studio8M_1.imp.imp ..\ls\DSM50FFL_1.imp.imp ..\ls\GT9-80_1.imp.imp

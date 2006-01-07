@@ -1,0 +1,24 @@
+set grid
+set size noratio
+set multiplot
+set size .5,.5
+#set y2range [.01:100]
+#set y2tics autofreq
+set logscale xy
+#set logscale y2
+set origin 0,.5
+plot [fmin:fmax] [] "data.dat" u 1:2 t "|l|" w l
+set origin 0,0
+unset logscale
+set logscale x
+plot [fmin:fmax] [] "data.dat" u 1:3 t "arg l" w l
+set origin .5,.5
+set logscale xy
+plot [fmin:fmax] [] "data.dat" u 1:4 t "|r|" w l
+set origin .5,0
+unset logscale
+set logscale x
+plot [fmin:fmax] [] "data.dat" u 1:5 t "arg r" w l
+unset logscale
+unset multiplot
+
