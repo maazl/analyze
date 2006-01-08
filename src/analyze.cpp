@@ -32,10 +32,10 @@ typedef complex<double> Complex;
 
 // data buffers
 static short inbuffertmp[2*CA_MAX*N_MAX];
-static float inbuffer1[N_MAX];
-static float inbuffer2[N_MAX];
-static float outbuffer1[N_MAX+1];
-static float outbuffer2[N_MAX+1];
+static float* inbuffer1 = NULL;
+static float* inbuffer2 = NULL;
+static float* outbuffer1 = NULL;
+static float* outbuffer2 = NULL;
 static float window[N_MAX];
 
 
@@ -517,6 +517,7 @@ static const struct ArgMap
  , {"lvl",  (void(_cdecl*)(const char*,void*,int))&readdouble, &noiselvl, 0}
  , {"mfft", (void(_cdecl*)(const char*,void*,int))&setbit, &method, 1}
  , {"mpca", (void(_cdecl*)(const char*,void*,int))&setbit, &method, 2}
+ , {"mxy",  (void(_cdecl*)(const char*,void*,int))&setbit, &method, 4}
  , {"n"  ,  (void(_cdecl*)(const char*,void*,int))&readN, &N, 0}
  , {"pdc",  (void(_cdecl*)(const char*,void*,int))&readintdef, &purgech, 1}
  , {"plot", (void(_cdecl*)(const char*,void*,int))&readstring, &plotcmd, 0}
@@ -545,7 +546,7 @@ static int searcharg(const char* arg, const char* elem)
 static void parsearg(const char* arg)
 {  ArgMap* ap = (ArgMap*)bsearch(arg, argmap, sizeof argmap / sizeof *argmap, sizeof *argmap, (int (*)(const void*, const void*))&searcharg);
    if (ap == NULL)
-      die("illegal option");
+      die("illegal option %s", arg);
    (*ap->func)(arg + strlen(ap->arg), ap->param, ap->iparam);
 }
 
@@ -561,9 +562,23 @@ int main(int argc, char* argv[])
 
    noiselvl_ = 1/noiselvl;
    freq /= addch;
+   // allocate buffers
+   if (method & 4)
+   {  // reserver space for integrals and differentials too
+      inbuffer1 = new float[3*N];
+      inbuffer2 = new float[3*N];
+      outbuffer1 = new float[3*N];
+      outbuffer2 = new float[3*N];
+   } else
+   {  inbuffer1 = new float[N];
+      inbuffer2 = new float[N];
+      outbuffer1 = new float[N+1];
+      outbuffer2 = new float[N+1];
+   }
    // create plan
    //float in[N], tout[N], power_spectrum[N/2+1];
    rfftw_plan p = rfftw_create_plan(N, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
+   rfftw_plan pi = rfftw_create_plan(N, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
    // append constant zero to FFT result to simplify analysis
    outbuffer1[N] = 0;
    outbuffer2[N] = 0;
@@ -668,311 +683,404 @@ int main(int argc, char* argv[])
          fclose(tout);
       }*/
 
-      if (method == 2)
-      {  // PCA analysis
-         PCA<5> pca;
-         double data[6];
-         float* U = inbuffer1 +1;
-         float* I = inbuffer2 +1;
-         data[2] = 1;   // offset
-         data[3] = 0;   // integral
-         data[4] = 0;   // linear
-         data[5] = 0;   // differential
-         int i = N -3;
-         do
-         {  data[0] = U[0] + U[1];
-            data[1] = I[0] + I[1];
-            data[3] += I[-1] + I[0];
-            data[5] = I[-1] + I[0] - I[1] - I[2];
-            pca.Store(*(double (*)[5])&data, (*weightfn)(data[0], data[1], i));
-            data[4]++;
-            U += 2;
-            I += 2;
-            i -= 2;
-         } while (i > 0);
+      switch (method)
+      {default:
+         die("Invalid combination of measurement modes (%i), e.g. FFT and XY.", method); 
+      
+       case 2: // PCA analysis
+         {  PCA<5> pca;
+            double data[6];
+            float* U = inbuffer1 +1;
+            float* I = inbuffer2 +1;
+            data[2] = 1;   // offset
+            data[3] = 0;   // integral
+            data[4] = 0;   // linear
+            data[5] = 0;   // differential
+            int i = N -3;
+            do
+            {  data[0] = U[0] + U[1];
+               data[1] = I[0] + I[1];
+               data[3] += I[-1] + I[0];
+               data[5] = I[-1] + I[0] - I[1] - I[2];
+               pca.Store(*(double (*)[5])&data, (*weightfn)(data[0], data[1], i));
+               data[4]++;
+               U += 2;
+               I += 2;
+               i -= 2;
+            } while (i > 0);
 
-         Vektor<4> res = pca.Result()*rref;
-         printf("\nPCA: %12g %12g %12g %12g %12g %12g\n", res[0], res[1], 2./freq/res[2], res[3], 1./2*freq*res[2]/M_2PI/res[0], freq*res[4]/2);
-      }
-
-      if (method == 1)
-      {  // FFT
-         rfftw_one(p, inbuffer1, outbuffer1);
-         rfftw_one(p, inbuffer2, outbuffer2);
-
-         // purge DC (senseless without DC-coupling)
-         if (purgech)
-         {  static const double minscale = 1E-15;
-            outbuffer1[0] *= minscale;
-            outbuffer2[0] *= minscale;
-            for (int i = purgech; --i;)
-            {  outbuffer1[i] *= minscale;
-               outbuffer2[i] *= minscale;
-               outbuffer1[N-i] *= minscale;
-               outbuffer2[N-i] *= minscale;
-         }  }
-         vectorscale(outbuffer1, sqrt(1./N)/addch, N);
-         vectorscale(outbuffer2, sqrt(1./N)/addch, N);
-
-         const double inc = freq/N;
-         // calc some sums
-         double wsum = 0;
-         int nsum = 0;
-         double Rsum = 0;
-         double R2sum = 0;
-         double L2sum = 0;
-         //double LCsum = 0; ==> -2 * wsum
-         double C2sum = 0;
-         double Lsum = 0;
-         double Csum = 0;
-         double d2sum = 0;
-         //double RWsum = 0;
-         // write data
-         if (writedata)
-         {  tout = fopen(datafile, "wt");
-            if (tout == NULL)
-               die("Failed to create %s.", datafile);
+            Vektor<4> res = pca.Result()*rref;
+            printf("\nPCA: %12g %12g %12g %12g %12g %12g\n", res[0], res[1], 2./freq/res[2], res[3], 1./2*freq*res[2]/M_2PI/res[0], freq*res[4]/2);
          }
-         // f l r l.arg l.ph r.arg r.ph
-         const float* a1 = outbuffer1;
-         const float* a2 = outbuffer2;
-         const float* b1 = a1 + N;
-         const float* b2 = a2 + N;
+         
+       case 1: // FFT
+         {  rfftw_one(p, inbuffer1, outbuffer1);
+            rfftw_one(p, inbuffer2, outbuffer2);
 
-         double af;
-         Complex aU;
-         Complex aI;
-         Complex aZ;
+            // purge DC (meaningless without DC-coupling)
+            if (purgech)
+            {  static const double minscale = 1E-15;
+               outbuffer1[0] *= minscale;
+               outbuffer2[0] *= minscale;
+               for (int i = purgech; --i;)
+               {  outbuffer1[i] *= minscale;
+                  outbuffer2[i] *= minscale;
+                  outbuffer1[N-i] *= minscale;
+                  outbuffer2[N-i] *= minscale;
+            }  }
+            vectorscale(outbuffer1, sqrt(1./N)/addch, N);
+            vectorscale(outbuffer2, sqrt(1./N)/addch, N);
 
-         // 1st line
-         int binc = 0;
-         for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
-         {  // calc
-            double f = len*inc;
-            if (f < fmin)
-               continue;
-            if (f > fmax)
-               break;
-            Complex U(*a1, *b1);
-            Complex I(*a2, *b2);
-            // calibration
-            double weight = docal(len, f, U, I);
-            // calc Y
-            Complex Z(U/I);
-            // binsize
-            {  if (fbinsc) // dynamic binsize
-                  binsz = (int)(f * fbinsc + 1);
-               if (binc == 0)
-               {  // init
-                  af = f;
-                  aU = U;
-                  aI = I;
-                  aZ = Z;
-               } else
-               {  af += f;
-                  aU += U;
-                  aI += I;
-                  aZ += Z;
-               }
-               if (++binc != binsz)
-                  continue;
-               af /= binc;
-               aU /= binc;
-               aI /= binc;
-               aZ /= binc;
-               binc = 0;
-            }
-            // prepare
-            double absU = abs(aU);
-            double absI = abs(aI);
-            weight = (*weightfn)(absU, absI, af);
-            // write
+            const double inc = freq/N;
+            // calc some sums
+            double wsum = 0;
+            int nsum = 0;
+            double Rsum = 0;
+            double R2sum = 0;
+            double L2sum = 0;
+            //double LCsum = 0; ==> -2 * wsum
+            double C2sum = 0;
+            double Lsum = 0;
+            double Csum = 0;
+            double d2sum = 0;
+            //double RWsum = 0;
+            // write data
             if (writedata)
-               fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
-               // f  |Hl|  phil             |Hr|  phir
-                  af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
-                  //f, *a1 , *b1            , *a2 , *b2            ,
-               // |Hl|/|Hr|  phil-phir        re        im
-                  abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
-
-            if (af < famin && af >= famax)
-               continue;
-            // average
-            ++nsum;
-            wsum += weight;
-            // resistivity
-            Rsum += weight * aZ.real();
-            R2sum += weight * sqr(aZ.real());
-            // L & C
-            L2sum += weight * sqr(af);
-            // LCsum += weight; == wsum
-            C2sum += weight / sqr(af);
-            Lsum -= weight * af * aZ.imag();
-            Csum -= weight / af * aZ.imag();
-            d2sum = weight * sqr(aZ.imag());
-         }
-         if (writedata)
-            fclose(tout);
-
-         // calculate summary
-         double R = Rsum / wsum;
-         double RE = sqrt((R2sum/wsum - sqr(R))/(nsum -1));
-         double sLC = 1/(sqr(wsum) - C2sum*L2sum);
-         double L = (C2sum*Lsum - Csum*wsum) * sLC;
-         double C = (Csum*L2sum - wsum*Lsum) * sLC;
-         double LE = sqrt((C2sum*d2sum - sqr(Csum) - (d2sum*sqr(wsum) - 2*Csum*wsum*Lsum + C2sum*sqr(Lsum))/L2sum) * sLC / (nsum -2));
-         double CE = sqrt((L2sum*d2sum - sqr(Lsum) - (d2sum*sqr(wsum) - 2*Csum*wsum*Lsum + L2sum*sqr(Csum))/C2sum) * sLC / (nsum -2));
-
-         // write summary
-         fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
-         fprintf(stderr, "\nreal (R)     \t%12g Ò %g\n"
-                         "imaginary (C)\t%12g Ò %g\n"
-                         "imaginary (L)\t%12g Ò %g\n"
-          , rref * R, rref * RE
-          , 1/(rref*C*M_2PI), 1 / (CE * rref*M_2PI)
-          , rref*L/M_2PI, LE * rref / M_2PI );
-
-      }
-
-      if (method == 3) // FFT and then PCA
-      {  // FFT
-         rfftw_one(p, inbuffer1, outbuffer1);
-         rfftw_one(p, inbuffer2, outbuffer2);
-
-         // purge DC (senseless without DC-coupling)
-         if (purgech)
-         {  static const double minscale = 1E-15;
-            outbuffer1[0] *= minscale;
-            outbuffer2[0] *= minscale;
-            for (int i = purgech; --i;)
-            {  outbuffer1[i] *= minscale;
-               outbuffer2[i] *= minscale;
-               outbuffer1[N-i] *= minscale;
-               outbuffer2[N-i] *= minscale;
-         }  }
-         vectorscale(outbuffer1, sqrt(1./N)/addch, N);
-         vectorscale(outbuffer2, sqrt(1./N)/addch, N);
-
-         const double inc = freq/N;
-         // write data
-         if (writedata)
-         {  tout = fopen(datafile, "wt");
-            if (tout == NULL)
-               die("Failed to create %s.", datafile);
-         }
-         // f l r l.arg l.ph r.arg r.ph
-         const float* a1 = outbuffer1;
-         const float* a2 = outbuffer2;
-         const float* b1 = a1 + N;
-         const float* b2 = a2 + N;
-
-         PCA<2> pcaRe;
-         PCA<3> pcaIm;
-         double PCAdataRe[2];
-         double PCAdataIm[3];
-         // some values are const
-         PCAdataRe[1] = 1;
-         //PCAdataIm[1] = 1;
-
-         double af;
-         Complex aU;
-         Complex aI;
-         Complex aZ;
-
-         // 1st line
-         int binc = 0;
-         for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
-         {  // calc
-            double f = len*inc;
-            if (f < fmin)
-               continue;
-            if (f > fmax)
-               break;
-            Complex U(*a1, *b1);
-            Complex I(*a2, *b2);
-            // calibration
-            double weight = docal(len, f, U, I);
-            // calc Y
-            Complex Z(U/I);
-            // binsize
-            {  if (fbinsc)
-                  binsz = (int)(f * fbinsc + 1);
-               if (binc == 0)
-               {  // init
-                  af = f;
-                  aU = U;
-                  aI = I;
-                  aZ = Z;
-               } else
-               {  af += f;
-                  aU += U;
-                  aI += I;
-                  aZ += Z;
-               }
-               if (++binc != binsz)
-                  continue;
-               af /= binc;
-               aU /= binc;
-               aI /= binc;
-               aZ /= binc;
-               binc = 0;
+            {  tout = fopen(datafile, "wt");
+               if (tout == NULL)
+                  die("Failed to create %s.", datafile);
             }
-            // prepare
-            double absU = abs(aU);
-            double absI = abs(aI);
-            weight = (*weightfn)(absU, absI, af);
-            // write
+            // f l r l.arg l.ph r.arg r.ph
+            const float* a1 = outbuffer1;
+            const float* a2 = outbuffer2;
+            const float* b1 = a1 + N;
+            const float* b2 = a2 + N;
+
+            double af;
+            Complex aU;
+            Complex aI;
+            Complex aZ;
+
+            // 1st line
+            int binc = 0;
+            for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
+            {  // calc
+               double f = len*inc;
+               if (f < fmin)
+                  continue;
+               if (f > fmax)
+                  break;
+               Complex U(*a1, *b1);
+               Complex I(*a2, *b2);
+               // calibration
+               double weight = docal(len, f, U, I);
+               // calc Y
+               Complex Z(U/I);
+               // binsize
+               {  if (fbinsc) // dynamic binsize
+                     binsz = (int)(f * fbinsc + 1);
+                  if (binc == 0)
+                  {  // init
+                     af = f;
+                     aU = U;
+                     aI = I;
+                     aZ = Z;
+                  } else
+                  {  af += f;
+                     aU += U;
+                     aI += I;
+                     aZ += Z;
+                  }
+                  if (++binc != binsz)
+                     continue;
+                  af /= binc;
+                  aU /= binc;
+                  aI /= binc;
+                  aZ /= binc;
+                  binc = 0;
+               }
+               // prepare
+               double absU = abs(aU);
+               double absI = abs(aI);
+               weight = (*weightfn)(absU, absI, af);
+               // write
+               if (writedata)
+                  fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
+                  // f  |Hl|  phil             |Hr|  phir
+                     af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
+                     //f, *a1 , *b1            , *a2 , *b2            ,
+                  // |Hl|/|Hr|  phil-phir        re        im
+                     abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
+
+               if (af < famin && af >= famax)
+                  continue;
+               // average
+               ++nsum;
+               wsum += weight;
+               // resistivity
+               Rsum += weight * aZ.real();
+               R2sum += weight * sqr(aZ.real());
+               // L & C
+               L2sum += weight * sqr(af);
+               // LCsum += weight; == wsum
+               C2sum += weight / sqr(af);
+               Lsum -= weight * af * aZ.imag();
+               Csum -= weight / af * aZ.imag();
+               d2sum = weight * sqr(aZ.imag());
+            }
             if (writedata)
-               fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
-               // f  |Hl|  phil             |Hr|  phir
-                  af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
-               // |Hl|/|Hr|  phil-phir        re        im
-                  abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
+               fclose(tout);
 
-            if (af < famin && af >= famax)
-               continue;
-            // component analysis
-            PCAdataRe[0] = aZ.real();
-            //PCAdataRe[2] = 1/af;
-            //PCAdataRe[3] = f;
-            PCAdataIm[0] = aZ.imag(); // // fit imaginary part in conductivity
-            PCAdataIm[1] = 1/af;
-            PCAdataIm[2] = af;
-            //PCAdataIm[3] = 1/af;
-            //printf("Re: %12g %12g %12g %12g\n", PCAdataRe[0], PCAdataRe[1], PCAdataRe[2], weight);
+            // calculate summary
+            double R = Rsum / wsum;
+            double RE = sqrt((R2sum/wsum - sqr(R))/(nsum -1));
+            double sLC = 1/(sqr(wsum) - C2sum*L2sum);
+            double L = (C2sum*Lsum - Csum*wsum) * sLC;
+            double C = (Csum*L2sum - wsum*Lsum) * sLC;
+            double LE = sqrt((C2sum*d2sum - sqr(Csum) - (d2sum*sqr(wsum) - 2*Csum*wsum*Lsum + C2sum*sqr(Lsum))/L2sum) * sLC / (nsum -2));
+            double CE = sqrt((L2sum*d2sum - sqr(Lsum) - (d2sum*sqr(wsum) - 2*Csum*wsum*Lsum + L2sum*sqr(Csum))/C2sum) * sLC / (nsum -2));
 
-            // add values
-            pcaRe.Store(PCAdataRe, weight);
-            pcaIm.Store(PCAdataIm, weight);
+            // write summary
+            fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
+            fprintf(stderr, "\nreal (R)     \t%12g Ò %g\n"
+                            "imaginary (C)\t%12g Ò %g\n"
+                            "imaginary (L)\t%12g Ò %g\n"
+             , rref * R, rref * RE
+             , 1/(rref*C*M_2PI), 1 / (CE * rref*M_2PI)
+             , rref*L/M_2PI, LE * rref / M_2PI );
 
          }
-         if (writedata)
-            fclose(tout);
 
-         // calculate summary
-         Vektor<1> resRe = pcaRe.Result();
-         Vektor<2> resIm = pcaIm.Result();
+       case 3: // FFT and then PCA
+         {  // FFT
+            rfftw_one(p, inbuffer1, outbuffer1);
+            rfftw_one(p, inbuffer2, outbuffer2);
 
-         fprintf(stderr, "resRe: %12g %12g %12g\n", resRe[0], resRe[1], resRe[2]);
-         //printf("resRe: %12g %12g %12g %12g\n", resRe[0], resRe[1], resRe[2], resRe[3]);
-         fprintf(stderr, "resIm: %12g %12g %12g %12g\n", resIm[0], resIm[1], resIm[2], resIm[3]);
+            // purge DC (meaningless without DC-coupling)
+            if (purgech)
+            {  static const double minscale = 1E-15;
+               outbuffer1[0] *= minscale;
+               outbuffer2[0] *= minscale;
+               for (int i = purgech; --i;)
+               {  outbuffer1[i] *= minscale;
+                  outbuffer2[i] *= minscale;
+                  outbuffer1[N-i] *= minscale;
+                  outbuffer2[N-i] *= minscale;
+            }  }
+            vectorscale(outbuffer1, sqrt(1./N)/addch, N);
+            vectorscale(outbuffer2, sqrt(1./N)/addch, N);
 
-         double R0 = rref*resRe[0];
-         //double R1_f = rref*resRe[1];
-         double C0 = -1 / M_2PI / resIm[0] / rref;
-         double L0 = resIm[1] / M_2PI * rref;
-         //double C1f = -resIm[0] / M_2PI / rref;
+            const double inc = freq/N;
+            // write data
+            if (writedata)
+            {  tout = fopen(datafile, "wt");
+               if (tout == NULL)
+                  die("Failed to create %s.", datafile);
+            }
+            // f l r l.arg l.ph r.arg r.ph
+            const float* a1 = outbuffer1;
+            const float* a2 = outbuffer2;
+            const float* b1 = a1 + N;
+            const float* b2 = a2 + N;
 
-         // write summary
-         fprintf(stderr, "\nreal: R [Ohm]     \t%12g\n"
-//                           "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
-                           "imaginary: C [ÊF] \t%12g\n"
-//                           "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
-                           "imaginary: L [ÊH] \t%12g\n"
-//          , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
-            , R0, C0*1E6, L0*1E6);
+            PCA<2> pcaRe;
+            PCA<3> pcaIm;
+            double PCAdataRe[2];
+            double PCAdataIm[3];
+            // some values are const
+            PCAdataRe[1] = 1;
+            //PCAdataIm[1] = 1;
+
+            double af;
+            Complex aU;
+            Complex aI;
+            Complex aZ;
+
+            // 1st line
+            int binc = 0;
+            for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
+            {  // calc
+               double f = len*inc;
+               if (f < fmin)
+                  continue;
+               if (f > fmax)
+                  break;
+               Complex U(*a1, *b1);
+               Complex I(*a2, *b2);
+               // calibration
+               double weight = docal(len, f, U, I);
+               // calc Y
+               Complex Z(U/I);
+               // binsize
+               {  if (fbinsc)
+                     binsz = (int)(f * fbinsc + 1);
+                  if (binc == 0)
+                  {  // init
+                     af = f;
+                     aU = U;
+                     aI = I;
+                     aZ = Z;
+                  } else
+                  {  af += f;
+                     aU += U;
+                     aI += I;
+                     aZ += Z;
+                  }
+                  if (++binc != binsz)
+                     continue;
+                  af /= binc;
+                  aU /= binc;
+                  aI /= binc;
+                  aZ /= binc;
+                  binc = 0;
+               }
+               // prepare
+               double absU = abs(aU);
+               double absI = abs(aI);
+               weight = (*weightfn)(absU, absI, af);
+               // write
+               if (writedata)
+                  fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
+                  // f  |Hl|  phil             |Hr|  phir
+                     af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
+                  // |Hl|/|Hr|  phil-phir        re        im
+                     abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
+
+               if (af < famin && af >= famax)
+                  continue;
+               // component analysis
+               PCAdataRe[0] = aZ.real();
+               //PCAdataRe[2] = 1/af;
+               //PCAdataRe[3] = f;
+               PCAdataIm[0] = aZ.imag(); // // fit imaginary part in conductivity
+               PCAdataIm[1] = 1/af;
+               PCAdataIm[2] = af;
+               //PCAdataIm[3] = 1/af;
+               //printf("Re: %12g %12g %12g %12g\n", PCAdataRe[0], PCAdataRe[1], PCAdataRe[2], weight);
+
+               // add values
+               pcaRe.Store(PCAdataRe, weight);
+               pcaIm.Store(PCAdataIm, weight);
+
+            }
+            if (writedata)
+               fclose(tout);
+
+            // calculate summary
+            Vektor<1> resRe = pcaRe.Result();
+            Vektor<2> resIm = pcaIm.Result();
+
+            fprintf(stderr, "resRe: %12g %12g %12g\n", resRe[0], resRe[1], resRe[2]);
+            //printf("resRe: %12g %12g %12g %12g\n", resRe[0], resRe[1], resRe[2], resRe[3]);
+            fprintf(stderr, "resIm: %12g %12g %12g %12g\n", resIm[0], resIm[1], resIm[2], resIm[3]);
+
+            double R0 = rref*resRe[0];
+            //double R1_f = rref*resRe[1];
+            double C0 = -1 / M_2PI / resIm[0] / rref;
+            double L0 = resIm[1] / M_2PI * rref;
+            //double C1f = -resIm[0] / M_2PI / rref;
+
+            // write summary
+            fprintf(stderr, "\nreal: R [Ohm]     \t%12g\n"
+//                              "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
+                              "imaginary: C [ÊF] \t%12g\n"
+//                              "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
+                              "imaginary: L [ÊH] \t%12g\n"
+//             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
+               , R0, C0*1E6, L0*1E6);
+         }
+         
+       case 4: // XY mode
+         {  // we need to do an FFT here for the calibration
+            rfftw_one(p, inbuffer1, outbuffer1);
+            rfftw_one(p, inbuffer2, outbuffer2);
+            // normalize (including retransformation)
+            vectorscale(outbuffer1, 1./N/addch/addch, N);
+            vectorscale(outbuffer2, 1./N/addch/addch, N);
+
+            // purge DC (meaningless without DC-coupling)
+            if (purgech)
+            {  outbuffer1[0] *= 0;
+               outbuffer2[0] *= 0;
+               for (int i = purgech; --i;)
+               {  outbuffer1[i] *= 0;
+                  outbuffer2[i] *= 0;
+                  outbuffer1[N-i] *= 0;
+                  outbuffer2[N-i] *= 0;
+            }  }
+
+            const double inc = freq/N;
+            // U(f)
+            float* a1 = outbuffer1;
+            float* a2 = outbuffer2;
+            float* b1 = a1 + N;
+            float* b2 = a2 + N;
+            *b1 = 0; // well, somewhat easier this way
+            *b2 = 0;
+            for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
+            {  // calc
+               double f = len*inc;
+               Complex U(*a1, *b1);
+               Complex I(*a2, *b2);
+               // calibration
+               docal(len, f, U, I);
+               // store data
+               *a1 = U.real();
+               *b1 = U.imag();
+               *a2 = I.real();
+               *b2 = I.imag();
+               // The integrals and differentials are calculated in the frequency domain.
+               // This is at the expence of approximate a factor 2 computing time, since we have to do
+               // one forward and one backward transformation for the zero compensation anyway.
+               // The advantage is that we do not have to deal with the 1/2 time slot linear phse shift
+               // of the numeric integration/differentiation in the time domain.
+               Complex di(0, f); // differential operator
+               // store integrals
+               Complex C = U/di;
+               a1[N] = C.real();
+               b1[N] = C.imag();
+               C = I/di;
+               a2[N] = C.real();
+               b2[N] = C.imag();
+               // store differentials
+               C = U*di;
+               a1[2*N] = C.real();
+               b1[2*N] = C.imag();
+               C = I*di;
+               a2[2*N] = C.real();
+               b2[2*N] = C.imag();
+            }
+            // clear DC and nyquist frequencies of integral and diferential, since they do no allow 90¯ phase shift.
+            outbuffer1[N] = outbuffer2[N] = 0;
+            outbuffer1[2*N] = outbuffer2[2*N] = 0;
+            outbuffer1[N+N/2] = outbuffer2[N+N/2] = 0;
+            outbuffer1[2*N+N/2] = outbuffer2[2*N+N/2] = 0;
+            
+            // now do the inverse transform to get the corrected data back.
+            rfftw_one(pi, outbuffer1, inbuffer1);
+            rfftw_one(pi, outbuffer1 + N, inbuffer1 + N);
+            rfftw_one(pi, outbuffer1 + 2*N, inbuffer1 + 2*N);
+            rfftw_one(pi, outbuffer2, inbuffer2);
+            rfftw_one(pi, outbuffer2 + N, inbuffer2 + N);
+            rfftw_one(pi, outbuffer2 + 2*N, inbuffer2 + 2*N);
+            
+            // write data
+            if (writedata)
+            {  tout = fopen(datafile, "wt");
+               if (tout == NULL)
+                  die("Failed to create %s.", datafile);
+
+               const float* Up = inbuffer1;
+               const float* Ip = inbuffer2; 
+               for (size_t len = 0; len < N; ++len, ++Up, ++Ip)
+                  fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g\n",
+                  // t         U    I    INT U  INT I  D U      D I
+                     len/freq, *Up, *Ip, Up[N], Ip[N], Up[2*N], Ip[2*N]);
+               fclose(tout);
+            }
+         }
       }
-
+      
       /*if (execcmd)
       {  system(execcmd);
       }*/
@@ -1048,3 +1156,4 @@ int main(int argc, char* argv[])
 
    return 0;
 }
+

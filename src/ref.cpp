@@ -6,11 +6,8 @@
 #include <time.h>
 #include <float.h>
 #include <limits.h>
+#include <ctype.h>
 
-#include <rfftw.h>
-
-
-static const int fsamp = 48000; // well, not nice...
 
 void die(int rc, const char* msg, ...)
 {  va_list va;
@@ -20,17 +17,15 @@ void die(int rc, const char* msg, ...)
    exit(rc);
 }
 
-void wavwriter(FILE* fo, size_t nsamp)
+void wavwriter(FILE* fo, size_t nsamp, size_t sfreq)
 {  // fake wav header
-   int wavhdr[11] =
-   /*44100
-   { 0x46464952, 0xFF, 0xFF, 0xFF, 0x7F, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6D, 0x74, 0x20,
-     0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xAC, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00,
-     0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0xFF, 0xFF, 0xFF, 0x7F };*/
-   // 48000
+   __uint32_t wavhdr[11] =
    { 0x46464952, 0xffffffff, 0x45564157, 0x20746D66,
      0x00000010, 0x00020001, 0x0000BB80, 0x0002ee00,
      0x00100004, 0x61746164, 0xffffffff };
+
+   wavhdr[6] = sfreq;
+   wavhdr[7] = sfreq * 4;
 
    wavhdr[10] = nsamp * sizeof(short);
    wavhdr[1] = wavhdr[10] + 44;
@@ -43,152 +38,95 @@ inline static double myrand()
    return (double)l / ULONG_MAX;
 }
 
-
-static double equalscale(int)
-{  return 1;
+inline static double fsqr(double d)
+{  return d*d;
 }
 
-static double f_scale(int i)
-{  return i;
+
+static double square(double p)
+{  return p < .5 ? 1. : -1.;
 }
 
-static double sqrt_f_scale(int i)
-{  return sqrt(i);
+static double triangle(double p)
+{  return p < .5 ? 4.*p-1. : 3.-4.*p;
 }
 
-static double scalepow = 0;
-
-static double powerscale(int i)
-{  return pow(i, scalepow);
+static double parabolic(double p)
+{  return p < .5 ? 1-fsqr(4.*p-1.) : fsqr(4.*p-3.)-1;
 }
 
-static double randomphase(int)
-{  return 2*M_PI * myrand();
+static double sine(double p)
+{  return sin(2*M_PI*p);
 }
 
-static double phaseparam;
-
-static double constphase(int)
-{  return phaseparam;
+static double saw_up(double p)
+{  return 2*p-1;
 }
 
-static double (*scalefn)(int i) = equalscale;
-static double (*phasefn)(int i) = randomphase;
+static double saw_down(double p)
+{  return 1-2*p;
+}
+
+static double pulse(double p)
+{  return p == 0 ? 1 : -1;
+}
 
 
-void _cdecl setscalefunc(const char* name, double (**scalefn)(int i))
-{  static const struct scfne
-   {  char     name[8];
-      double   (*fn)(int);
-   } scfnt[] =
-   {  {"eq",     &equalscale}
-    , {"f",      &f_scale}
-    , {"sqrt_f", &sqrt_f_scale}
+static double (*parseshapefunc(const char* name))(double)
+{  static const struct fne
+   {  char     name[10];
+      double   (*fn)(double);
+   } fnt[] =
+   {  {"parabolic",  &parabolic}
+    , {"pulse",      &pulse}
+    , {"saw-up",     &saw_up}
+    , {"saw-down",   &saw_down}
+    , {"sine",       &sine}
+    , {"square",     &square}
+    , {"triangle",   &triangle}
    };
 
    if (name == NULL || *name == 0)
-      return;
-   const scfne* sp = (const scfne*)bsearch(name, scfnt, sizeof(scfnt)/sizeof(*scfnt), sizeof(*scfnt), (int (*)(const void*, const void*))&stricmp);
+      return NULL;
+   const fne* sp = (const fne*)bsearch(name, fnt, sizeof(fnt)/sizeof(*fnt), sizeof(*fnt), (int (*)(const void*, const void*))&stricmp);
    if (sp == NULL)
-   {  //die (34, "invalid scale function %s", name);
-      *scalefn = &powerscale;
-      scalepow = atof(name);
-      return;
-   }
-   *scalefn = sp->fn;
+      die (34, "invalid shape %s", name);
+   return sp->fn;
 }
 
-void _cdecl setphasefunc(const char* name, double (**phasefn)(int i))
-{  static const struct phfne
-   {  char     name[8];
-      double   (*fn)(int);
-   } phfnt[] =
-   {  {"rand",   &randomphase}
-   };
-
-   if (name == NULL || *name == 0)
-      return;
-   const phfne* sp = (const phfne*)bsearch(name, phfnt, sizeof(phfnt)/sizeof(*phfnt), sizeof(*phfnt), (int (*)(const void*, const void*))&stricmp);
-   if (sp == NULL)
-   {  //die (34, "invalid scale function %s", name);
-      *phasefn = &constphase;
-      phaseparam = atof(name);
-      return;
-   }
-   *phasefn = sp->fn;
-}
 
 int main(int argc, char**argv)
 {  srand(clock());
 
    // command line
    const char* dfile = NULL;
-   size_t nrep = 1;
+   size_t nrep = 0;
    switch (argc)
    {default:
-      die(45, "usage: ref nsamp fmin fmax [scalefn[,phasefn] [nrep [file]]]");
-    case 7:
-      dfile = argv[6];
+      die(45, "usage: %s nsamp[/harmonic] sampfreq shape [nrep [file]]]\n"
+              "shape is one of square, triangle, sine, saw-up, saw-down, pulse, parabolic.", argv[0]);
     case 6:
-      nrep = atol(argv[5]);
+      dfile = argv[5];
     case 5:
-      setscalefunc(strtok(argv[4], "_,;"), &scalefn);
-      setphasefunc(strtok(NULL, ""), &phasefn);
+      nrep = atol(argv[4]);
     case 4:;
    }
-   size_t nsamp = atol(argv[1]);
-   double fmin = atof(argv[2]);
-   double fmax = atof(argv[3]);
+   size_t nsamp = atol(strtok(argv[1], "/"));
+   const char* cp = strtok(NULL, "");
+   size_t harmonic = 1;
+   if (cp != NULL)
+      harmonic = atol(cp);
+   size_t sfreq = atol(argv[2]);
+   double (*shapefn)(double) = parseshapefunc(argv[3]);
 
-   // round fmin & fmax
-   double finc = (double)fsamp / nsamp;
-   fprintf(stderr, "finc = %g\n", finc);
-
-   int imin = (int)floor((fmin / finc) +.5);
-   int imax = (int)floor((fmax / finc) +.5);
-   fprintf(stderr, "fmin = %g\n"
-                   "fmax = %g\n", imin*finc, imax*finc);
-   if ((unsigned int)imax > nsamp/2 || (unsigned int)imin > (unsigned int)imax)
-      die(34, "fmin and/or fmax out of range");
-
-   // generate coefficients
-   float* fftbuf = new float[nsamp+1];
-   if (fftbuf == NULL)
-      die(39, "malloc(%lu) failed", nsamp);
-   memset(fftbuf, 0, sizeof fftbuf);   // all coefficients -> 0
-   for (int i = imin; i <= imax; ++i)
-   {  double r = (*scalefn)(i);
-      double phi = (*phasefn)(i);
-      fftbuf[nsamp-i] = r * sin(phi);  // b[i]
-      fftbuf[i] = r * cos(phi);        // a[i]
-   }
-
-   // ifft
-   float* sampbuf = new float[nsamp];
-   rfftw_plan plan = rfftw_create_plan(nsamp, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
-   rfftw_one(plan, fftbuf, sampbuf);   // IFFT
-   rfftw_destroy_plan(plan);
-   delete[] fftbuf; // no longer needed
-
-   // normalize
-   double fnorm = 0;
-   const float* sp = sampbuf;
-   const float* spe = sp + nsamp;
-   for (; sp != spe; ++sp)
-      if (fabs(*sp) > fnorm)
-         fnorm = fabs(*sp);
-   fnorm = 32767/fnorm;
-   // and quantize
+   // generate function
    short* buf = new short[2*nsamp];
-   sp = sampbuf;
    short* dp = buf;
-   while (sp != spe)
-   {  register short s = (short)floor(*sp++ * fnorm + myrand());
-      dp[0] = s;
-      dp[1] = -s;
-      dp += 2;
+   for (size_t i = 0; i < nsamp; ++i)
+   {  short s = (short)floor(32767. * (*shapefn)(fmod((double)i/nsamp*harmonic, 1)) + myrand());
+      *dp++ = s;
+      *dp++ = -s;
    }
-   delete[] sampbuf; // no longer needed
 
    // write
    FILE* of;
@@ -196,14 +134,14 @@ int main(int argc, char**argv)
    {  of = fopen(dfile, "wb");
       if (of == NULL)
          die (41, "Failed to open %s for writing", dfile);
-      wavwriter(of, 2*nsamp * nrep);
+      wavwriter(of, 2*nsamp * nrep, sfreq);
    } else // stdout
    {  _fsetmode(stdout, "b");
       of = stdout;
-      wavwriter(of, 0x1fffffdc);
+      wavwriter(of, 0x1fffffdc, sfreq);
    }
-   while (--nrep)
-      fwrite(buf, 2*nsamp * sizeof(short), 1, of);
+   do fwrite(buf, 2*nsamp * sizeof(short), 1, of);
+   while (--nrep);
 
    // cleanup, well not in case of an exception...
    delete[] buf;

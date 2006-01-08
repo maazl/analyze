@@ -22,6 +22,9 @@ typedef complex<double> Complex;
 #define N_MAX (65536*8)
 #define CA_MAX 2
 
+// avoid name clash with math.h
+#define fmin fmin__
+#define fmax fmax__
 
 // data buffers
 static short inbuffertmp[2*CA_MAX*N_MAX];
