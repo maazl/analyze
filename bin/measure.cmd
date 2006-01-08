@@ -5,6 +5,9 @@ PARSE ARG cfgfile opt
 IF cfgfile = '' THEN
    CALL Error 40, 'usage: measure <config> [options]'
 
+/* setup path */
+CALL VALUE 'PATH', 'bin;'VALUE('PATH',,'OS2ENVIRONMENT'), 'OS2ENVIRONMENT'
+
 /* read configs */
 CALL ReadConfig 'setup.cfg'
 CALL ReadConfig cfgfile'.cfg'
@@ -54,7 +57,7 @@ SELECT
    CALL STREAM 'gpenv', 'c', 'close'
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o ref.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp f2 o buffer2 /p=40k /b=16M - \pipe\refplay.wav'
+   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp f2 o buffer2 /p=40k /b=8M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -64,7 +67,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mfft n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" |gnuplot gpenv -"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" zr psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mfft n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" |gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO
@@ -82,7 +85,7 @@ SELECT
    CALL CfgQ 'famax', cfg.fmax
 
    CALL SysSetPriority 4, 1
-   'start /MIN /C ref.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 /p=40k /b=16M - \pipe\refplay.wav'
+   'start /MIN /C mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 /p=40k /b=16M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -115,7 +118,7 @@ SELECT
 
    cyc = cfg.loops*2+10
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o ref.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 /p=40k /b=16M - \pipe\refplay.wav'
+   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 /p=40k /b=8M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -134,6 +137,38 @@ SELECT
    SAY "***** Z = +Inf first, Z = 0 on request."
    SAY
    "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con 2>log | sp f3 o buffer2 /b=16M - - | analyze pte psa65536 n"cfg.fftlen" scm1 mfft fq"cfg.fsamp" "zmode" zn ""zf"cfg.zerofile""" famin"cfg.famin" famax"cfg.famax" ln"cfg.loops" wd"
+   END
+
+ WHEN cfg.mtype = 'hyst' THEN DO
+   CALL CfgQ 'fftlen'
+   CALL CfgQ 'rref'
+   CALL CfgQ 'fbase'
+   CALL CfgQ 'plotcmd', "l 'viewhyst'"
+   CALL CfgQ 'zerofile', 'zero.dat'
+   CALL CfgQ 'shape', 'triangle'
+
+   /* gnuplot environment */
+   CALL STREAM 'gpenv', 'c', 'open write replace'
+   CALL LINEOUT 'gpenv', 'rref='cfg.rref
+   CALL LINEOUT 'gpenv', 'fftlen='cfg.fftlen
+   CALL LINEOUT 'gpenv', 'fsamp='cfg.fsamp
+   CALL STREAM 'gpenv', 'c', 'close'
+
+   /* calculate harmonic closest to base frequency */
+   harmonic = TRUNC(cfg.fsamp / cfg.fbase +.5)
+
+   /*CALL SysSetPriority 4, 1*/
+   'start /MIN /C sp f1 o ref.exe 'cfg.fftlen'/'harmonic cfg.fsamp cfg.shape' ^| sp f2 o buffer2 /p=40k /b=8M - \pipe\refplay.wav'
+   CALL SysSleep 1
+   'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
+   /*'CALL play FILE="\pipe\refplay.wav"'*/
+   /*CALL SysSetPriority 2, -1*/
+   CALL SysSleep 1
+
+   IF cfg.initexec \= '' THEN
+      cfg.initexec
+
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" zr pdc2 psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mxy n"cfg.fftlen" wd"
    END
 
  OTHERWISE
