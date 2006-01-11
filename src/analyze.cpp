@@ -137,6 +137,7 @@ static int        gainmode    = 0; // 0 = none, 1 = read, 2 = generate, 3 = gene
 static bool       normalize   = false;
 static int        binsz       = 1;
 static double     fbinsc      = 0;
+static int        harmonic    = 1;
 static const char* datafile   = "data.dat";
 static const char* zerofile   = "zero.dat";
 static const char* zerodifffile = "zeroD.dat";
@@ -148,6 +149,10 @@ static const char* infile     = NULL;
 static const char* execcmd    = NULL;
 static const char* plotcmd    = NULL;
 static double     (*weightfn)(double, double, double) = getweight;
+// internal vars
+static int        Nh;   // FFT length after harmonic extraction
+static rfftw_plan P;
+static rfftw_plan PI;
 
 
 static void createwindow(float* dst, int type, size_t len)
@@ -422,11 +427,58 @@ static _cdecl void readN(const char* s, int* r)
       N = 1 << N;
 }
 
-static double wsums[N_MAX/2+1];
-static Complex gain[N_MAX/2+1];
-static Complex gainD[N_MAX/2+1];
-static Complex zero[N_MAX/2+1][4];
-static Complex zeroD[N_MAX/2+1][4];
+
+static void dofft()
+{  // forwardtransformation
+   rfftw_one(P, inbuffer1, outbuffer1);
+   rfftw_one(P, inbuffer2, outbuffer2);
+
+   static const double minscale = 1E-15;
+   if (purgech)
+   {  // purge DC (meaningless without DC-coupling)
+      outbuffer1[0] *= minscale;
+      outbuffer2[0] *= minscale;
+      for (int i = purgech; --i;)
+      {  outbuffer1[i] *= minscale;
+         outbuffer2[i] *= minscale;
+         outbuffer1[N-i] *= minscale;
+         outbuffer2[N-i] *= minscale;
+   }  }
+   if (harmonic > 1)
+   {  // compact to shorter FFT length Nh, Nh my be odd
+      float* dp = outbuffer1; // real part of outbuffer1
+      const float* sp = dp;
+      const float* ep = sp + N/2;
+      while ((sp += harmonic) < ep)
+         *++dp = *sp;
+      ep += N/2; // imaginary part of outbuffer1
+      sp = ep - Nh/2 * harmonic;
+      while (sp < ep)
+      {  *++dp = *sp;
+         sp += harmonic;
+      }
+      dp = outbuffer2; // real part of outbuffer2
+      sp = dp;
+      ep = sp + N/2;
+      while ((sp += harmonic) < ep)
+         *++dp = *sp;
+      ep += N/2; // imaginary part of outbuffer2
+      sp = ep - Nh/2 * harmonic;
+      while (sp < ep)
+      {  *++dp = *sp;
+         sp += harmonic;
+      }
+   }
+   // append constant zero to FFT result to simplify analysis
+   outbuffer1[Nh] = 0;
+   outbuffer2[Nh] = 0;
+}
+
+static double* wsums;
+static Complex* gain;
+static Complex* gainD;
+static Complex (* zero)[4];
+static Complex (* zeroD)[4];
 
 /* Calibration */
 static double docal(int len, double f, Complex& U, Complex& I)
@@ -508,6 +560,7 @@ static const struct ArgMap
  , {"gg" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 2}
  , {"gr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 1}
  , {"h/f",  (void(_cdecl*)(const char*,void*,int))&setint, &weightfn, (int)get1_fweight}
+ , {"har",  (void(_cdecl*)(const char*,void*,int))&readint, &harmonic, 0}
  , {"hd" ,  (void(_cdecl*)(const char*,void*,int))&setint, &weightfn, (int)getweightD}
  , {"he" ,  (void(_cdecl*)(const char*,void*,int))&setint, &weightfn, (int)getconstweight}
  , {"in" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &infile, 0}
@@ -560,28 +613,32 @@ int main(int argc, char* argv[])
    if (N * addch > N_MAX * CA_MAX)
       die("Input data length too large.");
 
+   // prepare some global vars
    noiselvl_ = 1/noiselvl;
    freq /= addch;
+   Nh = N / harmonic;
    // allocate buffers
    if (method & 4)
    {  // reserver space for integrals and differentials too
-      inbuffer1 = new float[3*N];
-      inbuffer2 = new float[3*N];
-      outbuffer1 = new float[3*N];
-      outbuffer2 = new float[3*N];
+      inbuffer1 = new float[max(N,3*Nh)];
+      inbuffer2 = new float[max(N,3*Nh)];
+      outbuffer1 = new float[max(N+1,3*Nh+1)];
+      outbuffer2 = new float[max(N+1,3*Nh+1)];
    } else
    {  inbuffer1 = new float[N];
       inbuffer2 = new float[N];
       outbuffer1 = new float[N+1];
       outbuffer2 = new float[N+1];
    }
+   wsums = new double[N_MAX/2+1];
+   gain = new Complex[N_MAX/2+1];
+   gainD = new Complex[N_MAX/2+1];
+   zero = new Complex[N_MAX/2+1][4];
+   zeroD = new Complex[N_MAX/2+1][4];
    // create plan
    //float in[N], tout[N], power_spectrum[N/2+1];
-   rfftw_plan p = rfftw_create_plan(N, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
-   rfftw_plan pi = rfftw_create_plan(N, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
-   // append constant zero to FFT result to simplify analysis
-   outbuffer1[N] = 0;
-   outbuffer2[N] = 0;
+   P = rfftw_create_plan(N, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
+   PI = rfftw_create_plan(Nh, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
 
    createwindow(window, winfn, N);
    // write window data
@@ -685,8 +742,8 @@ int main(int argc, char* argv[])
 
       switch (method)
       {default:
-         die("Invalid combination of measurement modes (%i), e.g. FFT and XY.", method); 
-      
+         die("Invalid combination of measurement modes (%i), e.g. FFT and XY.", method);
+
        case 2: // PCA analysis
          {  PCA<5> pca;
             double data[6];
@@ -712,26 +769,15 @@ int main(int argc, char* argv[])
             Vektor<4> res = pca.Result()*rref;
             printf("\nPCA: %12g %12g %12g %12g %12g %12g\n", res[0], res[1], 2./freq/res[2], res[3], 1./2*freq*res[2]/M_2PI/res[0], freq*res[4]/2);
          }
-         
+         break;
+
        case 1: // FFT
-         {  rfftw_one(p, inbuffer1, outbuffer1);
-            rfftw_one(p, inbuffer2, outbuffer2);
+         {  dofft();
 
-            // purge DC (meaningless without DC-coupling)
-            if (purgech)
-            {  static const double minscale = 1E-15;
-               outbuffer1[0] *= minscale;
-               outbuffer2[0] *= minscale;
-               for (int i = purgech; --i;)
-               {  outbuffer1[i] *= minscale;
-                  outbuffer2[i] *= minscale;
-                  outbuffer1[N-i] *= minscale;
-                  outbuffer2[N-i] *= minscale;
-            }  }
-            vectorscale(outbuffer1, sqrt(1./N)/addch, N);
-            vectorscale(outbuffer2, sqrt(1./N)/addch, N);
+            vectorscale(outbuffer1, sqrt(1./N)/addch, Nh);
+            vectorscale(outbuffer2, sqrt(1./N)/addch, Nh);
 
-            const double inc = freq/N;
+            const double inc = freq/Nh;
             // calc some sums
             double wsum = 0;
             int nsum = 0;
@@ -753,8 +799,8 @@ int main(int argc, char* argv[])
             // f l r l.arg l.ph r.arg r.ph
             const float* a1 = outbuffer1;
             const float* a2 = outbuffer2;
-            const float* b1 = a1 + N;
-            const float* b2 = a2 + N;
+            const float* b1 = a1 + Nh;
+            const float* b2 = a2 + Nh;
 
             double af;
             Complex aU;
@@ -850,27 +896,16 @@ int main(int argc, char* argv[])
              , rref*L/M_2PI, LE * rref / M_2PI );
 
          }
+         break;
 
        case 3: // FFT and then PCA
          {  // FFT
-            rfftw_one(p, inbuffer1, outbuffer1);
-            rfftw_one(p, inbuffer2, outbuffer2);
+            dofft();
 
-            // purge DC (meaningless without DC-coupling)
-            if (purgech)
-            {  static const double minscale = 1E-15;
-               outbuffer1[0] *= minscale;
-               outbuffer2[0] *= minscale;
-               for (int i = purgech; --i;)
-               {  outbuffer1[i] *= minscale;
-                  outbuffer2[i] *= minscale;
-                  outbuffer1[N-i] *= minscale;
-                  outbuffer2[N-i] *= minscale;
-            }  }
-            vectorscale(outbuffer1, sqrt(1./N)/addch, N);
-            vectorscale(outbuffer2, sqrt(1./N)/addch, N);
+            vectorscale(outbuffer1, sqrt(1./N)/addch, Nh);
+            vectorscale(outbuffer2, sqrt(1./N)/addch, Nh);
 
-            const double inc = freq/N;
+            const double inc = freq/Nh;
             // write data
             if (writedata)
             {  tout = fopen(datafile, "wt");
@@ -880,8 +915,8 @@ int main(int argc, char* argv[])
             // f l r l.arg l.ph r.arg r.ph
             const float* a1 = outbuffer1;
             const float* a2 = outbuffer2;
-            const float* b1 = a1 + N;
-            const float* b2 = a2 + N;
+            const float* b1 = a1 + Nh;
+            const float* b2 = a2 + Nh;
 
             PCA<2> pcaRe;
             PCA<3> pcaIm;
@@ -941,9 +976,9 @@ int main(int argc, char* argv[])
                // write
                if (writedata)
                   fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
-                  // f  |Hl|  phil             |Hr|  phir
+                  // f   |Hl|  phil              |Hr|  phir
                      af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
-                  // |Hl|/|Hr|  phil-phir        re        im
+                  // |Hl|/|Hr| phil-phir        re         im
                      abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
 
                if (af < famin && af >= famax)
@@ -989,35 +1024,24 @@ int main(int argc, char* argv[])
 //             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
                , R0, C0*1E6, L0*1E6);
          }
-         
+         break;
+
        case 4: // XY mode
-         {  // we need to do an FFT here for the calibration
-            rfftw_one(p, inbuffer1, outbuffer1);
-            rfftw_one(p, inbuffer2, outbuffer2);
+         {  // we need to do an FFT here, at least for the calibration
+            dofft();
             // normalize (including retransformation)
-            vectorscale(outbuffer1, 1./N/addch/addch, N);
-            vectorscale(outbuffer2, 1./N/addch/addch, N);
+            vectorscale(outbuffer1, sqrt(1./N/Nh)/addch, Nh);
+            vectorscale(outbuffer2, sqrt(1./N/Nh)/addch, Nh);
 
-            // purge DC (meaningless without DC-coupling)
-            if (purgech)
-            {  outbuffer1[0] *= 0;
-               outbuffer2[0] *= 0;
-               for (int i = purgech; --i;)
-               {  outbuffer1[i] *= 0;
-                  outbuffer2[i] *= 0;
-                  outbuffer1[N-i] *= 0;
-                  outbuffer2[N-i] *= 0;
-            }  }
-
-            const double inc = freq/N;
+            const double inc = freq/Nh;
             // U(f)
             float* a1 = outbuffer1;
             float* a2 = outbuffer2;
-            float* b1 = a1 + N;
-            float* b2 = a2 + N;
+            float* b1 = a1 + Nh;
+            float* b2 = a2 + Nh;
             *b1 = 0; // well, somewhat easier this way
             *b2 = 0;
-            for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
+            for (int len = 0; a1 < b1; len += harmonic, a1 += harmonic, a2 += harmonic, b1 -= harmonic, b2 -= harmonic)
             {  // calc
                double f = len*inc;
                Complex U(*a1, *b1);
@@ -1037,33 +1061,33 @@ int main(int argc, char* argv[])
                Complex di(0, f); // differential operator
                // store integrals
                Complex C = U/di;
-               a1[N] = C.real();
-               b1[N] = C.imag();
+               a1[Nh] = C.real();
+               b1[Nh] = C.imag();
                C = I/di;
-               a2[N] = C.real();
-               b2[N] = C.imag();
+               a2[Nh] = C.real();
+               b2[Nh] = C.imag();
                // store differentials
                C = U*di;
-               a1[2*N] = C.real();
-               b1[2*N] = C.imag();
+               a1[2*Nh] = C.real();
+               b1[2*Nh] = C.imag();
                C = I*di;
-               a2[2*N] = C.real();
-               b2[2*N] = C.imag();
+               a2[2*Nh] = C.real();
+               b2[2*Nh] = C.imag();
             }
             // clear DC and nyquist frequencies of integral and diferential, since they do no allow 90ø phase shift.
-            outbuffer1[N] = outbuffer2[N] = 0;
-            outbuffer1[2*N] = outbuffer2[2*N] = 0;
-            outbuffer1[N+N/2] = outbuffer2[N+N/2] = 0;
-            outbuffer1[2*N+N/2] = outbuffer2[2*N+N/2] = 0;
-            
+            outbuffer1[Nh] = outbuffer2[Nh] = 0;
+            outbuffer1[2*Nh] = outbuffer2[2*Nh] = 0;
+            outbuffer1[Nh+Nh/2] = outbuffer2[Nh+Nh/2] = 0;
+            outbuffer1[2*Nh+Nh/2] = outbuffer2[2*Nh+Nh/2] = 0;
+
             // now do the inverse transform to get the corrected data back.
-            rfftw_one(pi, outbuffer1, inbuffer1);
-            rfftw_one(pi, outbuffer1 + N, inbuffer1 + N);
-            rfftw_one(pi, outbuffer1 + 2*N, inbuffer1 + 2*N);
-            rfftw_one(pi, outbuffer2, inbuffer2);
-            rfftw_one(pi, outbuffer2 + N, inbuffer2 + N);
-            rfftw_one(pi, outbuffer2 + 2*N, inbuffer2 + 2*N);
-            
+            rfftw_one(PI, outbuffer1, inbuffer1);
+            rfftw_one(PI, outbuffer1 + Nh, inbuffer1 + Nh);
+            rfftw_one(PI, outbuffer1 + 2*Nh, inbuffer1 + 2*Nh);
+            rfftw_one(PI, outbuffer2, inbuffer2);
+            rfftw_one(PI, outbuffer2 + Nh, inbuffer2 + Nh);
+            rfftw_one(PI, outbuffer2 + 2*Nh, inbuffer2 + 2*Nh);
+
             // write data
             if (writedata)
             {  tout = fopen(datafile, "wt");
@@ -1071,16 +1095,16 @@ int main(int argc, char* argv[])
                   die("Failed to create %s.", datafile);
 
                const float* Up = inbuffer1;
-               const float* Ip = inbuffer2; 
-               for (size_t len = 0; len < N; ++len, ++Up, ++Ip)
+               const float* Ip = inbuffer2;
+               for (int len = 0; len < Nh; ++len, ++Up, ++Ip)
                   fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g\n",
                   // t         U    I    INT U  INT I  D U      D I
-                     len/freq, *Up, *Ip, Up[N], Ip[N], Up[2*N], Ip[2*N]);
+                     len/freq*harmonic, *Up, *Ip, Up[Nh], Ip[Nh], Up[2*Nh], Ip[2*Nh]);
                fclose(tout);
             }
          }
       }
-      
+
       /*if (execcmd)
       {  system(execcmd);
       }*/
@@ -1098,14 +1122,14 @@ int main(int argc, char* argv[])
    switch (gainmode)
    {case 2: // write
     case 3:
-      double* wp = wsums + N/2+1;
-      for (Complex* cp = gainD + N/2+1; --cp >= gainD; )
+      double* wp = wsums + Nh/2+1;
+      for (Complex* cp = gainD + Nh/2+1; --cp >= gainD; )
          *cp /= *--wp;  // scale 2 average
       FILE* fz;
       fz = fopen(gainmode == 3 ? gaindifffile : gainfile, "wb");
       if (fz == NULL)
          die("Failed to open %s.", gainmode == 3 ? gaindifffile : gainfile);
-      writecomplex(fz, gainD, N/2+1);
+      writecomplex(fz, gainD, Nh/2+1);
       fclose(fz);
    }
    switch (zeromode)
@@ -1124,7 +1148,7 @@ int main(int argc, char* argv[])
       goto restart_zero;
     case 4: // part 2
     case 5:
-      for (Complex (* cp)[4] = zeroD + N/2+1; --cp >= zeroD; )
+      for (Complex (* cp)[4] = zeroD + Nh/2+1; --cp >= zeroD; )
       {  // scale to fit det *cp == 1
          Complex det = 1. / sqrt((*cp)[0] * (*cp)[3] - (*cp)[1] * (*cp)[2]);
          if ((((*cp)[0] + (*cp)[3]) * det).real() < 0)
@@ -1138,7 +1162,7 @@ int main(int argc, char* argv[])
       fz = fopen(zeromode == 5 ? zerodifffile : zerofile, "wb");
       if (fz == NULL)
          die("Failed to open %s.", zeromode == 5 ? zerodifffile : zerofile);
-      write4complex(fz, zeroD, N/2);
+      write4complex(fz, zeroD, Nh/2);
       fclose(fz);
    }
 

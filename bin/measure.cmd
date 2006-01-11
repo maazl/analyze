@@ -67,7 +67,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" zr psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mfft n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" |gnuplot gpenv -"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=32M - - | analyze ""zf"cfg.zerofile""" zr psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" |gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO
@@ -168,7 +168,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" zr pdc2 psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mxy n"cfg.fftlen" wd"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" zr pdc2 psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mxy n"cfg.fftlen" har"2" wd"
    END
 
  OTHERWISE
