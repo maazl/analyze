@@ -33,6 +33,7 @@ foreach my $file (@ARGV)
 }
 
 foreach (@data)
-{  print join("\t", map $_/@ARGV, @$_), "\n";
+{  $_->[1] /= @ARGV;
+   print join("\t", @$_), "\n";
 }
 
