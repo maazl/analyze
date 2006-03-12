@@ -1,1 +1,1 @@
-forall (/S "%1") d:energyxxx.cmd "%%1"
+forall (/S %1) d:energyxxx.cmd "%%1"

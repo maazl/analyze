@@ -1,0 +1,6 @@
+unset logscale
+set logscale x
+plot [20:20000] 'dataE2.dat' u 1:($2*$1) w l \
+              , 'dataE2.dat' u 1:($4*$1) w l \
+              , 'dataE2.bak' u 1:($2*$1) w l \
+              , 'dataE2.bak' u 1:($4*$1) w l

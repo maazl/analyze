@@ -1,0 +1,5 @@
+unset logscale
+set logscale x
+plot [20:20000] '' u 1:($2*$1) t "E df" w l \
+              , '' u 1:($4*$1) t "10% mark" w l
+

@@ -1,0 +1,5 @@
+unset logscale
+set logscale x
+plot [20:20000] '' u 1:(10*log10($2*$1)) t "E df [dB]" w l \
+              , '' u 1:(10*log10($4*$1)) t "10% mark" w p pt 2
+
