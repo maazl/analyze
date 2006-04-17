@@ -1,34 +1,37 @@
 FFTWPATH = ../../k6fftwgel-1.1/
+BINPATH = ../bin/
 
+CC = gcc
 CFLAGS = -W -Wall -Zomf -Zcrtdll -Wcast-qual -Wpointer-arith -Wcast-align -pedantic
 CFLAGS += -O6 -fomit-frame-pointer -malign-double -fstrict-aliasing -mcpu=k6
 CFLAGS += -I$(FFTWPATH)fftw -I$(FFTWPATH)rfftw
 #CFLAGS += -g
 GCC3FIX = -lgcc3fix
-LDFLAGS = -L$(FFTWPATH)fftw/.libs -L$(FFTWPATH)rfftw/.libs
+LDFLAGS = -L$(FFTWPATH)fftw/.libs -L$(FFTWPATH)rfftw/.libs -lstdc++
 LDFLAGS += -s -Zno-fork
+LDFLAGSRFFTW = -lrfftw -lfftw
+EXEEXT = .exe
 
-BINPATH = ../bin/
 
-ALL : $(BINPATH)Analyze.exe $(BINPATH)AnalyzeE.exe $(BINPATH)mls.exe $(BINPATH)ref.exe $(BINPATH)sweep.exe $(BINPATH)fft.exe $(BINPATH)sampledist.exe
+ALL : $(BINPATH)Analyze$(EXEEXT) $(BINPATH)AnalyzeE$(EXEEXT) $(BINPATH)mls$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)fft$(EXEEXT) $(BINPATH)sampledist$(EXEEXT)
 
-$(BINPATH)Analyze.exe : Analyze.cpp pca.h nrc.h nrc.cpp
-	gcc $(CFLAGS) -o $@ Analyze.cpp nrc.cpp $(LDFLAGS) -lrfftw -lfftw -lstdc++
+$(BINPATH)Analyze$(EXEEXT) : Analyze.cpp pca.h nrc.h nrc.cpp
+	$(CC) $(CFLAGS) -o $@ Analyze.cpp nrc.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)AnalyzeE.exe : AnalyzeE.cpp
-	gcc $(CFLAGS) -o $@ AnalyzeE.cpp $(LDFLAGS) -lrfftw -lfftw -lstdc++
+$(BINPATH)AnalyzeE$(EXEEXT) : AnalyzeE.cpp
+	$(CC) $(CFLAGS) -o $@ AnalyzeE.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)mls.exe : mls.cpp
-	gcc $(CFLAGS) -o $@ mls.cpp $(LDFLAGS) -lrfftw -lfftw -lstdc++
+$(BINPATH)mls$(EXEEXT) : mls.cpp
+	$(CC) $(CFLAGS) -o $@ mls.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)ref.exe : ref.cpp
-	gcc $(CFLAGS) -o $@ ref.cpp $(LDFLAGS) -lrfftw -lfftw -lstdc++
+$(BINPATH)ref$(EXEEXT) : ref.cpp
+	$(CC) $(CFLAGS) -o $@ ref.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)fft.exe : fft.cpp
-	gcc $(CFLAGS) -o $@ fft.cpp $(LDFLAGS) -lrfftw -lfftw -lstdc++
+$(BINPATH)fft$(EXEEXT) : fft.cpp
+	$(CC) $(CFLAGS) -o $@ fft.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)sampledist.exe : sampledist.cpp
-	gcc $(CFLAGS) -o $@ sampledist.cpp $(LDFLAGS) -lstdc++
+$(BINPATH)sampledist$(EXEEXT) : sampledist.cpp
+	$(CC) $(CFLAGS) -o $@ sampledist.cpp $(LDFLAGS)
 
-$(BINPATH)sweep.exe : sweep.cpp
-	gcc $(CFLAGS) -o $@ sweep.cpp $(LDFLAGS)
+$(BINPATH)sweep$(EXEEXT) : sweep.cpp
+	$(CC) $(CFLAGS) -o $@ sweep.cpp $(LDFLAGS)
