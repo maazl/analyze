@@ -10,7 +10,7 @@
 #include <rfftw.h>
 
 
-static const int fsamp = 48000; // well, not nice...
+static int fsamp = 48000; // sampling rate
 
 void die(int rc, const char* msg, ...)
 {  va_list va;
@@ -32,8 +32,12 @@ void wavwriter(FILE* fo, size_t nsamp)
      0x00000010, 0x00020001, 0x0000BB80, 0x0002ee00,
      0x00100004, 0x61746164, 0xffffffff };
 
+   // patch data size
    wavhdr[10] = nsamp * sizeof(short);
    wavhdr[1] = wavhdr[10] + 44;
+   // patch sampling rate
+   wavhdr[6] = fsamp;
+   wavhdr[7] = fsamp << 2; // * 4 bytes per sample
 
    fwrite(wavhdr, sizeof wavhdr, 1, fo);
 }

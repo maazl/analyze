@@ -20,6 +20,7 @@ CALL CfgQ 'odevice', cfg.device
 CALL CfgQ 'preexec', ''
 CALL CfgQ 'initexec', ''
 CALL CfgQ 'postexec', ''
+CALL CfgQ 'xopt', ''
 
 IF cfg.preexec \= '' THEN
    cfg.preexec
@@ -34,13 +35,18 @@ SELECT
    CALL CfgQ 'fftlen'
    CALL CfgQ 'fmin'
    CALL CfgQ 'fmax'
+   CALL CfgQ 'scm', 1
    CALL CfgQ 'scale', 0
-   CALL CfgQ 'rref'
+   CALL CfgQ 'rref', 1
    CALL CfgQ 'fbin', .05
    CALL CfgQ 'plotcmd', "l 'viewfft'"
    CALL CfgQ 'famin', cfg.fmin
    CALL CfgQ 'famax', cfg.fmax
-   CALL CfgQ 'zerofile', 'zero.dat'
+   CALL CfgQ 'zerofile', ''
+
+   opt = ''
+   IF cfg.zerofile \= '' THEN
+      opt = opt" zr ""zf"cfg.zerofile""""
 
    /* generate reference file
    'ref.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' 10 ref.wav'
@@ -57,7 +63,7 @@ SELECT
    CALL STREAM 'gpenv', 'c', 'close'
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp f2 o buffer2 /p=40k /b=8M - \pipe\refplay.wav'
+   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp f2 o buffer2 -p=60k -b=8M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -67,10 +73,47 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=32M - - | analyze ""zf"cfg.zerofile""" zr psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" |gnuplot gpenv -"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO
+   CALL CfgQ 'fftlen'
+   CALL CfgQ 'fmin'
+   CALL CfgQ 'fmax'
+   /*CALL CfgQ 'scm', 1*/
+   CALL CfgQ 'flog', 1.05946309
+   /*CALL CfgQ 'plotcmd', "l 'viewfft'"*/
+   CALL CfgQ 'sync'
+   CALL CfgQ 'synclevel'
+   CALL CfgQ 'syncphase'
+   CALL CfgQ 'overlap', 0
+   CALL CfgQ 'zerofile', ''
+
+   opt = ''
+   IF cfg.zerofile \= '' THEN
+      opt = opt" zr ""zf"cfg.zerofile""""
+
+   /* gnuplot environment */
+   /*CALL STREAM 'gpenv', 'c', 'open write replace'
+   CALL LINEOUT 'gpenv', 'fmin='cfg.fmin
+   CALL LINEOUT 'gpenv', 'fmax='cfg.fmax
+   CALL LINEOUT 'gpenv', 'rref='cfg.rref
+   CALL LINEOUT 'gpenv', 'fftlen='cfg.fftlen
+   CALL LINEOUT 'gpenv', 'fsamp='cfg.fsamp
+   CALL STREAM 'gpenv', 'c', 'close'*/
+   opt = opt||'n'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' sync'cfg.sync' slvl'cfg.synclevel' sph'cfg.syncphase' sov'cfg.overlap
+
+   /*CALL SysSetPriority 4, 1*/
+   'start /MIN /C sp f1 o sweep.exe mr psa60000 'opt' ^| sp f2 o buffer2 -p=60k -b=8M - \pipe\refplay.wav'
+   CALL SysSleep 1
+   'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
+   /*CALL SysSetPriority 2, -1*/
+   CALL SysSleep 1
+
+   IF cfg.initexec \= '' THEN
+      cfg.initexec
+
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 -b=32M - - | sweep psa10000 ma "opt" >log"
    END
 
 /* WHEN cfg.mtype = 'hyst' THEN DO
@@ -85,7 +128,7 @@ SELECT
    CALL CfgQ 'famax', cfg.fmax
 
    CALL SysSetPriority 4, 1
-   'start /MIN /C mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 /p=40k /b=16M - \pipe\refplay.wav'
+   'start /MIN /C mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -96,7 +139,7 @@ SELECT
       'CALL 'cfg.initexec
 
    tmax = (65536 + 20*cfg.fftlen) / cfg.fsamp + 1.0;
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r /ct:"tmax" con 2>log | sp f3 o buffer2 /b=16M - - | analyze pte psa65536 n"cfg.fftlen" scm1 mfft fq"cfg.fsamp" gg famin"cfg.famin" famax"cfg.famax" ln20 wd"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r /ct:"tmax" con 2>log | sp f3 o buffer2 -b=16M - - | analyze pte psa65536 n"cfg.fftlen" scm1 mfft fq"cfg.fsamp" gg famin"cfg.famin" famax"cfg.famax" ln20 wd"
    END
 
  WHEN cfg.mtype = 'calibrate' THEN DO
@@ -118,7 +161,7 @@ SELECT
 
    cyc = cfg.loops*2+10
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 /p=40k /b=8M - \pipe\refplay.wav'
+   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -136,7 +179,7 @@ SELECT
    SAY
    SAY "***** Z = +Inf first, Z = 0 on request."
    SAY
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con 2>log | sp f3 o buffer2 /b=16M - - | analyze pte psa65536 n"cfg.fftlen" scm1 mfft fq"cfg.fsamp" "zmode" zn ""zf"cfg.zerofile""" famin"cfg.famin" famax"cfg.famax" ln"cfg.loops" wd"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con 2>log | sp f3 o buffer2 -b=16M - - | analyze pte psa65536 n"cfg.fftlen" scm1 mfft fq"cfg.fsamp" "zmode" zn ""zf"cfg.zerofile""" famin"cfg.famin" famax"cfg.famax" ln"cfg.loops" wd"
    END
 
  WHEN cfg.mtype = 'hyst' THEN DO
@@ -158,7 +201,7 @@ SELECT
    harmonic = TRUNC(cfg.fsamp / cfg.fbase +.5)
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o ref.exe 'cfg.fftlen'/'harmonic cfg.fsamp cfg.shape' ^| sp f2 o buffer2 /p=40k /b=8M - \pipe\refplay.wav'
+   'start /MIN /C sp f1 o ref.exe 'cfg.fftlen'/'harmonic cfg.fsamp cfg.shape' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -168,7 +211,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 /b=16M - - | analyze ""zf"cfg.zerofile""" zr pdc2 psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mxy n"cfg.fftlen" har"2" wd"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 -b=16M - - | analyze ""zf"cfg.zerofile""" zr pdc2 psa32768 loop fq"cfg.fsamp" rref"cfg.rref" scm1 mxy n"cfg.fftlen" har"2" wd"
    END
 
  OTHERWISE

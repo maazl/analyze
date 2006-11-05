@@ -1,5 +1,7 @@
 use strict;
 
+@ARGV or die "Usage: $0 size ifile >ofile\n";
+
 my $avg = shift @ARGV;
 
 sub vadd(\@@)

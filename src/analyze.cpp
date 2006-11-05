@@ -111,48 +111,52 @@ static void vektormul(float* dst, float* src, size_t len)
 }
 
 // config
-static float      gainadj[2]  = {1,1};
-static int        N           = 8192;
-static double     noiselvl    = 1;
-static int        winfn       = 0;
-static double     freq        = 44100;
-static double     fmin        = -1;
-static double     fmax        = 1E99;
-static double     famin       = 1;
-static double     famax       = 1E99;
-static bool       writeraw    = false;
-static bool       writedata   = false;
-static bool       writewindow = false;
-static int        method      = 0;
-static int        purgech     = 0;
-static int        discsamp    = 0;
-static bool       disctrail   = false;
-static int        addch       = 1;
-static double     rref        = 1;
-static int        scalemode   = 1;
-static int        loops       = 1;
-static int        lpause      = 10;
-static int        zeromode    = 0; // 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
-static int        gainmode    = 0; // 0 = none, 1 = read, 2 = generate, 3 = generatedelta
-static bool       normalize   = false;
-static int        binsz       = 1;
-static double     fbinsc      = 0;
-static int        harmonic    = 1;
-static const char* datafile   = "data.dat";
-static const char* zerofile   = "zero.dat";
-static const char* zerodifffile = "zeroD.dat";
-static const char* gainfile   = "gain.dat";
-static const char* gaindifffile = "gainD.dat";
-static const char* rawfile    = "raw.dat";
-static const char* windowfile = "window.dat";
-static const char* infile     = NULL;
-static const char* execcmd    = NULL;
-static const char* plotcmd    = NULL;
-static double     (*weightfn)(double, double, double) = getweight;
+static float      gainadj[2]  = {1,1}; // gain {l, r}
+static int        N           = 8192;  // FFT length
+static double     noiselvl    = 1;     // ?
+static int        winfn       = 0;     // window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
+static double     freq        = 44100; // sampling rate
+static double     fmin        = -1;    // minimum freuqncy for FFT analysis
+static double     fmax        = 1E99;  // minimum freuqncy for FFT analysis
+static double     famin       = 1;     // ignore frquencies below famin for calculation of screen output
+static double     famax       = 1E99;  // ignore frquencies above famax for calculation of screen output
+static bool       writeraw    = false; // write raw data to file
+static bool       writedata   = false; // write analysis data to file
+static bool       writewindow = false; // write window function data to file
+static int        method      = 0;     // analysis method: 0 = none, 1 = PCA, 2 = FFT, 3 = PCA & FFT, 4 = XY 
+static int        purgech     = 0;     // set the first FFT frequencies to 0
+static int        discsamp    = 0;     // skip the first samples
+static bool       disctrail   = false; // comsume trailing samples after completion
+static int        addch       = 1;     // binsize in raw samples
+static int        addloop     = 1;     // add raw data before analysis # times
+static bool       incremental = false; // incremental mode (add all raw data)
+static double     rref        = 1;     // value of the reference resistor in impedance measurements
+static int        scalemode   = 1;     // l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l 
+static int        loops       = 1;     // number of analysis loops
+static int        lpause      = 10;    // number of loops between zero calibration parts
+static int        zeromode    = 0;     // zero calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
+static int        gainmode    = 0;     // gain calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta
+static double     linphase    = 0;     // lienar phase correction [s]
+static bool       nophase     = false; // purge any phase information
+static bool       normalize   = false; // normalize L+R to 1. for impedance measurements
+static int        binsz       = 1;     // binsize in FFT channels
+static double     fbinsc      = 0;     // logarithmic binsize: fmin/fmax = 1 + fbinsc 
+static int        harmonic    = 1;     // analyze only harmonics of this base frequency (FFT)
+static const char* datafile   = "data.dat";  // filename for analysis data
+static const char* zerofile   = "zero.dat";  // file name for zero calibration data
+static const char* zerodifffile = "zeroD.dat";// file name for differential zero calibration data
+static const char* gainfile   = "gain.dat";  // file name for gain calibration data
+static const char* gaindifffile = "gainD.dat";// file name for differential gain calibration data
+static const char* rawfile    = "raw.dat";   // file name for raw data
+static const char* windowfile = "window.dat";// file name for window data
+static const char* infile     = NULL;  // input file name
+static const char* execcmd    = NULL;  // shell command to execute after analysis
+static const char* plotcmd    = NULL;  // string to write to stdout after analysis
+static double     (*weightfn)(double, double, double) = getweight;// weight function
 // internal vars
 static int        Nh;   // FFT length after harmonic extraction
-static rfftw_plan P;
-static rfftw_plan PI;
+static rfftw_plan P;    // FFT plan for forward transformation
+static rfftw_plan PI;   // FFT plan for inverse transformation
 
 
 static void createwindow(float* dst, int type, size_t len)
@@ -227,8 +231,25 @@ static void short2float2(float* dst1, float* dst2, const short* src, size_t len)
    }
 }
 
-static void short2float2window(float* dst1, float* dst2, const short* src, const float* win, size_t len)
+static void short2float2add(float* dst1, float* dst2, const short* src, size_t len)
 {  while (len)
+   {  double d1 = 0;
+      double d2 = 0;
+      int i = addch;
+      do
+      {  d1 += storeminmax(fromraw(src[0]), minmax);
+         d2 += storeminmax(fromraw(src[1]), minmax+2);
+         src += 2;
+      } while (--i);
+      *dst1++ += d1 * gainadj[0];
+      *dst2++ += d2 * gainadj[1];
+      --len;
+   }
+}
+
+static void short2float2window(float* dst1, float* dst2, const short* src, size_t len)
+{  const float* win = window;
+   while (len)
    {  double d1 = 0;
       double d2 = 0;
       int i = addch;
@@ -259,8 +280,26 @@ static void short2floatD(float* dst1, float* dst2, const short* src, size_t len)
    }
 }
 
-static void short2floatDwindow(float* dst1, float* dst2, const short* src, const float* win, size_t len)
+static void short2floatDadd(float* dst1, float* dst2, const short* src, size_t len)
 {  while (len)
+   {  double d1 = 0;
+      double d2 = 0;
+      int i = addch;
+      do
+      {  d1 += storeminmax(fromraw(src[0]), minmax);
+         d2 += storeminmax(fromraw(src[1]), minmax+2);
+         src += 2;
+      } while (--i);
+      d2 *= gainadj[1];
+      *dst1++ += d2;
+      *dst2++ += d1 * gainadj[0] - d2;
+      --len;
+   }
+}
+
+static void short2floatDwindow(float* dst1, float* dst2, const short* src, size_t len)
+{  const float* win = window;
+   while (len)
    {  double d1 = 0;
       double d2 = 0;
       int i = addch;
@@ -274,6 +313,18 @@ static void short2floatDwindow(float* dst1, float* dst2, const short* src, const
       ++win;
       --len;
    }
+}
+
+static void applywindow(float* dst, size_t len)
+{  const float* win = window;
+   while (len)
+      *dst++ *= *win++;
+}
+
+static void applywindowI(float* dst, size_t len)
+{  const float* win = window;
+   while (len)
+      *dst++ /= *win++;
 }
 
 static inline double abs(double d1, double d2)
@@ -480,34 +531,22 @@ static Complex* gainD;
 static Complex (* zero)[4];
 static Complex (* zeroD)[4];
 
-/* Calibration */
-static double docal(int len, double f, Complex& U, Complex& I)
-{  /* introduce error */
-   /*const Complex c11(1.1, .1);
-   const Complex c12(.1, .01);
-   const Complex c21(.3, .02);
-   const Complex c22(.95, .2);
-   const Complex c11(1, 0);
-   const Complex c12(0, 0);
-   const Complex c21(0, 0);
-   const Complex c22(1, 0);
-   {  Complex t = U;
-      U = c11 * U + c12 * I;
-      I = c21 * t + c22 * I;
-   }*/
-   double weight;
-   switch (gainmode)
+// Calibration
+static void docal(int bin, double f, Complex& U, Complex& I)
+{  switch (gainmode)
    {case 1: // read
-      U /= gain[len];
+      U /= gain[bin];
       /*t = I * gainD[len];
       I -= U * gainD[len];
       U -= t;*/
       break;
     case 2: // write
     case 3:
-      wsums[len] += weight = sqrt((*weightfn)(abs(U), abs(I), f));
-      U /= gain[len];
-      gainD[len] += I/U * weight;
+      {  double weight = sqrt((*weightfn)(abs(U), abs(I), f));
+         wsums[bin] += weight;
+         U /= gain[bin];
+         gainD[bin] += I/U * weight;
+      }
    }
    if (normalize)
    {  Complex s = 1./(U + I);
@@ -515,7 +554,7 @@ static double docal(int len, double f, Complex& U, Complex& I)
       I *= s;
    }
    if (zeromode & 1)
-   {  Complex* cp = zero[len];
+   {  Complex* cp = zero[bin];
       Complex t = U; // multiply (U,I) by (*cp)^(-1). The matrix inversion is easy because det(*cp) == 1.
       //Complex det = cp[0]*cp[3] - cp[1]*cp[2];
       U = (U * cp[3] - I * cp[1]);
@@ -526,15 +565,111 @@ static double docal(int len, double f, Complex& U, Complex& I)
    switch (zeromode)
    {case 2: // write part 1
     case 3:
-      zeroD[len][0] += U;
-      zeroD[len][2] += I;
+      zeroD[bin][0] += U;
+      zeroD[bin][2] += I;
       break;
     case 4: // write part 2
     case 5:
-      zeroD[len][1] += U;
-      zeroD[len][3] += I;
+      zeroD[bin][1] += U;
+      zeroD[bin][3] += I;
    }
-   return weight;
+}
+
+class FFTbin
+{public:
+   enum    StoreRet
+   {  BelowMin,  // frequency less than fmin
+      AboveMax,  // frequency above fmax
+      Ready,     // calculated values available
+      Aggregated // bin used for aggregation only
+   };
+ private:
+   const double finc;
+
+   int     binc;
+   double  lphi; // last phase (for numerical derivative)
+
+   double  af;
+   Complex aU;
+   Complex aI;
+   Complex aZ;
+   double  aD;
+   double  cW;
+   
+ public:
+   FFTbin(double finc) : finc(finc), binc(0), lphi(0) {}
+   StoreRet StoreBin(int bin, Complex U, Complex I);
+
+   double  f() const { return af; } // frequency
+   Complex U() const { return aU; } // voltage, nominator or wanted signal
+   Complex I() const { return aI; } // cuurrent, denominator or reference signal
+   Complex Z() const { return aZ; } // impedance, quotient or relative signal
+   double  D() const { return aD; } // group delay
+   double  W() const { return cW; } // weight
+};
+
+FFTbin::StoreRet FFTbin::StoreBin(int bin, Complex U, Complex I)
+{  // frequency
+   double f = bin * finc;
+   if (f < fmin)
+      return BelowMin;
+   if (f > fmax)
+      return AboveMax;
+   // calibration
+   docal(bin, f, U, I);
+   // phase correction
+   I *= exp(Complex(0, linphase * f));
+   // calc Y
+   Complex Z(U/I);
+   // group delay
+   double D;
+   {  double Zphi = arg(Z);
+      D = (Zphi - lphi) / M_2PI;
+      D -= floor(D+.5); // minimum phase
+      //fprintf(stderr, "D: %f, %f\n", f, D);
+      D /= finc;
+      lphi = Zphi;
+   }
+   if (nophase)
+      Z = abs(Z);
+   // binsize
+   if (fbinsc)
+      binsz = (int)(f * fbinsc + 1);
+   if (binc == 0)
+   {  // init
+      af = f;
+      aU = U;
+      aI = I;
+      aZ = Z;
+      aD = D;
+   } else
+   {  af += f;
+      aU += U;
+      aI += I;
+      aZ += Z;
+      aD += D;
+   }
+   if (++binc != binsz)
+      return Aggregated;
+   af /= binc;
+   aU /= binc;
+   aI /= binc;
+   aZ /= binc;
+   aD /= binc;
+   binc = 0;
+   // weight
+   cW = (*weightfn)(abs(aU), abs(aI), af);
+   return Ready;
+}
+
+static void PrintFFTbin(FILE* dst, const FFTbin& calc)
+{  fprintf(dst, "%12g %12g %12g %12g %12g " "%12g %12g %12g %12g %12g %12g\n",
+   // f         |Hl|           phil                    |Hr|           phir
+      calc.f(), abs(calc.U()), arg(calc.U())*M_180_PI, abs(calc.I()), arg(calc.I())*M_180_PI,
+   // |Hl|/|Hr|      phil-phir               re               im
+      abs(calc.Z()), arg(calc.Z())*M_180_PI, calc.Z().real(), calc.Z().imag(),
+   // weight     delay 
+      calc.W(), calc.D());
 }
 
 
@@ -544,49 +679,53 @@ static const struct ArgMap
    void* param;
    int iparam;
 } argmap[] = // must be sorted
-{  {"bin",  (void(_cdecl*)(const char*,void*,int))&readint, &binsz, 0}
+{  {"ainc", (void(_cdecl*)(const char*,void*,int))&setflag, &incremental, true}
+ , {"al",   (void(_cdecl*)(const char*,void*,int))&readint, &addloop}
+ , {"bin",  (void(_cdecl*)(const char*,void*,int))&readint, &binsz}
  , {"ca" ,  (void(_cdecl*)(const char*,void*,int))&readintdef, &addch, 2}
- , {"df" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &datafile, 0}
- , {"exec", (void(_cdecl*)(const char*,void*,int))&readstring, &execcmd, 0}
- , {"famax",(void(_cdecl*)(const char*,void*,int))&readdouble, &famax, 0}
- , {"famin",(void(_cdecl*)(const char*,void*,int))&readdouble, &famin, 0}
- , {"fbin", (void(_cdecl*)(const char*,void*,int))&readdouble, &fbinsc, 0}
- , {"fmax", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmax, 0}
- , {"fmin", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmin, 0}
- , {"fq" ,  (void(_cdecl*)(const char*,void*,int))&readdouble, &freq, 0}
- , {"g2f" , (void(_cdecl*)(const char*,void*,int))&readstring, &gaindifffile, 0}
+ , {"df" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &datafile}
+ , {"exec", (void(_cdecl*)(const char*,void*,int))&readstring, &execcmd}
+ , {"famax",(void(_cdecl*)(const char*,void*,int))&readdouble, &famax}
+ , {"famin",(void(_cdecl*)(const char*,void*,int))&readdouble, &famin}
+ , {"fbin", (void(_cdecl*)(const char*,void*,int))&readdouble, &fbinsc}
+ , {"fmax", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmax}
+ , {"fmin", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmin}
+ , {"fq" ,  (void(_cdecl*)(const char*,void*,int))&readdouble, &freq}
+ , {"g2f" , (void(_cdecl*)(const char*,void*,int))&readstring, &gaindifffile}
  , {"gd" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 3}
- , {"gf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &gainfile, 0}
+ , {"gf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &gainfile}
  , {"gg" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 2}
  , {"gr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 1}
  , {"h/f",  (void(_cdecl*)(const char*,void*,int))&setint, &weightfn, (int)get1_fweight}
- , {"har",  (void(_cdecl*)(const char*,void*,int))&readint, &harmonic, 0}
+ , {"har",  (void(_cdecl*)(const char*,void*,int))&readint, &harmonic}
  , {"hd" ,  (void(_cdecl*)(const char*,void*,int))&setint, &weightfn, (int)getweightD}
  , {"he" ,  (void(_cdecl*)(const char*,void*,int))&setint, &weightfn, (int)getconstweight}
- , {"in" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &infile, 0}
+ , {"in" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &infile}
  , {"ln" ,  (void(_cdecl*)(const char*,void*,int))&readint, &loops, 1}
  , {"loop", (void(_cdecl*)(const char*,void*,int))&setint, &loops, INT_MAX}
- , {"lp" ,  (void(_cdecl*)(const char*,void*,int))&readint, &lpause, 0}
- , {"lvl",  (void(_cdecl*)(const char*,void*,int))&readdouble, &noiselvl, 0}
+ , {"lp" ,  (void(_cdecl*)(const char*,void*,int))&readint, &lpause}
+ , {"lvl",  (void(_cdecl*)(const char*,void*,int))&readdouble, &noiselvl}
  , {"mfft", (void(_cdecl*)(const char*,void*,int))&setbit, &method, 1}
  , {"mpca", (void(_cdecl*)(const char*,void*,int))&setbit, &method, 2}
  , {"mxy",  (void(_cdecl*)(const char*,void*,int))&setbit, &method, 4}
- , {"n"  ,  (void(_cdecl*)(const char*,void*,int))&readN, &N, 0}
+ , {"n"  ,  (void(_cdecl*)(const char*,void*,int))&readN, &N}
  , {"pdc",  (void(_cdecl*)(const char*,void*,int))&readintdef, &purgech, 1}
- , {"plot", (void(_cdecl*)(const char*,void*,int))&readstring, &plotcmd, 0}
+ , {"phl",  (void(_cdecl*)(const char*,void*,int))&readdouble, &linphase}
+ , {"phn",  (void(_cdecl*)(const char*,void*,int))&setint, &nophase, 1}
+ , {"plot", (void(_cdecl*)(const char*,void*,int))&readstring, &plotcmd}
  , {"psa",  (void(_cdecl*)(const char*,void*,int))&readintdef, &discsamp, 1}
  , {"pte",  (void(_cdecl*)(const char*,void*,int))&readintdef, &disctrail, 1}
- , {"rf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &rawfile, 0}
- , {"rref", (void(_cdecl*)(const char*,void*,int))&readdouble, &rref, 0}
- , {"scm",  (void(_cdecl*)(const char*,void*,int))&readint, &scalemode, 0}
+ , {"rf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &rawfile}
+ , {"rref", (void(_cdecl*)(const char*,void*,int))&readdouble, &rref}
+ , {"scm",  (void(_cdecl*)(const char*,void*,int))&readint, &scalemode}
  , {"wd" ,  (void(_cdecl*)(const char*,void*,int))&setflag, &writedata, true}
- , {"wf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &windowfile, 0}
+ , {"wf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &windowfile}
  , {"win",  (void(_cdecl*)(const char*,void*,int))&readintdef, &winfn, 2}
  , {"wr" ,  (void(_cdecl*)(const char*,void*,int))&setflag, &writeraw, true}
  , {"ww" ,  (void(_cdecl*)(const char*,void*,int))&setflag, &writewindow, true}
- , {"z2f" , (void(_cdecl*)(const char*,void*,int))&readstring, &zerodifffile, 0}
+ , {"z2f" , (void(_cdecl*)(const char*,void*,int))&readstring, &zerodifffile}
  , {"zd" ,  (void(_cdecl*)(const char*,void*,int))&setint, &zeromode, 3}
- , {"zf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &zerofile, 0}
+ , {"zf" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &zerofile}
  , {"zg" ,  (void(_cdecl*)(const char*,void*,int))&setint, &zeromode, 2}
  , {"zn" ,  (void(_cdecl*)(const char*,void*,int))&setint, &normalize, 1}
  , {"zr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &zeromode, 1}
@@ -617,6 +756,7 @@ int main(int argc, char* argv[])
    noiselvl_ = 1/noiselvl;
    freq /= addch;
    Nh = N / harmonic;
+   linphase *= M_2PI;
    // allocate buffers
    if (method & 4)
    {  // reserver space for integrals and differentials too
@@ -665,6 +805,9 @@ int main(int argc, char* argv[])
    // discard first samples
    fread(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
 
+   memset(inbuffer1, 0, sizeof inbuffer1); // init woth 0 because of incremental mode
+   memset(inbuffer2, 0, sizeof inbuffer2);
+   memset(wsums, 0, sizeof wsums);
    memset(wsums, 0, sizeof wsums);
    memset(gainD, 0, sizeof gain);
    memset(zeroD, 0, sizeof zeroD);
@@ -694,10 +837,12 @@ int main(int argc, char* argv[])
 
    // operation loop
    int loop = loops;
+   int addloops = 0;
    do
    {  if (fread(inbuffertmp, 2*sizeof *inbuffertmp * addch, N, in) != N)
          die("failed to read data");
 
+      // reset min/max
       init();
 
       // write raw data
@@ -707,23 +852,28 @@ int main(int argc, char* argv[])
          fclose(tout);
       }
 
-      //
       switch (scalemode)
       {case 1:
-         if (winfn)
-            short2float2window(inbuffer1, inbuffer2, inbuffertmp, window, N);
+         if (incremental || addloops)
+            short2float2add(inbuffer1, inbuffer2, inbuffertmp, N);
+          else if (winfn && addloop == 1)
+            short2float2window(inbuffer1, inbuffer2, inbuffertmp, N);
           else
             short2float2(inbuffer1, inbuffer2, inbuffertmp, N);
          break;
        case 2:
-         if (winfn)
-            short2floatDwindow(inbuffer1, inbuffer2, inbuffertmp, window, N);
+         if (incremental || addloops)
+            short2floatDadd(inbuffer1, inbuffer2, inbuffertmp, N);
+          else if (winfn && addloop == 1)
+            short2floatDwindow(inbuffer1, inbuffer2, inbuffertmp, N);
           else
             short2floatD(inbuffer1, inbuffer2, inbuffertmp, N);
          break;
        case 3:
-         if (winfn)
-            short2float2window(inbuffer2, inbuffer1, inbuffertmp, window, N);
+         if (incremental || addloops)
+            short2float2add(inbuffer2, inbuffer1, inbuffertmp, N);
+          else if (winfn && addloop == 1)
+            short2float2window(inbuffer2, inbuffer1, inbuffertmp, N);
           else
             short2float2(inbuffer2, inbuffer1, inbuffertmp, N);
          break;
@@ -732,6 +882,15 @@ int main(int argc, char* argv[])
       }
       // write raw status
       fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0], minmax[2], minmax[1], minmax[3]);
+
+      if (++addloops < addloop)
+         continue; // add more data
+      if (winfn && (incremental || addloops))
+      {  // optimization: apply window function later
+         applywindow(inbuffer1, N);
+         applywindow(inbuffer2, N);
+      }
+      addloops = 0;
 
       // write raw data
       /*if (writeraw)
@@ -758,7 +917,7 @@ int main(int argc, char* argv[])
             {  data[0] = U[0] + U[1];
                data[1] = I[0] + I[1];
                data[3] += I[-1] + I[0];
-               data[5] = I[-1] + I[0] - I[1] - I[2];
+               data[5] = I[-1] + I[0] - I[1]  - I[2];
                pca.Store(*(double (*)[5])&data, (*weightfn)(data[0], data[1], i));
                data[4]++;
                U += 2;
@@ -777,7 +936,6 @@ int main(int argc, char* argv[])
             vectorscale(outbuffer1, sqrt(1./N)/addch, Nh);
             vectorscale(outbuffer2, sqrt(1./N)/addch, Nh);
 
-            const double inc = freq/Nh;
             // calc some sums
             double wsum = 0;
             int nsum = 0;
@@ -802,78 +960,40 @@ int main(int argc, char* argv[])
             const float* b1 = a1 + Nh;
             const float* b2 = a2 + Nh;
 
-            double af;
-            Complex aU;
-            Complex aI;
-            Complex aZ;
+            FFTbin calc(freq/Nh);
 
             // 1st line
-            int binc = 0;
             for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
-            {  // calc
-               double f = len*inc;
-               if (f < fmin)
+            {  // do calculations and aggregations
+               switch (calc.StoreBin(len, Complex(*a1, *b1), Complex(*a2, *b2)))
+               {case FFTbin::BelowMin:
+                case FFTbin::Aggregated:
                   continue;
-               if (f > fmax)
-                  break;
-               Complex U(*a1, *b1);
-               Complex I(*a2, *b2);
-               // calibration
-               double weight = docal(len, f, U, I);
-               // calc Y
-               Complex Z(U/I);
-               // binsize
-               {  if (fbinsc) // dynamic binsize
-                     binsz = (int)(f * fbinsc + 1);
-                  if (binc == 0)
-                  {  // init
-                     af = f;
-                     aU = U;
-                     aI = I;
-                     aZ = Z;
-                  } else
-                  {  af += f;
-                     aU += U;
-                     aI += I;
-                     aZ += Z;
-                  }
-                  if (++binc != binsz)
-                     continue;
-                  af /= binc;
-                  aU /= binc;
-                  aI /= binc;
-                  aZ /= binc;
-                  binc = 0;
+                case FFTbin::AboveMax:
+                  goto end1;
+                default:; //case FFTbin::Ready:
                }
-               // prepare
-               double absU = abs(aU);
-               double absI = abs(aI);
-               weight = (*weightfn)(absU, absI, af);
                // write
                if (writedata)
-                  fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
-                  // f  |Hl|  phil             |Hr|  phir
-                     af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
-                     //f, *a1 , *b1            , *a2 , *b2            ,
-                  // |Hl|/|Hr|  phil-phir        re        im
-                     abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
+                  PrintFFTbin(tout, calc);
 
-               if (af < famin && af >= famax)
+               if (calc.f() < famin && calc.f() >= famax)
                   continue;
                // average
                ++nsum;
-               wsum += weight;
+               wsum += calc.W();
                // resistivity
-               Rsum += weight * aZ.real();
-               R2sum += weight * sqr(aZ.real());
+               Rsum += calc.W() * calc.Z().real();
+               R2sum += calc.W() * sqr(calc.Z().real());
                // L & C
-               L2sum += weight * sqr(af);
+               L2sum += calc.W() * sqr(calc.f());
                // LCsum += weight; == wsum
-               C2sum += weight / sqr(af);
-               Lsum -= weight * af * aZ.imag();
-               Csum -= weight / af * aZ.imag();
-               d2sum = weight * sqr(aZ.imag());
+               C2sum += calc.W() / sqr(calc.f());
+               Lsum -= calc.W() * calc.f() * calc.Z().imag();
+               Csum -= calc.W() / calc.f() * calc.Z().imag();
+               d2sum = calc.W() * sqr(calc.Z().imag());
             }
+          end1:
             if (writedata)
                fclose(tout);
 
@@ -905,7 +1025,6 @@ int main(int argc, char* argv[])
             vectorscale(outbuffer1, sqrt(1./N)/addch, Nh);
             vectorscale(outbuffer2, sqrt(1./N)/addch, Nh);
 
-            const double inc = freq/Nh;
             // write data
             if (writedata)
             {  tout = fopen(datafile, "wt");
@@ -917,7 +1036,7 @@ int main(int argc, char* argv[])
             const float* a2 = outbuffer2;
             const float* b1 = a1 + Nh;
             const float* b2 = a2 + Nh;
-
+            
             PCA<2> pcaRe;
             PCA<3> pcaIm;
             double PCAdataRe[2];
@@ -926,78 +1045,41 @@ int main(int argc, char* argv[])
             PCAdataRe[1] = 1;
             //PCAdataIm[1] = 1;
 
-            double af;
-            Complex aU;
-            Complex aI;
-            Complex aZ;
+            FFTbin calc(freq/Nh);
 
             // 1st line
-            int binc = 0;
             for (size_t len = 0; a1 < b1; ++len, ++a1, ++a2, --b1, --b2)
-            {  // calc
-               double f = len*inc;
-               if (f < fmin)
+            {  // do calculations and aggregations
+               switch (calc.StoreBin(len, Complex(*a1, *b1), Complex(*a2, *b2)))
+               {case FFTbin::BelowMin:
+                case FFTbin::Aggregated:
                   continue;
-               if (f > fmax)
-                  break;
-               Complex U(*a1, *b1);
-               Complex I(*a2, *b2);
-               // calibration
-               double weight = docal(len, f, U, I);
-               // calc Y
-               Complex Z(U/I);
-               // binsize
-               {  if (fbinsc)
-                     binsz = (int)(f * fbinsc + 1);
-                  if (binc == 0)
-                  {  // init
-                     af = f;
-                     aU = U;
-                     aI = I;
-                     aZ = Z;
-                  } else
-                  {  af += f;
-                     aU += U;
-                     aI += I;
-                     aZ += Z;
-                  }
-                  if (++binc != binsz)
-                     continue;
-                  af /= binc;
-                  aU /= binc;
-                  aI /= binc;
-                  aZ /= binc;
-                  binc = 0;
+                case FFTbin::AboveMax:
+                  goto end3;
+                default:; //case FFTbin::Ready:
                }
-               // prepare
-               double absU = abs(aU);
-               double absI = abs(aI);
-               weight = (*weightfn)(absU, absI, af);
                // write
                if (writedata)
-                  fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
-                  // f   |Hl|  phil              |Hr|  phir
-                     af, absU, arg(aU)*M_180_PI, absI, arg(aI)*M_180_PI,
-                  // |Hl|/|Hr| phil-phir        re         im
-                     abs(aZ), arg(aZ)*M_180_PI, aZ.real(), aZ.imag(), weight);
+                  PrintFFTbin(tout, calc);
 
-               if (af < famin && af >= famax)
+               if (calc.f() < famin && calc.f() >= famax)
                   continue;
                // component analysis
-               PCAdataRe[0] = aZ.real();
+               PCAdataRe[0] = calc.Z().real();
                //PCAdataRe[2] = 1/af;
                //PCAdataRe[3] = f;
-               PCAdataIm[0] = aZ.imag(); // // fit imaginary part in conductivity
-               PCAdataIm[1] = 1/af;
-               PCAdataIm[2] = af;
+               PCAdataIm[0] = calc.Z().imag(); // // fit imaginary part in conductivity
+               PCAdataIm[1] = 1/calc.f();
+               PCAdataIm[2] = calc.f();
                //PCAdataIm[3] = 1/af;
                //printf("Re: %12g %12g %12g %12g\n", PCAdataRe[0], PCAdataRe[1], PCAdataRe[2], weight);
 
                // add values
-               pcaRe.Store(PCAdataRe, weight);
-               pcaIm.Store(PCAdataIm, weight);
+               pcaRe.Store(PCAdataRe, calc.W());
+               pcaIm.Store(PCAdataIm, calc.W());
 
             }
+          end3:
             if (writedata)
                fclose(tout);
 
@@ -1112,6 +1194,13 @@ int main(int argc, char* argv[])
       {  // for gnuplot!
          puts(plotcmd);
          fflush(stdout);
+      }
+
+      // undo window function because of incremental mode
+      // TODO: this causes a loss of precision!
+      if (winfn && incremental)
+      {  applywindowI(inbuffer1, N);
+         applywindowI(inbuffer2, N);
       }
 
    } while (--loop);
