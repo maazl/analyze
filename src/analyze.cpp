@@ -634,7 +634,7 @@ FFTbin::StoreRet FFTbin::StoreBin(int bin, Complex U, Complex I)
       Z = abs(Z);
    // binsize
    if (fbinsc)
-      binsz = (int)(f * fbinsc + 1);
+      binsz = (int)(bin * fbinsc + 1);
    if (binc == 0)
    {  // init
       af = f;
