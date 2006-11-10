@@ -63,9 +63,9 @@ SELECT
    CALL STREAM 'gpenv', 'c', 'close'
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp f2 o buffer2 -p=60k -b=8M - \pipe\refplay.wav'
+   'start /MIN /C sp f3 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
    CALL SysSleep 1
-   'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
+   'start /C sp t2 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
    /*CALL SysSetPriority 2, -1*/
    CALL SysSleep 1
@@ -73,7 +73,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp f3 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp t1 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO
