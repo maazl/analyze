@@ -63,7 +63,7 @@ SELECT
    CALL STREAM 'gpenv', 'c', 'close'
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f3 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
+   'start /MIN /C sp f3 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp t2 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -128,7 +128,7 @@ SELECT
    CALL CfgQ 'famax', cfg.fmax
 
    CALL SysSetPriority 4, 1
-   'start /MIN /C mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
+   'start /MIN /C noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
@@ -161,7 +161,7 @@ SELECT
 
    cyc = cfg.loops*2+10
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o mls.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
+   'start /MIN /C sp f1 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
    CALL SysSleep 1
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/

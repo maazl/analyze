@@ -1,5 +1,5 @@
 fmin=20
 fmax=20000
 rref=1
-fftlen=262144
+fftlen=65536
 fsamp=48000

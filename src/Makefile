@@ -21,7 +21,7 @@ $(BINPATH)Analyze$(EXEEXT) : Analyze.cpp pca.h nrc.h nrc.cpp
 $(BINPATH)AnalyzeE$(EXEEXT) : AnalyzeE.cpp
 	$(CC) $(CFLAGS) -o $@ AnalyzeE.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)mls$(EXEEXT) : mls.cpp
+$(BINPATH)noise$(EXEEXT) : noise.cpp
 	$(CC) $(CFLAGS) -o $@ mls.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
 $(BINPATH)ref$(EXEEXT) : ref.cpp
