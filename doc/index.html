@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>Analysetools</title>
+
+
+  <link type="text/css" rel="stylesheet" href="mm.css">
+
+</head>
+
+
+<body>
+
+<a href="glossary.html">&rarr;&nbsp;Glossar
+</a>
+<h1>Analysesoftware f&uuml;r Zweipol und Vierpolanalysen
+sowie Hysteresemessungen</h1>
+
+<a href="#description">Beschreibung</a> <a href="#reference">Referenz</a> <a href="#download">Download</a>
+<a href="#history">Historie</a>
+<a href="#todo">Todo</a>
+<a href="#build">Compilieren</a>
+<h2><a name="description"></a>&Uuml;bersicht</h2>
+
+<p>Dies ist eine Reihe von Programmen und Skripten um <strong>me&szlig;technische
+Analysen</strong> mit einem <strong>PC mit Soundkarte</strong>
+durchzuf&uuml;hren.</p>
+
+<h4>Komponenten&uuml;bersicht</h4>
+
+<table border="1" cellpadding="3" cellspacing="0">
+
+  <tbody>
+
+    <tr>
+
+      <th align="left">Funktion</th>
+
+      <th align="left">Name</th>
+
+      <th align="left">Typ</th>
+      <th>Bemerkung</th>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Kommunikation mit der Soundkarte</td>
+
+      <td>-</td>
+
+      <td>plattformspezifisch, externe L&ouml;sung
+erforderlich</td>
+      <td>Ben&ouml;tigt wird eine jeweils plattformspezifische L&ouml;sung, um 16-Bit stereo PCM-Daten von <tt>stdout</tt> zur Soundkarte und von Line-In zu <tt>stdin</tt> zu bekommen.</td>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Erzeugung von breitbandigen Referenzsignalen (Rauschen)</td>
+
+      <td><a href="noise.html">noise</a></td>
+
+      <td>C++-Programm</td>
+      <td colspan="1" rowspan="2">F&uuml;r Breitbandmessungen.</td>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Analyse von breitbandigen Signalen</td>
+
+      <td><a href="analyze.html">analyze</a></td>
+
+      <td>C++-Programm</td>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Erzeugung von&nbsp;Sinus-Referenzsignalen
+(Frequenzscan)</td>
+
+      <td colspan="1" rowspan="2"><a href="sweep.html">sweep</a></td>
+
+      <td colspan="1" rowspan="2">C++-Programm</td>
+      <td colspan="1" rowspan="2">F&uuml;r Frequenzscans.</td>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Analyse von Frequenzscans</td>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Visualisierung der Ergebnisse</td>
+
+      <td><var>diverse</var></td>
+
+      <td>gnuplot 3.x Makros</td>
+      <td>Prinzipliell kann die Visualisierung mit jedem beliebigen
+Programm erfolgen. Au&szlig;er den Beispiel-Makros gibt es keine
+Abh&auml;ngigkeit zu gnuplot.</td>
+
+    </tr>
+
+    <tr>
+
+      <td calss="tl">Ablaufsteuerung</td>
+
+      <td>measure.cmd</td>
+
+      <td>REXX-Skript, <em>nur f&uuml;r OS/2!</em></td>
+      <td>REXX-Skripte sind nicht sinnvoll&nbsp;portierbar. F&uuml;r
+andere Plattformen ist eine Implementierung in einer unabh&auml;ngigen
+Skriptsprache wie Perl erforderlich.</td>
+
+    </tr>
+
+  </tbody>
+</table>
+
+<p></p>
+
+<h2><a name="download"></a>Download</h2>
+
+<p>Dieses Programm steht unter der <a href="gpl.txt"><i>GNU
+GENERAL PUBLIC LICENSE</i></a>.</p>
+
+<p>Quellcodes und Skripte: <a href="analyze_src.zip">Repository Snapshot</a></p>
+
+<p>OS/2 Binaries: <a href="analyze_os2.zip">gcc 3.3 Kompilat</a> (braucht libc061.dll)</p>
+
+<dl>
+
+</dl>
+
+<h2><a name="build"></a>Programme compilieren</h2>
+
+<p>F&uuml;r
+die Fast-Fourier-Transformation kommt die Bibliothek <a href="http://www.fftw.org/">FFTW</a> zum Einsatz.
+Normalerweise wie &uuml;blich: <kbd>cd src</kbd>,
+<kbd>make</kbd>...
+- aber faktisch ist das Makefile f&uuml;r OS/2 gcc Version 3.3
+geschrieben und enth&auml;lt zudem den Pfad zur rfftw-Library.
+Kurzum,
+da ist Feintuning erforderlich. Eine Anpassung der Pfade und
+Compiler-Optionen sollte aber im allgemeinen hinreichend sein. Wenn
+alles passt, werden beim Aufruf von make im Verzeichnis <tt>bin</tt>
+alle ausf&uuml;hrbaren Dateien erstellt.</p>
+
+<h2><a name="todo"></a>Kontakt</h2>
+
+<dl>
+
+</dl>
+
+</body>
+</html>

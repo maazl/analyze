@@ -63,8 +63,11 @@ SELECT
    CALL STREAM 'gpenv', 'c', 'close'
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f3 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
-   CALL SysSleep 1
+   '@pstat|grep -i NOISE.EXE -q'
+   IF RC \= 0 THEN DO
+      'start /MIN /C sp f3 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
+      CALL SysSleep 1
+      END
    'start /C sp t2 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
    /*CALL SysSetPriority 2, -1*/
@@ -104,8 +107,11 @@ SELECT
    opt = opt||'n'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' sync'cfg.sync' slvl'cfg.synclevel' sph'cfg.syncphase' sov'cfg.overlap
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o sweep.exe mr psa60000 'opt' ^| sp f2 o buffer2 -p=60k -b=8M - \pipe\refplay.wav'
-   CALL SysSleep 1
+   '@pstat|grep -i sweep\.exe -q'
+   IF RC \= 0 THEN DO
+      'start /MIN /C sp f1 o sweep.exe mr psa60000 'opt' ^| sp f2 o buffer2 -p=60k -b=8M - \pipe\refplay.wav'
+      CALL SysSleep 1
+      END
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*CALL SysSetPriority 2, -1*/
    CALL SysSleep 1
@@ -128,8 +134,11 @@ SELECT
    CALL CfgQ 'famax', cfg.fmax
 
    CALL SysSetPriority 4, 1
-   'start /MIN /C noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
-   CALL SysSleep 1
+   '@pstat|grep -i noise.exe -q'
+   IF RC \= 0 THEN DO
+      'start /MIN /C noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
+      CALL SysSleep 1
+      END
    'start /C playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
    /*CALL SysSetPriority 2, -1*/
@@ -161,8 +170,11 @@ SELECT
 
    cyc = cfg.loops*2+10
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
-   CALL SysSleep 1
+   '@pstat|grep -i noise.exe -q'
+   IF RC \= 0 THEN DO
+      'start /MIN /C sp f1 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
+      CALL SysSleep 1
+      END
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
    /*CALL SysSetPriority 2, -1*/
@@ -201,8 +213,11 @@ SELECT
    harmonic = TRUNC(cfg.fsamp / cfg.fbase +.5)
 
    /*CALL SysSetPriority 4, 1*/
-   'start /MIN /C sp f1 o ref.exe 'cfg.fftlen'/'harmonic cfg.fsamp cfg.shape' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
-   CALL SysSleep 1
+   '@pstat|grep -i REF.EXE -q'
+   IF RC \= 0 THEN DO
+      'start /MIN /C sp f1 o ref.exe 'cfg.fftlen'/'harmonic cfg.fsamp cfg.shape' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
+      CALL SysSleep 1
+      END
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
    /*'CALL play FILE="\pipe\refplay.wav"'*/
    /*CALL SysSetPriority 2, -1*/

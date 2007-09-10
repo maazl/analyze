@@ -668,7 +668,7 @@ static void PrintFFTbin(FILE* dst, const FFTbin& calc)
       calc.f(), abs(calc.U()), arg(calc.U())*M_180_PI, abs(calc.I()), arg(calc.I())*M_180_PI,
    // |Hl|/|Hr|      phil-phir               re               im
       abs(calc.Z()), arg(calc.Z())*M_180_PI, calc.Z().real(), calc.Z().imag(),
-   // weight     delay 
+   // weight    delay 
       calc.W(), calc.D());
 }
 

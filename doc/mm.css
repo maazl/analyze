@@ -1,5 +1,9 @@
 /* header */
-h1 {  color: #FF0000; font-family: Arial, Helvetica, sans-serif; font-size: x-large; text-align: center}
+h1 {	color: #FF0000;
+	font-family: Arial,Helvetica,sans-serif;
+	font-size: x-large;
+	text-align: center
+}
 h2 {	background-color: #EEEEEE;
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: large;
@@ -7,13 +11,20 @@ h2 {	background-color: #EEEEEE;
 	clear: both;
 	padding: 3px;
 }
-h3 {
-	font-family: Arial, Helvetica, sans-serif;
+h3 {	font-family: Arial, Helvetica, sans-serif;
 	font-size: medium;
 }
-h4 {  font-size: small}
-h5 {  font-weight: normal; font-style: italic; font-family: Arial, Helvetica, sans-serif; padding-bottom: 0px}
+h4 {	font-size: small}
+h5 {	font-weight: normal;
+	font-style: italic;
+	font-family: Arial,Helvetica,sans-serif;
+	padding-bottom: 0px
+}
 .notes { text-decoration: underline; }
+
+/* indent */
+ol,ul { margin-left: 0px; padding-left: 25px }
+blockquote,dd { margin-left: 25px; padding-left: 0px }
 
 /* tables */
 tr {	vertical-align: baseline; }
@@ -22,14 +33,26 @@ th {  background-color: #EEEEEE}
 
 /* images */
 .rightbox {
-	font-size: smaller;
 	margin: 5 0 10 15;
 	float: right;
 }
 .leftbox {
-	font-size: smaller;
 	margin: 5 15 10 0;
 	float: left;
+}
+
+.lefticon {
+	float: left;
+	margin: 3 5 3 0;
+}
+
+.righticon {
+	float: right;
+	margin: 3 0 3 5;
+}
+
+.figure,.leftbox,.rightbox {
+	font-size: smaller;
 }
 
 /* misc */

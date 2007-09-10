@@ -1,202 +1,138 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-  <title>Analysetools - MLS-Generator</title>
-
-
+  <title>Analysetools - Rauschgenerator</title>
   <link href="mm.css" rel="stylesheet" type="text/css">
-
 </head>
-
 <body>
-
 <a href="index.html">&rarr;&nbsp;Index</a>
 <a href="glossary.html">&rarr;&nbsp;Glossar
 </a>
-<h1>Referenzsignalgenerator f&uuml;r MLS-Signale</h1>
-
+<h1>Referenzsignalgenerator f&uuml;r periodische Rauschsignale</h1>
 <p>Release: 0.1</p>
-
 <a href="#description">Beschreibung</a> <a href="#reference">Referenz</a> <a href="#method">Arbeitsweise</a>
 <a href="#download">Download</a>
 <a href="#history">Historie</a>
 <a href="#todo">Todo</a>
 <a href="#build">Compilieren</a>
 <h2><a name="description"></a>Kurzbeschreibung</h2>
-
-<p>Dieses Programm generiert <a href="glossary.html#MLS">MLS-Signale</a>
+<p>Dieses Programm generiert periodische <a href="glossary.html#MLS">Rauschsignale</a>
 definierter L&auml;nge mit einer parametrisierbaren
-Energieverteilung.</p>
-
+Energieverteilung. Durch die Periodizit&auml;t des Signals wird das
+Frequenzspektrum diskret und eignet sich f&uuml;r die Analyse per
+diskreter Fourier-Transformation ohne Fensterfunktion.</p>
 <h3>Einsatzbereich</h3>
-
 <blockquote>Messung von Impedanzen oder
 &Uuml;bertragungsfunktionen.</blockquote>
-
 <ul>
-
 </ul>
-
 <h3>Programmablauf</h3>
-
 <blockquote>
   <p>Das Programm liefert <strong>16-Bit PCM-kodierte
 Daten in 2 Kan&auml;len</strong> und gibt sie &uuml;ber <tt><strong>stdout</strong></tt>
 oder in eine Datei aus.</p>
-
   <p>Die (plattformabh&auml;ngige) Ausgabe der PCM-Daten
 &uuml;ber ein DAC-Device muss anderw&auml;rtig
-gew&auml;hrleistet werden..</p>
-
+gew&auml;hrleistet werden.</p>
 </blockquote>
-
 <h2><a name="options"></a>Kommandozeilenparameter</h2>
-
 <blockquote>
-  <p><kbd>mls [<var>Optionen</var>] <var>nsamp</var>
-  <var>fmin</var>
-  <var>fmax</var> </kbd>[<kbd><var>scale</var></kbd><kbd>
+  <p><kbd>noise [<var>Optionen</var>] <var>nsamp</var>
+  <var>fmin</var> <var>fmax</var> </kbd>[<kbd><var>scale</var></kbd><kbd>
   </kbd>[<kbd><var>n</var> </kbd>[<kbd><var>file</var></kbd>]]]</p>
-
   <dl compact="compact">
-
     <dt><a name="_nsamp"></a><kbd><var>nsamp</var></kbd></dt>
-
-    <dd>L&auml;nge des MLS. Dies sollte der L&auml;nge
+    <dd>L&auml;nge einer Periode. Dies sollte der
+L&auml;nge
 der zur Analyse verwendeten Fourier-Transformation entsprechen. Deshalb
 ist es typischerweise eine Zweierpotenz.</dd>
-
     <dt><a name="_fmin"></a><a name="_fmax"></a><var><kbd>fmin</kbd></var>,
       <var><kbd>fmax</kbd></var></dt>
-
     <dd>Minimale bzw. maximale Frequenz bei der das MLS noch
 Intensit&auml;t enth&auml;lt.</dd>
-
     <dt></dt>
-
     <dt><a name="_scale"></a><kbd><var>scale</var></kbd></dt>
-
     <dd>Exponent f&uuml;r die <a href="#method">Intensit&auml;tsgewichtung</a>.
 0: Wei&szlig;es Rauschen, -1: Rosa Rauschen. Standardwert: 0.</dd>
-
     <dt><a name="_n"></a><kbd><var>n</var></kbd></dt>
-
     <dd>Anzahl der Wiederholungen des MLS. Ein Wert von 0
 bedeutet eine Endlosschleife, also solange bis das Programm
 anderw&auml;rtig abgebrochen wird. Standardwert: 1.</dd>
-
     <dt><a name="_file"></a><kbd><var>file</var></kbd></dt>
-
     <dd>Ausgabedatei. Wenn kein Dateiname angegeben wurde, wird
 nach <tt>stdout</tt> geschrieben. Anstelle einer Datei
 kann auch ein Device (transienter Datenstrom) angegeben werden.</dd>
-
   </dl>
-
   <p><var><kbd>Optionen</kbd></var></p>
-
   <dl compact="compact">
-
     <dt><a name="_fsamp"></a><kbd>-fsamp<var>freq</var></kbd></dt>
-
     <dd>Samplingrate. Standardwert: 48kHz.</dd>
-
     <dt><kbd><a name="_ca"></a>-rawpcm<var></var></kbd></dt>
-
     <dd>Unterdr&uuml;ckt den normalerweise immer vor den PCM
 Daten geschriebenen RIFF WAVEfmt&nbsp;Header.</dd>
-
   </dl>
-
 </blockquote>
-
 <h3><a name="examples"></a>Beispiele<br>
-
 </h3>
-
 <blockquote>
   <dl>
-
-    <dt><kbd>mls 65536 20 20000 100 rauschen.wav</kbd></dt>
-
-    <dd>Dies erzeugt 100 Zyklen eines 65536 Samples
+    <dt><kbd>noise 65536 20 20000 100 rauschen.wav</kbd></dt>
+    <dd>Dies erzeugt 100 Zyklen eines 65536 Samples langen
 Wei&szlig;en Rauschens mit 48kHz Samplingrate (ca. 2&frac12;
 Minuten) und schreibt das in die Datei <tt>rauschen.wav</tt>.
 Frequenzen unter 20Hz und &uuml;ber 20kHz werden dabei
 unterdr&uuml;ckt.</dd>
-
-    <dt><kbd>mls -rawpcm 65536 50 20000&nbsp;0 -.5 | </kbd>irgendein Ausgabeprogramm</dt>
-    <dd>Dies erzeugt ein unendlich oft wiederholtes MLS mit 65536
-Samples L&auml;nge und 48kHz Samplingrate. Die Intensit&auml;t des
-Rauschen wird mit&nbsp;<var>f<font size="-1"><sup>-</sup></font></var><font size="-1"><sup>0,5</sup></font> gewichtet und auf den Frequenzbereich von 50 bis 20kHz begrenzt. Die Ausgabe erfolgt &uuml;ber <tt>stdout</tt>, wo ein geeignetes Wiedergabeprogramm f&uuml;r eine kontinuierliche Wiedergabe des Testsignals sorgt.</dd>
-
+    <dt><kbd>noise -rawpcm 65536 50 20000&nbsp;0 -.5 | </kbd><var>irgendein
+Ausgabeprogramm</var></dt>
+    <dd>Dies erzeugt ein unendlich oft wiederholte Folge mit
+65536
+Samples L&auml;nge und 48kHz Samplingrate. Die Intensit&auml;t
+des
+Rauschen wird mit&nbsp;<var>f<font size="-1"><sup>-</sup></font></var><font size="-1"><sup>0,5</sup></font> gewichtet
+und auf den Frequenzbereich von 50 bis 20kHz begrenzt. Die Ausgabe
+erfolgt &uuml;ber <tt>stdout</tt>, wo ein geeignetes
+Wiedergabeprogramm f&uuml;r eine kontinuierliche Wiedergabe des
+Testsignals sorgt.</dd>
   </dl>
-
 </blockquote>
-
-
 <h2><a name="method"></a>Arbeitsweise</h2>
-
 <blockquote>
-  <p>Das Programm erzeugt das MLS per inverser, diskreter
+  <p>Das Programm erzeugt das Testsignal per inverser, diskreter
 Fourier-Transformation. Dabei werden die Amplituden der einzelnen
 Koeffizienten nach folgender Formel berechnet:</p>
-
   <blockquote>
     <p><var>r<font size="-1"><sub>i</sub></font></var>
 = <var>f<font size="-1"><sub>i</sub><sup>k</sup></font></var></p>
-
   </blockquote>
-
   <p>Die Phasen dazu werden zuf&auml;llig gew&auml;hlt.</p>
-
   <p>Alle Koeffizienten, die nicht im Frequenzintervall [<var>f<font size="-1"><sub>min</sub></font></var>,
   <var>f<font size="-1"><sub>max</sub></font></var>]
 liegen, werden genullt.</p>
-
   <p>Nach der R&uuml;cktransformation wird das Signal noch
 normalisiert bevor es ausgegeben wird.</p>
-
 </blockquote>
-
 <h2><a name="download"></a>Download</h2>
-
 <blockquote>
   <p>Dieses Programm steht unter der <a href="gpl.txt"><i>GNU
 GENERAL PUBLIC LICENSE</i></a>.</p>
-
   <p>Quellcode: <a href="mls_src.zip">Version&nbsp;0.1</a></p>
-
   <p>OS/2 binary: <a href="mls_os2.zip">Version&nbsp;0.1</a><br>
-
 Die OS/2-Version ben&ouml;tigt die gcc Runtime <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.1-csd1.zip"><tt>libc061.dll</tt></a>
 (LGPL).</p>
-
 </blockquote>
-
 <h2><a name="history"></a>Historie</h2>
-
 <h4>Version 0.1</h4>
-
 <ul>
-
   <li>erste &ouml;ffentliche Version</li>
-
 </ul>
-
 <h2><a name="todo"></a>TODOs, bekante Probleme</h2>
-
 <dl>
-
-  <dt><b>Handle endianess</b></dt>
-
-  <dd>Currently all PCM data is written in the system's native
-endianess. This may not be consistent with the RIFF WAVEfmt header.</dd>
-
+  <dt><b>Endianess</b></dt>
+  <dd>Im moment werden alle PCM-Daten in der nativen Darstellung
+der verwendeten CPU ausgegeben. Das ist zur Zeit nur auf
+Little-Endian-Maschinen (darunter x86) mit dem RIFF-Header konsistent.</dd>
 </dl>
-
 <h2><a name="build"></a>Programm compilieren</h2>
-
 <p>Normalerweise wie &uuml;blich: <kbd>cd src</kbd>,
 <kbd>make</kbd>... - aber faktisch ist das Makefile
 f&uuml;r OS/2 gcc Version 3.3 geschrieben und enth&auml;lt
@@ -205,6 +141,5 @@ erforderlich. Eine Anpassung der Pfade und Compiler-Optionen sollte
 aber im allgemeinen hinreichend sein. Wenn alles passt, werden beim
 Aufruf von make im Verzeichnis <tt>bin</tt> alle
 ausf&uuml;hrbaren Dateien erstellt.</p>
-
 </body>
 </html>

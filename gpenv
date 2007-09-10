@@ -1,5 +1,5 @@
-fmin=20
+fmin=30
 fmax=20000
-rref=1
+rref=.2
 fftlen=65536
 fsamp=48000

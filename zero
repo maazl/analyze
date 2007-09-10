@@ -1,18 +1,19 @@
 i={0,1}
+unset y2tics
 set grid
 set multiplot
 set size .5,.5
 set origin 0,.5
-plot [] [.95:1.05] 'zero.dat' u ($0*fsamp/fftlen):9 t 'Cll.arg' w l, \
-                 'zero.dat' u ($0*fsamp/fftlen):15 t 'Crr.arg' w l 
+plot [fmin:fmax] [.99:1.01] 'zero.dat' u ($0*fsamp/fftlen):9 t '|Cll|' w l, \
+                 'zero.dat' u ($0*fsamp/fftlen):15 t '|Crr|' w l 
 set origin 0,0
-plot [] [-5:5] 'zero.dat' u ($0*fsamp/fftlen):10 t 'Cll.phi' w l, \
-                 'zero.dat' u ($0*fsamp/fftlen):16 t 'Crr.phi' w l 
+plot [fmin:fmax] [-1:1] 'zero.dat' u ($0*fsamp/fftlen):10 t 'arg Cll [ø]' w l, \
+                 'zero.dat' u ($0*fsamp/fftlen):16 t 'arg Crr [ø]' w l 
 set origin .5,.5
-plot [] [-.01:.01] 'zero.dat' u ($0*fsamp/fftlen):11 t 'Clr.arg' w l, \
-                   'zero.dat' u ($0*fsamp/fftlen):13 t 'Crl.arg' w l 
+plot [fmin:fmax] [-.01:.01] 'zero.dat' u ($0*fsamp/fftlen):11 t '|Clr|' w l, \
+                   'zero.dat' u ($0*fsamp/fftlen):13 t '|Crl|' w l 
 set origin .5,0
-plot [] [-180:180] 'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($3+$4*i)) t 'Clr.phi' w p pt 0, \
-                   'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($5+$6*i)) t 'Crl.phi' w p pt 0 
+plot [fmin:fmax] [-180:180] 'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($3+$4*i)) t 'arg Clr [ø]' w p pt 0, \
+                   'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($5+$6*i)) t 'arg Crl [ø]' w p pt 0 
 unset multiplot
 
