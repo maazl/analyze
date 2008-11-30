@@ -35,7 +35,7 @@ int __gxx_personality_v0; // gcc @õ$%&!
 
 
 // data buffers
-static short refbuffer[N_MAX];
+static short refbuffer[N_MAX*2];
 static short inprebuffer[CA_MAX*(N_MAX+SYNC_FIR)];
 static short* const inbuffer = inprebuffer + CA_MAX*SYNC_FIR;
 static float outprebuffer[N_MAX+2*SYNC_FIR];
@@ -401,30 +401,38 @@ static void doanalysis(void*)
 // reference signal output
 static void gensync()
 {  short* dp = refbuffer;
-   short* de = dp + syncsamp/2;
+   short* de = dp + syncsamp;
    while (dp != de)
    {  dp[0] = -32767;
-      dp[1] = 0;
-      dp[2] = 32767;
+      dp[1] = 32767;
+      dp[2] = 0;
       dp[3] = 0;
-      dp += 4;
+      dp[4] = 32767;
+      dp[5] = -32767;
+      dp[6] = 0;
+      dp[7] = 0;
+      dp += 8;
    }
    // phase jump: Pi
-   de = refbuffer + syncsamp;
+   de = refbuffer + 2 * syncsamp;
    while (dp != de)
    {  dp[0] = 32767;
-      dp[1] = 0;
-      dp[2] = -32767;
+      dp[1] = -32767;
+      dp[2] = 0;
       dp[3] = 0;
-      dp += 4;
+      dp[4] = -32767;
+      dp[5] = 32767;
+      dp[6] = 0;
+      dp[7] = 0;
+      dp += 8;
    }
 }
 
 static void genref(int fi)
 {  // fill reference buffer
    double fs = M_2PI*fi/N;
-   for (int i = 0; i < N; ++i)
-      refbuffer[i] = (short)(32767*cos(fs*i) + (double)rand()/(RAND_MAX+1));
+   for (int i = 0; i < 2*N; i += 2)
+      refbuffer[i+1] = -(refbuffer[i] = (short)(32767*cos(fs*i/2) + (double)rand()/(RAND_MAX+1)));
 }
 
 static void refplay(void*)
@@ -438,19 +446,19 @@ static void refplay(void*)
    // write wav header
    _fsetmode(stdout, "b");
    static const char wavhdr[44] = {'R','I','F','F', -108,-1,-1,0x7f,
-    'W','A','V','E','f','m','t',' ', 16,0,0,0, 1,0, 1,0, 0x80,0xbb,0,0, 0,0x77,1,0, 2,0, 16,0,
+    'W','A','V','E','f','m','t',' ', 16,0,0,0, 1,0, 2,0, 0x80,0xbb,0,0, 0,0xee,2,0, 4,0, 16,0,
     'd','a','t','a', -144,-1,-1,0x7f};
    fwriteexact(wavhdr, 1, sizeof wavhdr, stdout);
 
    // pregap
-   memset(refbuffer, 0, discardsamp * sizeof(short));
-   fwriteexact(refbuffer, sizeof(short), discardsamp, stdout);
+   memset(refbuffer, 0, discardsamp * 2 * sizeof(short));
+   fwriteexact(refbuffer, 2 * sizeof(short), discardsamp, stdout);
    // synchronize
    gensync();
-   fwriteexact(refbuffer, sizeof(short), syncsamp, stdout);
+   fwriteexact(refbuffer, 2 * sizeof(short), syncsamp, stdout);
    // overlap
-   memset(refbuffer, 0, overlap * sizeof(short));
-   fwriteexact(refbuffer, sizeof(short), overlap, stdout);
+   memset(refbuffer, 0, overlap * 2 * sizeof(short));
+   fwriteexact(refbuffer, 2 * sizeof(short), overlap, stdout);
    // Wobble !
    double fq = fmin;
    int findex = 0;
@@ -461,9 +469,9 @@ static void refplay(void*)
          findex = nfi;
       genref(findex);
       // write reference
-      fwriteexact(refbuffer, sizeof(short), N, stdout);
+      fwriteexact(refbuffer, 2 * sizeof(short), N, stdout);
       // write reference 2nd try
-      fwriteexact(refbuffer, sizeof(short), N, stdout);
+      fwriteexact(refbuffer, 2 * sizeof(short), N, stdout);
       // next frequency
       fq *= fstep;
    }
