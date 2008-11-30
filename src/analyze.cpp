@@ -123,7 +123,7 @@ static double     famax       = 1E99;  // ignore frquencies above famax for calc
 static bool       writeraw    = false; // write raw data to file
 static bool       writedata   = false; // write analysis data to file
 static bool       writewindow = false; // write window function data to file
-static int        method      = 0;     // analysis method: 0 = none, 1 = PCA, 2 = FFT, 3 = PCA & FFT, 4 = XY 
+static int        method      = 0;     // analysis method: 0 = none, 1 = PCA, 2 = FFT, 3 = PCA & FFT, 4 = XY
 static int        purgech     = 0;     // set the first FFT frequencies to 0
 static int        discsamp    = 0;     // skip the first samples
 static bool       disctrail   = false; // comsume trailing samples after completion
@@ -131,7 +131,7 @@ static int        addch       = 1;     // binsize in raw samples
 static int        addloop     = 1;     // add raw data before analysis # times
 static bool       incremental = false; // incremental mode (add all raw data)
 static double     rref        = 1;     // value of the reference resistor in impedance measurements
-static int        scalemode   = 1;     // l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l 
+static int        scalemode   = 1;     // l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l
 static int        loops       = 1;     // number of analysis loops
 static int        lpause      = 10;    // number of loops between zero calibration parts
 static int        zeromode    = 0;     // zero calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
@@ -140,7 +140,7 @@ static double     linphase    = 0;     // lienar phase correction [s]
 static bool       nophase     = false; // purge any phase information
 static bool       normalize   = false; // normalize L+R to 1. for impedance measurements
 static int        binsz       = 1;     // binsize in FFT channels
-static double     fbinsc      = 0;     // logarithmic binsize: fmin/fmax = 1 + fbinsc 
+static double     fbinsc      = 0;     // logarithmic binsize: fmin/fmax = 1 + fbinsc
 static int        harmonic    = 1;     // analyze only harmonics of this base frequency (FFT)
 static const char* datafile   = "data.dat";  // filename for analysis data
 static const char* zerofile   = "zero.dat";  // file name for zero calibration data
@@ -595,7 +595,7 @@ class FFTbin
    Complex aZ;
    double  aD;
    double  cW;
-   
+
  public:
    FFTbin(double finc) : finc(finc), binc(0), lphi(0) {}
    StoreRet StoreBin(int bin, Complex U, Complex I);
@@ -668,7 +668,7 @@ static void PrintFFTbin(FILE* dst, const FFTbin& calc)
       calc.f(), abs(calc.U()), arg(calc.U())*M_180_PI, abs(calc.I()), arg(calc.I())*M_180_PI,
    // |Hl|/|Hr|      phil-phir               re               im
       abs(calc.Z()), arg(calc.Z())*M_180_PI, calc.Z().real(), calc.Z().imag(),
-   // weight    delay 
+   // weight    delay
       calc.W(), calc.D());
 }
 
@@ -989,8 +989,8 @@ int main(int argc, char* argv[])
                L2sum += calc.W() * sqr(calc.f());
                // LCsum += weight; == wsum
                C2sum += calc.W() / sqr(calc.f());
-               Lsum -= calc.W() * calc.f() * calc.Z().imag();
-               Csum -= calc.W() / calc.f() * calc.Z().imag();
+               Lsum += calc.W() * calc.Z().imag() * calc.f();
+               Csum += calc.W() * calc.Z().imag() / calc.f();
                d2sum = calc.W() * sqr(calc.Z().imag());
             }
           end1:
@@ -1036,7 +1036,7 @@ int main(int argc, char* argv[])
             const float* a2 = outbuffer2;
             const float* b1 = a1 + Nh;
             const float* b2 = a2 + Nh;
-            
+
             PCA<2> pcaRe;
             PCA<3> pcaIm;
             double PCAdataRe[2];
@@ -1068,7 +1068,7 @@ int main(int argc, char* argv[])
                PCAdataRe[0] = calc.Z().real();
                //PCAdataRe[2] = 1/af;
                //PCAdataRe[3] = f;
-               PCAdataIm[0] = calc.Z().imag(); // // fit imaginary part in conductivity
+               PCAdataIm[0] = calc.Z().imag(); // fit imaginary part in conductivity
                PCAdataIm[1] = 1/calc.f();
                PCAdataIm[2] = calc.f();
                //PCAdataIm[3] = 1/af;
@@ -1077,7 +1077,6 @@ int main(int argc, char* argv[])
                // add values
                pcaRe.Store(PCAdataRe, calc.W());
                pcaIm.Store(PCAdataIm, calc.W());
-
             }
           end3:
             if (writedata)
