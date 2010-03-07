@@ -15,14 +15,14 @@ EXEEXT = .exe
 
 ALL : $(BINPATH)Analyze$(EXEEXT) $(BINPATH)AnalyzeE$(EXEEXT) $(BINPATH)mls$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)fft$(EXEEXT) $(BINPATH)sampledist$(EXEEXT)
 
-$(BINPATH)Analyze$(EXEEXT) : Analyze.cpp pca.h nrc.h nrc.cpp
-	$(CC) $(CFLAGS) -o $@ Analyze.cpp nrc.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
+$(BINPATH)Analyze$(EXEEXT) : Analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h
+	$(CC) $(CFLAGS) -o $@ Analyze.cpp nrc.cpp parser.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
 $(BINPATH)AnalyzeE$(EXEEXT) : AnalyzeE.cpp
 	$(CC) $(CFLAGS) -o $@ AnalyzeE.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)noise$(EXEEXT) : noise.cpp
-	$(CC) $(CFLAGS) -o $@ mls.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
+$(BINPATH)noise$(EXEEXT) : noise.cpp parser.cpp parser.h
+	$(CC) $(CFLAGS) -o $@ noise.cpp parser.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
 $(BINPATH)ref$(EXEEXT) : ref.cpp
 	$(CC) $(CFLAGS) -o $@ ref.cpp $(LDFLAGSRFFTW) $(LDFLAGS)

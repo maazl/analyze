@@ -545,7 +545,8 @@ static const struct ArgMap
    void* param;
    int iparam;
 } argmap[] = // must be sorted
-{  {"exec", (void(_cdecl*)(const char*,void*,int))&readstring, &execcmd, 0}
+{  {"bn"  , (void(_cdecl*)(const char*,void*,int))&readN, &N, 0}
+ , {"exec", (void(_cdecl*)(const char*,void*,int))&readstring, &execcmd, 0}
  , {"flog", (void(_cdecl*)(const char*,void*,int))&readdouble, &fstep, 0}
  , {"fmax", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmax, 0}
  , {"fmin", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmin, 0}
@@ -558,7 +559,6 @@ static const struct ArgMap
  , {"loop", (void(_cdecl*)(const char*,void*,int))&setint, &loops, INT_MAX}
  , {"ma" ,  (void(_cdecl*)(const char*,void*,int))&setint, &mode, 2}
  , {"mr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &mode, 1}
- , {"n"  ,  (void(_cdecl*)(const char*,void*,int))&readN, &N, 0}
  , {"psa",  (void(_cdecl*)(const char*,void*,int))&readint, &discardsamp, 0}
  , {"slvl", (void(_cdecl*)(const char*,void*,int))&readdouble, &synclevel, 0}
  , {"sov",  (void(_cdecl*)(const char*,void*,int))&readint, &overlap, 0}

@@ -9,35 +9,43 @@
 
 #include <rfftw.h>
 
+#include <complex>
+using namespace std;
+typedef complex<double> Complex;
 
-static int fsamp = 48000; // sampling rate
+#include "parser.h"
 
-void die(int rc, const char* msg, ...)
-{  va_list va;
-   va_start(va, msg);
-   vfprintf(stderr, msg, va);
-   va_end(va);
-   exit(rc);
-}
+#define M_180_PI (180./M_PI)
 
-void wavwriter(FILE* fo, size_t nsamp)
+
+static unsigned n_fft = 0;
+static unsigned f_samp = 48000; // sampling rate
+static double f_min = 0;
+static double f_max = 0;
+static double f_inc = 1;
+static double f_log = 0;
+static double scalepow = 0;
+static unsigned n_harmonic = 0;
+static const char* F_data = NULL;
+static const char* F_res = NULL;
+static const char* F_wav = NULL;
+static unsigned n_rep = 1;
+//static int chirpphase = 0;
+
+void wavwriter(FILE* fo, size_t n_samp)
 {  // fake wav header
    int wavhdr[11] =
-   /*44100
-   { 0x46464952, 0xFF, 0xFF, 0xFF, 0x7F, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6D, 0x74, 0x20,
-     0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xAC, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00,
-     0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0xFF, 0xFF, 0xFF, 0x7F };*/
    // 48000
    { 0x46464952, 0xffffffff, 0x45564157, 0x20746D66,
      0x00000010, 0x00020001, 0x0000BB80, 0x0002ee00,
      0x00100004, 0x61746164, 0xffffffff };
 
    // patch data size
-   wavhdr[10] = nsamp * sizeof(short);
+   wavhdr[10] = n_samp * sizeof(short);
    wavhdr[1] = wavhdr[10] + 44;
    // patch sampling rate
-   wavhdr[6] = fsamp;
-   wavhdr[7] = fsamp << 2; // * 4 bytes per sample
+   wavhdr[6] = f_samp;
+   wavhdr[7] = f_samp << 2; // * 4 bytes per sample
 
    fwrite(wavhdr, sizeof wavhdr, 1, fo);
 }
@@ -48,168 +56,151 @@ inline static double myrand()
 }
 
 
-static double equalscale(int)
-{  return 1;
+static void readN(const char* s, unsigned* r)
+{  bool ex;
+   if (ex = *s == '^')
+      ++s;
+   readuint(s, r);
+   if (ex)
+      *r = 1 << *r;
 }
 
-static double f_scale(int i)
-{  return i;
-}
+const ArgMap argmap[] = // must be sorted
+{  {"bn"  , (ArgFn)&readN, &n_fft, 0}
+ //, {"chirp",(ArgFn)&readintdef, &chirpphase, 1}
+ , {"finc", (ArgFn)&readdouble, &f_inc, 0}
+ , {"flog", (ArgFn)&readdouble, &f_log, 0}
+ , {"fmax", (ArgFn)&readdouble, &f_max, 0}
+ , {"fmin", (ArgFn)&readdouble, &f_min, 0}
+ , {"fsamp",(ArgFn)&readuint,   &f_samp, 0}
+ , {"harm", (ArgFn)&readuintdef,&n_harmonic, 3}
+ , {"ln" ,  (ArgFn)&readuint,   &n_rep, 1}
+ , {"loop", (ArgFn)&setuint,    &n_rep, INT_MAX}
+ , {"scale",(ArgFn)&readdouble, &scalepow, 0}
+ , {"wd",   (ArgFn)&readstring, &F_data, 0}
+ , {"wr",   (ArgFn)&readstring, &F_res, 0}
+ , {"ww",   (ArgFn)&readstring, &F_wav, 0}
+};
+const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
-static double sqrt_f_scale(int i)
-{  return sqrt(i);
-}
-
-static double scalepow = 0;
-
-static double powerscale(int i)
-{  return pow(i, scalepow);
-}
-
-static double randomphase(int)
-{  return 2*M_PI * myrand();
-}
-
-static double phaseparam;
-
-static double constphase(int)
-{  return phaseparam;
-}
-
-static double (*scalefn)(int i) = equalscale;
-static double (*phasefn)(int i) = randomphase;
-
-
-void _cdecl setscalefunc(const char* name, double (**scalefn)(int i))
-{  static const struct scfne
-   {  char     name[8];
-      double   (*fn)(int);
-   } scfnt[] =
-   {  {"eq",     &equalscale}
-    , {"f",      &f_scale}
-    , {"sqrt_f", &sqrt_f_scale}
-   };
-
-   if (name == NULL || *name == 0)
-      return;
-   const scfne* sp = (const scfne*)bsearch(name, scfnt, sizeof(scfnt)/sizeof(*scfnt), sizeof(*scfnt), (int (*)(const void*, const void*))&stricmp);
-   if (sp == NULL)
-   {  //die (34, "invalid scale function %s", name);
-      *scalefn = &powerscale;
-      scalepow = atof(name);
-      return;
-   }
-   *scalefn = sp->fn;
-}
-
-void _cdecl setphasefunc(const char* name, double (**phasefn)(int i))
-{  static const struct phfne
-   {  char     name[8];
-      double   (*fn)(int);
-   } phfnt[] =
-   {  {"rand",   &randomphase}
-   };
-
-   if (name == NULL || *name == 0)
-      return;
-   const phfne* sp = (const phfne*)bsearch(name, phfnt, sizeof(phfnt)/sizeof(*phfnt), sizeof(*phfnt), (int (*)(const void*, const void*))&stricmp);
-   if (sp == NULL)
-   {  //die (34, "invalid scale function %s", name);
-      *phasefn = &constphase;
-      phaseparam = atof(name);
-      return;
-   }
-   *phasefn = sp->fn;
-}
 
 int main(int argc, char**argv)
 {  srand(clock());
 
-   // command line
-   const char* dfile = NULL;
-   size_t nrep = 1;
-   switch (argc)
-   {default:
-      die(45, "usage: %s nsamp fmin fmax [scalefn[,phasefn] [nrep [file]]]", argv[0]);
-    case 7:
-      dfile = argv[6];
-    case 6:
-      nrep = atol(argv[5]);
-    case 5:
-      setscalefunc(strtok(argv[4], "_,;"), &scalefn);
-      setphasefunc(strtok(NULL, ""), &phasefn);
-    case 4:;
-   }
-   size_t nsamp = atol(argv[1]);
-   double fmin = atof(argv[2]);
-   double fmax = atof(argv[3]);
+   // parse cmdl
+   while (--argc)
+      parsearg(*++argv);
+
+   if (n_fft == 0)
+      die(48, "usage: noise bn<fft_size> fmin<min_freq> fmax<max_freq> [wd<data_file>] [wr<wave_file>]\n"
+              "See documentation for more options.");
 
    // round fmin & fmax
-   double finc = (double)fsamp / nsamp;
-   fprintf(stderr, "finc = %g\n", finc);
-
-   int imin = (int)floor((fmin / finc) +.5);
-   int imax = (int)floor((fmax / finc) +.5);
-   fprintf(stderr, "fmin = %g\n"
-                   "fmax = %g\n", imin*finc, imax*finc);
-   if ((unsigned int)imax > nsamp/2 || (unsigned int)imin > (unsigned int)imax)
+   double f_bin = (double)f_samp/n_fft;
+   size_t i_min = (int)floor(f_min/f_bin +.5);
+   size_t i_max = (int)floor(f_max/f_bin +.5);
+   if (i_max > n_fft/2 || i_min > i_max)
       die(34, "fmin and/or fmax out of range");
+   f_inc += .5; // rounding
+   f_log += 1;
 
    // generate coefficients
-   float* fftbuf = new float[nsamp+1];
-   if (fftbuf == NULL)
-      die(39, "malloc(%lu) failed", nsamp);
+   float* fftbuf = new float[n_fft+1];
+   int* harmonics = new int[n_fft/2+1];
+   if (fftbuf == NULL || harmonics == NULL)
+      die(39, "malloc(%lu) failed", n_fft);
    memset(fftbuf, 0, sizeof fftbuf);   // all coefficients -> 0
-   for (int i = imin; i <= imax; ++i)
-   {  double r = (*scalefn)(i);
-      double phi = (*phasefn)(i);
-      fftbuf[nsamp-i] = r * sin(phi);  // b[i]
-      fftbuf[i] = r * cos(phi);        // a[i]
+   memset(harmonics, 0, sizeof harmonics);
+   for (size_t i = i_min; i <= i_max; i = (int)floor(i * f_log + f_inc))
+   {  for (size_t j = 1; j <= n_harmonic && i*j <= n_fft/2; ++j)
+         if (harmonics[i*j])
+            goto next_f;
+      for (size_t j = 1; i*j <= n_fft/2; ++j)
+         harmonics[i*j] = j;
+      {  double r = pow(i, scalepow);
+         double phi = 2*M_PI * myrand();
+         fftbuf[n_fft-i] = r * sin(phi);  // b[i]
+         fftbuf[i] = r * cos(phi);        // a[i]
+      }
+    next_f:;
    }
 
-   // ifft
-   float* sampbuf = new float[nsamp];
-   rfftw_plan plan = rfftw_create_plan(nsamp, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
-   rfftw_one(plan, fftbuf, sampbuf);   // IFFT
-   rfftw_destroy_plan(plan);
-   delete[] fftbuf; // no longer needed
-
-   // normalize
-   double fnorm = 0;
-   const float* sp = sampbuf;
-   const float* spe = sp + nsamp;
-   for (; sp != spe; ++sp)
-      if (fabs(*sp) > fnorm)
-         fnorm = fabs(*sp);
-   fnorm = 32767/fnorm;
-   // and quantize
-   short* buf = new short[2*nsamp];
-   sp = sampbuf;
-   short* dp = buf;
-   while (sp != spe)
-   {  register short s = (short)floor(*sp++ * fnorm + myrand());
-      dp[0] = s;
-      dp[1] = -s;
-      dp += 2;
-   }
-   delete[] sampbuf; // no longer needed
-
-   // write
-   FILE* of;
-   if (dfile)
-   {  of = fopen(dfile, "wb");
+   // write design result
+   if (F_data)
+   {  FILE* of = fopen(F_data, "w");
       if (of == NULL)
-         die (41, "Failed to open %s for writing", dfile);
-      wavwriter(of, 2*nsamp * nrep);
-   } else // stdout
-   {  _fsetmode(stdout, "b");
-      of = stdout;
-      wavwriter(of, 0x1fffffdc);
+         die (41, "Failed to open %s for writing", F_data);
+      for (size_t i = 0; i <= n_fft/2; ++i)
+      {  Complex ci(fftbuf[i], i && i != n_fft/2 ? fftbuf[n_fft-i] : 0);
+         //       freq |A|  arg A ai  bi
+         fprintf(of, "%12g %12g %12g %12g %12g %8u\n",
+            i*f_bin, abs(ci), arg(ci)*M_180_PI, ci.real(), ci.imag(), harmonics[i]); 
+      }   
+      fclose(of);
    }
-   do fwrite(buf, 2*nsamp * sizeof(short), 1, of);
-   while (--nrep);
+   delete[] harmonics;
 
-   // cleanup, well not in case of an exception...
-   delete[] buf;
+   // write raw result
+   if (F_wav || F_res)
+   {
+      // ifft
+      float* sampbuf = new float[n_fft];
+      rfftw_plan plan = rfftw_create_plan(n_fft, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
+      rfftw_one(plan, fftbuf, sampbuf);   // IFFT
+      rfftw_destroy_plan(plan);
+
+      // normalize
+      double fnorm = 0;
+      float* sp = sampbuf;
+      const float* const spe = sp + n_fft;
+      for (; sp != spe; ++sp)
+         if (fabs(*sp) > fnorm)
+            fnorm = fabs(*sp);
+      fnorm = 1/fnorm;
+      for (sp = sampbuf; sp != spe; ++sp)
+         *sp *= fnorm; 
+         
+      // write result
+      if (F_res)
+      {  FILE* of = fopen(F_res, "w");
+         if (of == NULL)
+            die (41, "Failed to open %s for writing", F_res);
+         for (sp = sampbuf; sp != spe; ++sp)
+            fprintf(of, "%12g\n", *sp);
+         fclose(of);
+      }   
+         
+      // and quantize
+      if (F_wav)
+      {  short* buf = new short[2*n_fft];
+         sp = sampbuf;
+         short* dp = buf;
+         while (sp != spe)
+         {  register short s = (short)floor(*sp++ * 32767 + myrand());
+            dp[0] = s;
+            dp[1] = -s;
+            dp += 2;
+         }
+         delete[] sampbuf; // no longer needed
+
+         FILE* of;
+         if (strcmp(F_wav, "-") != 0)
+         {  of = fopen(F_wav, "wb");
+            if (of == NULL)
+               die (41, "Failed to open %s for writing", F_wav);
+            wavwriter(of, 2*n_fft * n_rep);
+         } else // stdout
+         {  _fsetmode(stdout, "b");
+            of = stdout;
+            wavwriter(of, 0x1fffffdc);
+         }
+         do fwrite(buf, 2*n_fft * sizeof(short), 1, of);
+         while (--n_rep);
+
+         // cleanup, well not in case of an exception...
+         delete[] buf;
+      }
+   }
+   delete[] fftbuf;
 }
 
