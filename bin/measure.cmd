@@ -43,6 +43,7 @@ SELECT
    CALL CfgQ 'famin', cfg.fmin
    CALL CfgQ 'famax', cfg.fmax
    CALL CfgQ 'zerofile', ''
+   CALL CfgQ 'harm', 0
 
    opt = ''
    IF cfg.zerofile \= '' THEN
@@ -65,7 +66,7 @@ SELECT
    /*CALL SysSetPriority 4, 1*/
    '@pstat|grep -i NOISE.EXE -q'
    IF RC \= 0 THEN DO
-      'start /MIN /C sp f3 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax cfg.scale' -1 ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
+      'start /MIN /C sp f3 o noise.exe bn'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' harm'cfg.harm' scale'cfg.scale' loop wdnoise.dat ww- ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
       CALL SysSleep 1
       END
    'start /C sp t2 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
@@ -76,7 +77,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp t1 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp t1 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" harm"cfg.harm" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO
@@ -136,7 +137,7 @@ SELECT
    CALL SysSetPriority 4, 1
    '@pstat|grep -i noise.exe -q'
    IF RC \= 0 THEN DO
-      'start /MIN /C noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 30 ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
+      'start /MIN /C noise.exe bn'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' ln30 ww- ^| sp f2 o buffer2 -p=40k -b=16M - \pipe\refplay.wav'
       CALL SysSleep 1
       END
    'start /C playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
@@ -172,7 +173,7 @@ SELECT
    /*CALL SysSetPriority 4, 1*/
    '@pstat|grep -i noise.exe -q'
    IF RC \= 0 THEN DO
-      'start /MIN /C sp f1 o noise.exe 'cfg.fftlen cfg.fmin cfg.fmax' 0 'cyc+10' ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
+      'start /MIN /C sp f1 o noise.exe bn'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' ln'cyc+10' ww- ^| sp f2 o buffer2 -p=40k -b=8M - \pipe\refplay.wav'
       CALL SysSleep 1
       END
    'start /C sp f3 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
