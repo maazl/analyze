@@ -16,6 +16,7 @@
 using namespace std;
 typedef complex<double> Complex;
 #include "pca.h"
+#include "parser.h"
 
 #define M_2PI (2.*M_PI)
 #define M_3PI (3.*M_PI)
@@ -41,18 +42,7 @@ static short* const inbuffer = inprebuffer + CA_MAX*SYNC_FIR;
 static float outprebuffer[N_MAX+2*SYNC_FIR];
 static float* const outbuffer = outprebuffer + 2*SYNC_FIR;
 
-static bool termrq = false;
 static FILE* resh = NULL;
-
-void die(const char* msg, ...)
-{  termrq = true;
-   va_list va;
-   va_start(va, msg);
-   vfprintf(stderr, msg, va);
-   va_end(va);
-   fputc('\n', stderr);
-   exit(1);
-}
 
 
 static inline double sqr(double v)
@@ -88,8 +78,8 @@ static void vektormul(float* dst, float* src, size_t len)
 // config
 static int        N           = 8192;
 static double     freq        = 48000;
-static double     fmin        = 20;
-static double     fmax        = 20000;
+static double     f_min       = 20;
+static double     f_max       = 20000;
 static double     fstep       = 1.05946309;
 static int        discardsamp = 0;
 static int        syncsamp    = 50000;
@@ -192,7 +182,7 @@ static void fwriteexact(const void* buffer, size_t size, size_t n, FILE* f)
 {  while (n)
    {  size_t r = fwrite(buffer, size, n, f);
       if (r <= 0)
-         die("Failed to write %lu blocks a %lu bytes", n, size);
+         die(27, "Failed to write %lu blocks a %lu bytes", n, size);
       n -= r;
       (const char*&)buffer += r;
 }  }
@@ -201,7 +191,7 @@ static void freadexact(void* buffer, size_t size, size_t n, FILE* f)
 {  while (n)
    {  size_t r = fread(buffer, size, n, f);
       if (r <= 0)
-         die("Failed to read %lu blocks a %lu bytes", n, size);
+         die(27, "Failed to read %lu blocks a %lu bytes", n, size);
       //fwrite(buffer, size, r, stdout);
       n -= r;
       (char*&)buffer += r;
@@ -316,7 +306,7 @@ static void doanalysis(void*)
    } else
    {  in = fopen(infile, "rb");
       if (in == NULL)
-         die("Failed to open input file.");
+         die(21, "Failed to open input file.");
    }
 
    //_fsetmode(stdout, "b"); // debug
@@ -329,7 +319,7 @@ static void doanalysis(void*)
    int n = 0;
    for(;;)
    {  if (n >= syncsamp)
-         die("Failed to syncronize.");
+         die(29, "Failed to syncronize.");
       freadexact(inbuffer, 2*sizeof(short), syncsamp/4, in);
       /*FILE* fs = fopen("sync.dat", "a");
       write2ch(fs, inbuffer, syncsamp/4);
@@ -341,16 +331,16 @@ static void doanalysis(void*)
    }
    //fprintf(stderr, "Sync: %i\t%i\t%i\t%i\n", n, i, syncsamp/4, overlap);
    if ((syncsamp>>2)+i-SYNC_FIR < 0)
-      die("Syncpoint missed by %i samples.", -((syncsamp>>2)+i-SYNC_FIR));
+      die(29, "Syncpoint missed by %i samples.", -((syncsamp>>2)+i-SYNC_FIR));
    // synced. From now no samples must get lost.
    fprintf(stderr, "Synced after %i samples. Read %i samples, Skip another %i samples\n", n+i, n+(syncsamp>>2), (syncsamp>>2)+i-SYNC_FIR);
    // discard until end of sync - overlap
    freadexact(inbuffer, 2*sizeof(short), (syncsamp>>2)+i-SYNC_FIR, in);
 
    // Scan !
-   double fq = fmin;
+   double fq = f_min;
    int findex = 0;
-   while (fq < fmax)
+   while (fq < f_max)
    {  ++findex;
       int nfi = (int)(fq/freq*N + .5);
       if (findex < nfi)
@@ -460,9 +450,9 @@ static void refplay(void*)
    memset(refbuffer, 0, overlap * 2 * sizeof(short));
    fwriteexact(refbuffer, 2 * sizeof(short), overlap, stdout);
    // Wobble !
-   double fq = fmin;
+   double fq = f_min;
    int findex = 0;
-   while (fq < fmax && !termrq)
+   while (fq < f_max && !termrq)
    {  ++findex;
       int nfi = (int)(fq/freq*N + .5);
       if (findex < nfi)
@@ -479,131 +469,43 @@ static void refplay(void*)
 
 
 
-/*static char* abbrev(const char* s, const char* token)
-{  size_t l = strlen(s);
-   return strnicmp(s, token, l) == 0 ? (char*)token + l : NULL;
-}*/
-
-static _cdecl void readint(const char* s, int* r)
-{  size_t l = (size_t)-1;
-   if (sscanf(s, "%i%ln", r, &l) != 1 || l != strlen(s))
-      die("Integer value expected, found %s", s);
-}
-static _cdecl void readintdef(const char* s, int* r, int d)
-{  if (*s == 0)
-      *r = d;
-    else
-   {  size_t l = (size_t)-1;
-      if (sscanf(s, "%i%ln", r, &l) != 1 || l != strlen(s))
-         die("Integer value expected, found %s", s);
-}  }
-static _cdecl void readfloat(const char* s, float* r)
-{  size_t l = (size_t)-1;
-   if (sscanf(s, "%f%ln", r, &l) != 1 || l != strlen(s))
-      die("Floating point value expected, found %s", s);
-}
-static _cdecl void readdouble(const char* s, double* r)
-{  size_t l = (size_t)-1;
-   if (sscanf(s, "%lf%ln", r, &l) != 1 || l != strlen(s))
-      die("Floating point value expected, found %s", s);
-}
-
-static _cdecl void readstring(const char* s, const char** cpp)
-{  *cpp = s;
-}
-
-static _cdecl void setflag(const char* s, bool* r)
-{  if (*s)
-      die("Option does not have parameters");
-   *r = true;
-}
-
-static _cdecl void setint(const char* s, int* r, int v)
-{  if (*s)
-      die("Option does not have parameters");
-   *r = v;
-}
-
-static _cdecl void setbit(const char* s, int* r, int v)
-{  if (*s)
-      die("Option does not have parameters");
-   *r |= v;
-}
-
-static _cdecl void readN(const char* s, int* r)
+static _cdecl void readN(const char* s, unsigned* r)
 {  bool ex;
    if (ex = *s == '^')
       ++s;
-   readint(s, r);
+   readuint(s, r);
    if (ex)
-      N = 1 << N;
+      *r = 1 << *r;
 }
 
-static const struct ArgMap
-{  char arg[8];
-   void (_cdecl *func)(const char* rem, void* param, int iparam);
-   void* param;
-   int iparam;
-} argmap[] = // must be sorted
-{  {"bn"  , (void(_cdecl*)(const char*,void*,int))&readN, &N, 0}
- , {"exec", (void(_cdecl*)(const char*,void*,int))&readstring, &execcmd, 0}
- , {"flog", (void(_cdecl*)(const char*,void*,int))&readdouble, &fstep, 0}
- , {"fmax", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmax, 0}
- , {"fmin", (void(_cdecl*)(const char*,void*,int))&readdouble, &fmin, 0}
- , {"fq" ,  (void(_cdecl*)(const char*,void*,int))&readdouble, &freq, 0}
- , {"gd" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 3}
- , {"gg" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 2}
- , {"gr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &gainmode, 1}
- , {"in" ,  (void(_cdecl*)(const char*,void*,int))&readstring, &infile, 0}
- , {"ln" ,  (void(_cdecl*)(const char*,void*,int))&readint, &loops, 1}
- , {"loop", (void(_cdecl*)(const char*,void*,int))&setint, &loops, INT_MAX}
- , {"ma" ,  (void(_cdecl*)(const char*,void*,int))&setint, &mode, 2}
- , {"mr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &mode, 1}
- , {"psa",  (void(_cdecl*)(const char*,void*,int))&readint, &discardsamp, 0}
- , {"slvl", (void(_cdecl*)(const char*,void*,int))&readdouble, &synclevel, 0}
- , {"sov",  (void(_cdecl*)(const char*,void*,int))&readint, &overlap, 0}
- , {"sph",  (void(_cdecl*)(const char*,void*,int))&readdouble, &syncphase, 0}
- , {"sync", (void(_cdecl*)(const char*,void*,int))&readint, &syncsamp, 0}
- , {"v"  ,  (void(_cdecl*)(const char*,void*,int))&setflag, &verbose, true}
- , {"wd" ,  (void(_cdecl*)(const char*,void*,int))&setflag, &writedata, true}
- , {"wr" ,  (void(_cdecl*)(const char*,void*,int))&setflag, &writeraw, true}
- , {"zg" ,  (void(_cdecl*)(const char*,void*,int))&setint, &zeromode, 2}
- , {"zr" ,  (void(_cdecl*)(const char*,void*,int))&setint, &zeromode, 1}
+const ArgMap argmap[] = // must be sorted
+{  {"bn"  , (ArgFn)&readN, &N, 0}
+ , {"exec", (ArgFn)&readstring, &execcmd, 0}
+ , {"flog", (ArgFn)&readdouble, &fstep, 0}
+ , {"fmax", (ArgFn)&readdouble, &f_max, 0}
+ , {"fmin", (ArgFn)&readdouble, &f_min, 0}
+ , {"fq" ,  (ArgFn)&readdouble, &freq, 0}
+ , {"gd" ,  (ArgFn)&setint, &gainmode, 3}
+ , {"gg" ,  (ArgFn)&setint, &gainmode, 2}
+ , {"gr" ,  (ArgFn)&setint, &gainmode, 1}
+ , {"in" ,  (ArgFn)&readstring, &infile, 0}
+ , {"ln" ,  (ArgFn)&readint, &loops, 1}
+ , {"loop", (ArgFn)&setint, &loops, INT_MAX}
+ , {"ma" ,  (ArgFn)&setint, &mode, 2}
+ , {"mr" ,  (ArgFn)&setint, &mode, 1}
+ , {"psa",  (ArgFn)&readint, &discardsamp, 0}
+ , {"slvl", (ArgFn)&readdouble, &synclevel, 0}
+ , {"sov",  (ArgFn)&readint, &overlap, 0}
+ , {"sph",  (ArgFn)&readdouble, &syncphase, 0}
+ , {"sync", (ArgFn)&readint, &syncsamp, 0}
+ , {"v"  ,  (ArgFn)&setflag, &verbose, true}
+ , {"wd" ,  (ArgFn)&setflag, &writedata, true}
+ , {"wr" ,  (ArgFn)&setflag, &writeraw, true}
+ , {"zg" ,  (ArgFn)&setint, &zeromode, 2}
+ , {"zr" ,  (ArgFn)&setint, &zeromode, 1}
 };
+const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
-static int searcharg(const char* arg, const char* elem)
-{  return strnicmp(arg, elem, strlen(elem));
-}
-
-static void parsearg(const char* arg)
-{  if (arg[0] == '@' || arg[0] == '<')
-   {  // indirect file
-      FILE* cf = fopen(arg+1, "r");
-      if (cf == NULL)
-         die("Failed to read command file %s.", arg+1);
-      while (!feof(cf))
-      {  char buffer[1024];
-         fgets(buffer, sizeof buffer, cf);
-         size_t l = strlen(buffer);
-         if (l >= sizeof buffer-1 && buffer[sizeof buffer -2] != '\n')
-            die("Line in command file exceeds 1023 characters.");
-         // strip whitespaces
-         while (strchr(" \t\r\n", buffer[--l]) != NULL)
-            buffer[l] = 0;
-         const char* ap = buffer;
-         while (strchr(" \t\r\n", *ap) != NULL)
-            ++ap;
-         if (ap[0] == 0 || ap[0] == '#')
-            continue; // skip empty lines and comments
-         parsearg(ap); // THIS WILL NOT WORK WITH STRING ARGS !
-      }
-      return;
-   }
-   ArgMap* ap = (ArgMap*)bsearch(arg, argmap, sizeof argmap / sizeof *argmap, sizeof *argmap, (int (*)(const void*, const void*))&searcharg);
-   if (ap == NULL)
-      die("Illegal option %s.", arg);
-   (*ap->func)(arg + strlen(ap->arg), ap->param, ap->iparam);
-}
 
 int main(int argc, char* argv[])
 {  // parse cmdl
@@ -631,7 +533,7 @@ int main(int argc, char* argv[])
       doanalysis(NULL);
       break;
     default:
-      die("Unsupported mode: %i", mode);
+      die(32, "Unsupported mode: %i", mode);
    }
 
    // end reference player

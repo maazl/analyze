@@ -44,7 +44,10 @@ SELECT
    CALL CfgQ 'famax', cfg.fmax
    CALL CfgQ 'zerofile', ''
    CALL CfgQ 'harm', 0
-
+   CALL CfgQ 'mst', 0
+   CALL CfgQ 'finc', 1
+   CALL CfgQ 'flog', 0 
+   
    opt = ''
    IF cfg.zerofile \= '' THEN
       opt = opt" zr ""zf"cfg.zerofile""""
@@ -66,7 +69,7 @@ SELECT
    /*CALL SysSetPriority 4, 1*/
    '@pstat|grep -i NOISE.EXE -q'
    IF RC \= 0 THEN DO
-      'start /MIN /C sp f3 o noise.exe bn'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' harm'cfg.harm' scale'cfg.scale' loop wdnoise.dat ww- ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
+      'start /MIN /C sp f3 o noise.exe bn'cfg.fftlen' fmin'cfg.fmin' fmax'cfg.fmax' harm'cfg.harm' finc'cfg.finc' flog'cfg.flog' scale'cfg.scale' mst'cfg.mst' loop wdnoise.dat wrref.dat ww- ^| sp t1 o buffer2 -p=60k -b=8M -h=100%% - \pipe\refplay.wav'
       CALL SysSleep 1
       END
    'start /C sp t2 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
@@ -77,7 +80,7 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp t1 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" harm"cfg.harm" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp t1 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he n"cfg.fftlen" mst"cfg.mst" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" harm"cfg.harm" finc"cfg.finc" flog"cfg.flog" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO
@@ -256,10 +259,6 @@ ReadConfig: PROCEDURE EXPOSE cfg.
          CALL ReadConfig SUBSTR(l,2)
        OTHERWISE
          PARSE VAR l key'='val
-         IF val = '' THEN DO
-            SAY 'Invalid line in configuration file'
-            EXIT 10
-            END
          CALL VALUE 'cfg.'key, val
          END
       END

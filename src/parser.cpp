@@ -94,11 +94,17 @@ void readdouble(const char* s, double* r)
 void readstring(const char* s, const char** cpp)
 {  *cpp = s;
 }
+void readstringdef(const char* s, const char** cpp, const char* def)
+{  *cpp = *s ? s : def;
+}
 
 void setflag(const char* s, bool* r)
-{  if (*s)
-      die(42, "Option does not have parameters");
-   *r = true;
+{  if (*s == 0 || strcmp(s, "1") == 0 || stricmp(s, "true") == 0)
+      *r = true;
+   else if (strcmp(s, "0") == 0 || stricmp(s, "false") == 0)
+      *r = false;
+   else
+      die(42, "Invalid boolean value %s", s);
 }
 
 void setint(const char* s, int* r, int v)

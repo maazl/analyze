@@ -37,20 +37,12 @@ typedef complex<double> Complex;
 static short inbuffertmp[2*CA_MAX*N_MAX];
 static float* inbuffer1 = NULL;
 static float* inbuffer2 = NULL;
+static float* ovrbuffer1 = NULL;
+static float* ovrbuffer2 = NULL;
 static float* outbuffer1 = NULL;
 static float* outbuffer2 = NULL;
 static float window[N_MAX];
-static size_t* harmonics = NULL;
-
-
-void die(const char* msg, ...)
-{  va_list va;
-   va_start(va, msg);
-   vfprintf(stderr, msg, va);
-   va_end(va);
-   fputc('\n', stderr);
-   exit(1);
-}
+static int* harmonics = NULL;
 
 
 static inline double sqr(double v)
@@ -136,6 +128,7 @@ static unsigned   addloop     = 1;     // add raw data before analysis # times
 static bool       incremental = false; // incremental mode (add all raw data)
 static double     rref        = 1;     // value of the reference resistor in impedance measurements
 static unsigned   scalemode   = 1;     // l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l
+static bool       stereo      = false; // Stereo aggregate mode (Toggle harmonics)
 static unsigned   loops       = 1;     // number of analysis loops
 static unsigned   lpause      = 10;    // number of loops between zero calibration parts
 static unsigned   zeromode    = 0;     // zero calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
@@ -155,7 +148,11 @@ static const char* gainfile   = "gain.dat";  // file name for gain calibration d
 static const char* gaindifffile = "gainD.dat";// file name for differential gain calibration data
 static const char* rawfile    = "raw.dat";   // file name for raw data
 static const char* windowfile = "window.dat";// file name for window data
-static const char* infile     = NULL;  // input file name
+static struct ovrwrt                   // overwrite channel with ...
+{ const char* file;                    // ... file
+  unsigned    column;                  // ... column in file
+} overwrt[2] = {{NULL, 1}, {NULL, 1}};
+static const char* infile     = "-";   // input file name
 static const char* execcmd    = NULL;  // shell command to execute after analysis
 static const char* plotcmd    = NULL;  // string to write to stdout after analysis
 static double     (*weightfn)(double, double, double) = getweight;// weight function
@@ -213,9 +210,9 @@ static void short2float(float* dst, const short* src, size_t len)
 {  while (len)
    {  double d = 0;
       int i = addch;
-      do d += storeminmax(fromraw(*src++), minmax) * gainadj[0];
+      do d += storeminmax(fromraw(*src++), minmax);
        while (--i);
-      *dst++ = d;
+      *dst++ = d * gainadj[0];
       --len;
    }
 }
@@ -345,38 +342,38 @@ static void complex2polar(float* data, size_t len)
    }
 }
 
-void init()
+static void init()
 {  minmax[0] = INT_MAX;
    minmax[1] = INT_MIN;
    minmax[2] = INT_MAX;
    minmax[3] = INT_MIN;
 }
 
-void write1ch(FILE* out, const float* data, size_t len)
+static void write1ch(FILE* out, const float* data, size_t len)
 {  while (len--)
       fprintf(out, "%g\n", *data++);
 }
 
-void write2ch(FILE* out, const short* data, size_t len)
+static void write2ch(FILE* out, const short* data, size_t len)
 {  while (len--)
    {  fprintf(out, "%i\t%i\n", fromraw(data[0]), fromraw(data[1]));
       data += 2;
    }
 }
 
-void write2ch(FILE* out, const float* data, size_t len)
+static void write2ch(FILE* out, const float* data, size_t len)
 {  while (len--)
    {  fprintf(out, "%g\t%g\n", data[0], data[1]);
       data += 2;
    }
 }
 
-void write2ch(FILE* out, const float* data1, const float* data2, size_t len)
+static void write2ch(FILE* out, const float* data1, const float* data2, size_t len)
 {  while (len--)
       fprintf(out, "%g\t%g\n", *data1++, *data2++);
 }
 
-void writepolar(FILE* out, const float* data, size_t len, double inc)
+static void writepolar(FILE* out, const float* data, size_t len, double inc)
 {  const float* data2 = data + len;
    // 1st line
    fprintf(out, "0\t%g\t0\n", *data++);
@@ -385,13 +382,13 @@ void writepolar(FILE* out, const float* data, size_t len, double inc)
       fprintf(out, "%g\t%g\t%g\n", len++*inc, *data++, *data2);
 }
 
-void writecomplex(FILE* out, const Complex* data, size_t len)
+static void writecomplex(FILE* out, const Complex* data, size_t len)
 {  while (len--)
    {  fprintf(out, "%14g\t%14g\t%14g\t%14g\n", data->real(), data->imag(), abs(*data), arg(*data)*M_180_PI);
       ++data;
 }  }
 
-void write4complex(FILE* out, const Complex (* data)[4], size_t len)
+static void write4complex(FILE* out, const Complex (* data)[4], size_t len)
 {  while (len--)
    {  //Complex det = (*data)[0] * (*data)[3] - (*data)[1] * (*data)[2];
       fprintf(out, "%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\n"
@@ -401,20 +398,20 @@ void write4complex(FILE* out, const Complex (* data)[4], size_t len)
       ++data;
 }  }
 
-void readcomplex(FILE*in, Complex * data, size_t len)
+static void readcomplex(FILE* in, Complex* data, size_t len)
 {  while (len--)
    {  double a,b;
       if (fscanf(in, "%lg%lg%*[^\n]", &a, &b) != 2)
-         die("Failed to read complex data (%i).", errno);
+         die(27, "Failed to read complex data (%i).", errno);
       //(stderr, "%g\t%g\n", a,b);
       *data++ = Complex(a,b);
 }  }
 
-void read4complex(FILE*in, Complex (* data)[4], size_t len)
+static void read4complex(FILE* in, Complex (* data)[4], size_t len)
 {  while (len--)
    {  double a,b,c,d,e,f,g,h;
       if (fscanf(in, "%lg%lg%lg%lg%lg%lg%lg%lg%*[^\n]", &a, &b, &c, &d, &e, &f, &g, &h) != 8)
-         die("Failed to read complex data (%i).", errno);
+         die(27, "Failed to read complex data (%i).", errno);
       //(stderr, "%g\t%g\n", a,b);
       (*data)[0] = Complex(a,b);
       (*data)[1] = Complex(c,d);
@@ -422,6 +419,17 @@ void read4complex(FILE*in, Complex (* data)[4], size_t len)
       (*data)[3] = Complex(g,h);
       ++data;
 }  }
+
+static void readfloat_2(FILE* in, unsigned column, size_t count, float* dest, size_t inc = 1)
+{  while (count--)
+   {  unsigned col = column;
+      while (--col)
+         fscanf(in, "%*s");
+      if (fscanf(in, "%g%*[^\n]", dest) != 1)
+         die(27, "Failed to raed column %u from data file.", column);
+      dest += inc;
+   }
+}
 
 /*static char* abbrev(const char* s, const char* token)
 {  size_t l = strlen(s);
@@ -533,8 +541,8 @@ class FFTbin
  private:
    const double finc;
 
-   aggentry agg[HA_MAX];
-   unsigned  ch;
+   aggentry  agg[2*HA_MAX+1];
+   int       ch;
    aggentry* curagg;
 
  public:
@@ -551,7 +559,7 @@ class FFTbin
    Complex  Z() const { return curagg->Z; } // impedance, quotient or relative signal
    double   D() const { return curagg->D; } // group delay
    double   W() const { return curagg->W; } // weight
-   unsigned h() const { return ch; }        // harmonic 
+   int      h() const { return ch; }        // harmonic 
 };
 
 FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
@@ -559,12 +567,13 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
    // frequency
    double f = bin * finc;
    ch = harmonics[bin];
-   if (ch-1 >= HA_MAX)
+   if ((unsigned)(abs(ch)-1) >= HA_MAX)
       return Skip;
-   curagg = agg + ch -1;
+   curagg = agg + ch + HA_MAX;
+   unsigned base = bin;//ch != 0 ? bin/abs(ch) : bin; 
    // retrieve coefficients
    Complex U(outbuffer1[bin], bin && bin != N/2 ? outbuffer1[N-bin] : 0);
-   Complex I(outbuffer2[bin/ch], bin && bin != N/2 ? outbuffer2[N-bin/ch] : 0);
+   Complex I(outbuffer2[base], bin && bin != N/2 ? outbuffer2[N-base] : 0);
    // calibration
    docal(bin, f, U, I);
    // phase correction
@@ -611,15 +620,15 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
    curagg->Z /= curagg->W;
    curagg->D /= curagg->W;
    curagg->binc = 0;
-   if (curagg->f < fmin)
+   /*if (curagg->f < fmin)
       return BelowMin;
    if (curagg->f > fmax)
-      return AboveMax;
+      return AboveMax;*/
    return Ready;
 }
 
 void FFTbin::PrintBin(FILE* dst) const
-{  fprintf(dst, "%12g %12g %12g %12g %12g " "%12g %12g %12g %12g %12g %12g %u\n",
+{  fprintf(dst, "%12g %12g %12g %12g %12g " "%12g %12g %12g %12g %12g %12g %i\n",
    // f    |Hl|      phil               |Hr|      phir
       f(), abs(U()), arg(U())*M_180_PI, abs(I()), arg(I())*M_180_PI,
    // |Hl|/|Hr| phil-phir          re          im
@@ -630,10 +639,10 @@ void FFTbin::PrintBin(FILE* dst) const
 
 
 const ArgMap argmap[] = // must be sorted
-{  {"ainc", (ArgFn)&setflag, &incremental, true}
- , {"al",   (ArgFn)&readuint, &addloop, 0}
- , {"bin",  (ArgFn)&readuint, &binsz, 0}
- , {"ca" ,  (ArgFn)&readuintdef, &addch, 2}
+{  {"ainc", (ArgFn)&setflag,    &incremental, true}
+ , {"al",   (ArgFn)&readuint,   &addloop, 0}
+ , {"bin",  (ArgFn)&readuint,   &binsz, 0}
+ , {"ca" ,  (ArgFn)&readuintdef,&addch, 2}
  , {"df" ,  (ArgFn)&readstring, &datafile, 0}
  , {"exec", (ArgFn)&readstring, &execcmd, 0}
  , {"famax",(ArgFn)&readdouble, &famax, 0}
@@ -645,43 +654,48 @@ const ArgMap argmap[] = // must be sorted
  , {"fmin", (ArgFn)&readdouble, &fmin, 0}
  , {"fq" ,  (ArgFn)&readdouble, &freq, 0}
  , {"g2f" , (ArgFn)&readstring, &gaindifffile, 0}
- , {"gd" ,  (ArgFn)&setuint, &gainmode, 3}
+ , {"gd" ,  (ArgFn)&setuint,    &gainmode, 3}
  , {"gf" ,  (ArgFn)&readstring, &gainfile, 0}
- , {"gg" ,  (ArgFn)&setuint, &gainmode, 2}
- , {"gr" ,  (ArgFn)&setuint, &gainmode, 1}
- , {"h/f",  (ArgFn)&setuint, &weightfn, (int)get1_fweight}
- , {"harm", (ArgFn)&readuint, &harmonic, 0}
- , {"hd" ,  (ArgFn)&setuint, &weightfn, (int)getweightD}
- , {"he" ,  (ArgFn)&setuint, &weightfn, (int)getconstweight}
+ , {"gg" ,  (ArgFn)&setuint,    &gainmode, 2}
+ , {"gr" ,  (ArgFn)&setuint,    &gainmode, 1}
+ , {"h/f",  (ArgFn)&setuint,    &weightfn, (int)get1_fweight}
+ , {"harm", (ArgFn)&readuint,   &harmonic, 0}
+ , {"hd" ,  (ArgFn)&setuint,    &weightfn, (int)getweightD}
+ , {"he" ,  (ArgFn)&setuint,    &weightfn, (int)getconstweight}
  , {"in" ,  (ArgFn)&readstring, &infile, 0}
- , {"ln" ,  (ArgFn)&readuint, &loops, 1}
- , {"loop", (ArgFn)&setuint, &loops, INT_MAX}
- , {"lp" ,  (ArgFn)&readuint, &lpause, 0}
+ , {"ln" ,  (ArgFn)&readuint,   &loops, 1}
+ , {"loop", (ArgFn)&setuint,    &loops, INT_MAX}
+ , {"lp" ,  (ArgFn)&readuint,   &lpause, 0}
  , {"lvl",  (ArgFn)&readdouble, &noiselvl, 0}
- , {"mfft", (ArgFn)&setbit, &method, 1}
- , {"mpca", (ArgFn)&setbit, &method, 2}
- , {"mxy",  (ArgFn)&setbit, &method, 4}
- , {"n"  ,  (ArgFn)&readN, &N, 0}
- , {"pdc",  (ArgFn)&readuintdef, &purgech, 1}
+ , {"mfft", (ArgFn)&setbit,     &method, 1}
+ , {"mpca", (ArgFn)&setbit,     &method, 2}
+ , {"mst",  (ArgFn)&setflag,    &stereo, true}
+ , {"mxy",  (ArgFn)&setbit,     &method, 4}
+ , {"n"  ,  (ArgFn)&readN,      &N, 0}
+ , {"olc",  (ArgFn)&readuint,   &overwrt[0].column, 0}
+ , {"olf",  (ArgFn)&readstring, &overwrt[0].file, 0}
+ , {"orc",  (ArgFn)&readuint,   &overwrt[1].column, 0}
+ , {"orf",  (ArgFn)&readstring, &overwrt[1].file, 0}
+ , {"pdc",  (ArgFn)&readuintdef,&purgech, 1}
  , {"phl",  (ArgFn)&readdouble, &linphase, 0}
- , {"phn",  (ArgFn)&setuint, &nophase, 1}
+ , {"phn",  (ArgFn)&setuint,    &nophase, 1}
  , {"plot", (ArgFn)&readstring, &plotcmd, 0}
- , {"psa",  (ArgFn)&readuintdef, &discsamp, 1}
- , {"pte",  (ArgFn)&readuintdef, &disctrail, 1}
+ , {"psa",  (ArgFn)&readuintdef,&discsamp, 1}
+ , {"pte",  (ArgFn)&readuintdef,&disctrail, 1}
  , {"rf" ,  (ArgFn)&readstring, &rawfile, 0}
  , {"rref", (ArgFn)&readdouble, &rref, 0}
- , {"scm",  (ArgFn)&readuint, &scalemode, 0}
- , {"wd" ,  (ArgFn)&setflag, &writedata, true}
+ , {"scm",  (ArgFn)&readuint,   &scalemode, 0}
+ , {"wd" ,  (ArgFn)&setflag,    &writedata, true}
  , {"wf" ,  (ArgFn)&readstring, &windowfile, 0}
- , {"win",  (ArgFn)&readuintdef, &winfn, 2}
- , {"wr" ,  (ArgFn)&setflag, &writeraw, true}
- , {"ww" ,  (ArgFn)&setflag, &writewindow, true}
+ , {"win",  (ArgFn)&readuintdef,&winfn, 2}
+ , {"wr" ,  (ArgFn)&setflag,    &writeraw, true}
+ , {"ww" ,  (ArgFn)&setflag,    &writewindow, true}
  , {"z2f" , (ArgFn)&readstring, &zerodifffile, 0}
- , {"zd" ,  (ArgFn)&setuint, &zeromode, 3}
+ , {"zd" ,  (ArgFn)&setuint,    &zeromode, 3}
  , {"zf" ,  (ArgFn)&readstring, &zerofile, 0}
- , {"zg" ,  (ArgFn)&setuint, &zeromode, 2}
- , {"zn" ,  (ArgFn)&setuint, &normalize, 1}
- , {"zr" ,  (ArgFn)&setuint, &zeromode, 1}
+ , {"zg" ,  (ArgFn)&setuint,    &zeromode, 2}
+ , {"zn" ,  (ArgFn)&setuint,    &normalize, 1}
+ , {"zr" ,  (ArgFn)&setuint,    &zeromode, 1}
 };
 const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
@@ -691,16 +705,20 @@ int main(int argc, char* argv[])
       parsearg(*++argv);
 
    if (N > N_MAX)
-      die("FFT Length too large.");
+      die(32, "FFT Length too large.");
    if (N * addch > N_MAX * CA_MAX)
-      die("Input data length too large.");
+      die(32, "Input data length too large.");
+   if (overwrt[0].file && overwrt[1].file)
+      infile = NULL;
 
    // prepare some global vars
    noiselvl_ = 1/noiselvl;
    freq /= addch;
    linphase *= M_2PI;
-   f_inc += .5;
+   f_inc -= .5; // increment compensation + rounding
    f_log += 1;
+   gainadj[0] /= 32767;
+   gainadj[1] /= 32767;
    // allocate buffers
    if (method & 4)
    {  // reserver space for integrals and differentials too
@@ -714,7 +732,7 @@ int main(int argc, char* argv[])
       outbuffer1 = new float[N+1];
       outbuffer2 = new float[N+1];
    }
-   harmonics = new unsigned[N/2+1];
+   harmonics = new int[N/2+1];
    wsums = new double[N_MAX/2+1];
    gain = new Complex[N_MAX/2+1];
    gainD = new Complex[N_MAX/2+1];
@@ -726,45 +744,67 @@ int main(int argc, char* argv[])
    PI = rfftw_create_plan(N, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
    // create harmonics table
    {  memset(harmonics, 0, (N/2+1) * sizeof *harmonics);
-      for (unsigned i = (int)floor(fmin/freq*N +.5); i <= floor(fmax/freq*N +.5); i = (int)floor(i * f_log + f_inc))
+      int sign = 1;
+      for (unsigned i = (int)floor(fmin/freq*N +.5); i <= floor(fmax/freq*N +.5); ++i)
       {  for (unsigned j = 1; j <= harmonic && i*j <= N/2; ++j)
             if (harmonics[i*j])
                goto next_f;
          for (unsigned j = 1; i*j <= N/2; ++j)
-            harmonics[i*j] = j;
+            harmonics[i*j] = j * sign;
+         if (stereo)
+            sign = -sign;
+         i = (int)floor(i * f_log + f_inc);
        next_f:;
       }
       /*FILE* f = fopen("harm.dat", "w");
       for (unsigned i = 0; i <= N/2; ++i)
-         fprintf(f, "%12g %8u\n", i*freq/N, harmonics[i]);
+         fprintf(f, "%12g %8i\n", i*freq/N, harmonics[i]);
       fclose(f);*/ 
    }
 
    createwindow(window, winfn, N);
    // write window data
-   FILE* tout;
    if (writewindow)
-   {  tout = fopen(windowfile, "wt");
+   {  FILE* tout;
+      tout = fopen(windowfile, "wt");
       if (tout == NULL)
-         die("Failed to open %s.", windowfile);
+         die(21, "Failed to open %s for writing.", windowfile);
       write1ch(tout, window, N);
       fclose(tout);
    }
 
-   FILE* in;
-   if (infile == NULL)
-   {  // streaming
-      in = stdin;
-      _fsetmode(in, "b");
-   } else
-   {  in = fopen(infile, "rb");
-      if (in == NULL)
-         die("Failed to open input file.");
+   FILE* in = NULL;
+   if (infile)
+   { if (strcmp(infile, "-") == 0)
+     {  // streaming
+        in = stdin;
+        _fsetmode(in, "b");
+     } else
+     {  in = fopen(infile, "rb");
+        if (in == NULL)
+           die(20, "Failed to open input file.");
+     }
+     // discard first samples
+     fread(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
    }
-
-   // discard first samples
-   fread(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
-
+   
+   if (overwrt[0].file)
+   {  FILE* fin = fopen(overwrt[0].file, "r");
+      if (fin == NULL)
+         die(20, "Failed to open %s for reading.", overwrt[0].file);
+      ovrbuffer1 = new float[N];
+      readfloat_2(fin, overwrt[0].column, N, ovrbuffer1);
+      fclose(fin);
+   }
+   if (overwrt[1].file)
+   {  FILE* fin = fopen(overwrt[1].file, "r");
+      if (fin == NULL)
+         die(20, "Failed to open %s for reading.", overwrt[1].file);
+      ovrbuffer2 = new float[N];
+      readfloat_2(fin, overwrt[0].column, N, ovrbuffer2);
+      fclose(fin);
+   }
+   
    memset(inbuffer1, 0, sizeof inbuffer1); // init with 0 because of incremental mode
    memset(inbuffer2, 0, sizeof inbuffer2);
    memset(wsums, 0, sizeof wsums);
@@ -778,7 +818,7 @@ int main(int argc, char* argv[])
     case 3:
       fz = fopen(gainfile, "r");
       if (fz == NULL)
-         die("Failed to open %s.", gainfile);
+         die(20, "Failed to open %s for reading.", gainfile);
       readcomplex(fz, gain, N/2+1);
       fclose(fz);
    }
@@ -790,7 +830,7 @@ int main(int argc, char* argv[])
       FILE* fz;
       fz = fopen(zerofile, "r");
       if (fz == NULL)
-         die("Failed to open %s.", zerofile);
+         die(20, "Failed to open %s for reading.", zerofile);
       read4complex(fz, zero, N/2);
       fclose(fz);
    }
@@ -799,50 +839,73 @@ int main(int argc, char* argv[])
    unsigned loop = loops;
    unsigned addloops = 0;
    do
-   {  if (fread(inbuffertmp, 2*sizeof *inbuffertmp * addch, N, in) != N)
-         die("failed to read data");
+   {  
+      if (in)
+      {  if (fread(inbuffertmp, 2*sizeof *inbuffertmp * addch, N, in) != N)
+            die(27, "Failed to read data from input.");
 
-      // reset min/max
-      init();
+         // write raw data
+         if (writeraw)
+         {  FILE* tout = fopen(rawfile, "wt");
+            if (tout == NULL)
+               die(21, "Failed to open %s for writing.", rawfile);
+            write2ch(tout, inbuffertmp, N * addch);
+            fclose(tout);
+         }
 
-      // write raw data
-      if (writeraw)
-      {  tout = fopen(rawfile, "wt");
-         write2ch(tout, inbuffertmp, N * addch);
-         fclose(tout);
+         // reset min/max
+         init();
+
+         switch (scalemode)
+         {case 1:
+            if (incremental || addloops)
+               short2float2add(inbuffer1, inbuffer2, inbuffertmp, N);
+             else if (winfn && addloop == 1)
+               short2float2window(inbuffer1, inbuffer2, inbuffertmp, N);
+             else
+               short2float2(inbuffer1, inbuffer2, inbuffertmp, N);
+            break;
+          case 2:
+            if (incremental || addloops)
+               short2floatDadd(inbuffer1, inbuffer2, inbuffertmp, N);
+             else if (winfn && addloop == 1)
+               short2floatDwindow(inbuffer1, inbuffer2, inbuffertmp, N);
+             else
+               short2floatD(inbuffer1, inbuffer2, inbuffertmp, N);
+            break;
+          case 3:
+            if (incremental || addloops)
+               short2float2add(inbuffer2, inbuffer1, inbuffertmp, N);
+             else if (winfn && addloop == 1)
+               short2float2window(inbuffer2, inbuffer1, inbuffertmp, N);
+             else
+               short2float2(inbuffer2, inbuffer1, inbuffertmp, N);
+            break;
+          default:
+            die(32, "Invalid scalmode");
+         }
+         // write raw status
+         fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0], minmax[2], minmax[1], minmax[3]);
+      }
+      
+      if (incremental || addloops)
+      {  if (ovrbuffer1)
+            vectoradd(inbuffer1, ovrbuffer1, N);
+         if (ovrbuffer2)
+            vectoradd(inbuffer2, ovrbuffer2, N);
+      } else
+      {  if (ovrbuffer1)
+            memcpy(inbuffer1, ovrbuffer1, N * sizeof *inbuffer1);
+         if (ovrbuffer2)
+            memcpy(inbuffer2, ovrbuffer2, N * sizeof *inbuffer2);
       }
 
-      switch (scalemode)
-      {case 1:
-         if (incremental || addloops)
-            short2float2add(inbuffer1, inbuffer2, inbuffertmp, N);
-          else if (winfn && addloop == 1)
-            short2float2window(inbuffer1, inbuffer2, inbuffertmp, N);
-          else
-            short2float2(inbuffer1, inbuffer2, inbuffertmp, N);
-         break;
-       case 2:
-         if (incremental || addloops)
-            short2floatDadd(inbuffer1, inbuffer2, inbuffertmp, N);
-          else if (winfn && addloop == 1)
-            short2floatDwindow(inbuffer1, inbuffer2, inbuffertmp, N);
-          else
-            short2floatD(inbuffer1, inbuffer2, inbuffertmp, N);
-         break;
-       case 3:
-         if (incremental || addloops)
-            short2float2add(inbuffer2, inbuffer1, inbuffertmp, N);
-          else if (winfn && addloop == 1)
-            short2float2window(inbuffer2, inbuffer1, inbuffertmp, N);
-          else
-            short2float2(inbuffer2, inbuffer1, inbuffertmp, N);
-         break;
-       default:
-         die("Invalid scalmode");
-      }
-      // write raw status
-      fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0], minmax[2], minmax[1], minmax[3]);
-
+      /*{  FILE* f = fopen("ov.dat", "w");
+         for (size_t i = 0; i < N; ++i)
+            fprintf(f, "%12g %12g\n", inbuffer1[i], inbuffer2[i]);
+         fclose(f);
+      }*/
+      
       if (++addloops < addloop)
          continue; // add more data
       if (winfn && (incremental || addloops))
@@ -861,7 +924,7 @@ int main(int argc, char* argv[])
 
       switch (method)
       {default:
-         die("Invalid combination of measurement modes (%i), e.g. FFT and XY.", method);
+         die(34, "Invalid combination of measurement modes (%i), e.g. FFT and XY.", method);
 
        case 2: // PCA analysis
          {  PCA<5> pca;
@@ -909,10 +972,11 @@ int main(int argc, char* argv[])
             double d2sum = 0;
             //double RWsum = 0;
             // write data
+            FILE* tout = NULL;
             if (writedata)
             {  tout = fopen(datafile, "wt");
                if (tout == NULL)
-                  die("Failed to create %s.", datafile);
+                  die(21, "Failed to create %s.", datafile);
             }
 
             FFTbin calc(freq/N);
@@ -922,7 +986,7 @@ int main(int argc, char* argv[])
                switch (calc.StoreBin(len))
                {case FFTbin::AboveMax:
                   // write
-                  if (writedata && calc.h() > 1)
+                  if (tout && abs(calc.h()) > 1)
                      calc.PrintBin(tout);
                 default:
                 //case FFTbin::BelowMin:
@@ -931,7 +995,7 @@ int main(int argc, char* argv[])
                   continue;
                 case FFTbin::Ready:
                   // write
-                  if (writedata)
+                  if (tout)
                      calc.PrintBin(tout);
                }
 
@@ -951,7 +1015,7 @@ int main(int argc, char* argv[])
                Csum += calc.W() * calc.Z().imag() / calc.f();
                d2sum = calc.W() * sqr(calc.Z().imag());
             }
-            if (writedata)
+            if (tout)
                fclose(tout);
 
             // calculate summary
@@ -983,10 +1047,11 @@ int main(int argc, char* argv[])
             vectorscale(outbuffer2, sqrt(1./N)/addch, N);
 
             // write data
+            FILE* tout = NULL;
             if (writedata)
             {  tout = fopen(datafile, "wt");
                if (tout == NULL)
-                  die("Failed to create %s.", datafile);
+                  die(21, "Failed to create %s.", datafile);
             }
 
             PCA<2> pcaRe;
@@ -1005,7 +1070,7 @@ int main(int argc, char* argv[])
                switch (calc.StoreBin(len))
                {case FFTbin::AboveMax:
                   // write
-                  if (writedata && calc.h() > 1)
+                  if (tout && calc.h() > 1)
                      calc.PrintBin(tout);
                 default:
                 //case FFTbin::BelowMin:
@@ -1014,7 +1079,7 @@ int main(int argc, char* argv[])
                   continue;
                 case FFTbin::Ready:
                   // write
-                  if (writedata)
+                  if (tout)
                      calc.PrintBin(tout);
                }
 
@@ -1034,7 +1099,7 @@ int main(int argc, char* argv[])
                pcaRe.Store(PCAdataRe, calc.W());
                pcaIm.Store(PCAdataIm, calc.W());
             }
-            if (writedata)
+            if (tout)
                fclose(tout);
 
             // calculate summary
@@ -1126,9 +1191,9 @@ int main(int argc, char* argv[])
 
             // write data
             if (writedata)
-            {  tout = fopen(datafile, "wt");
+            {  FILE* tout = fopen(datafile, "wt");
                if (tout == NULL)
-                  die("Failed to create %s.", datafile);
+                  die(21, "Failed to create %s.", datafile);
 
                const float* Up = inbuffer1;
                const float* Ip = inbuffer2;
@@ -1171,7 +1236,7 @@ int main(int argc, char* argv[])
       FILE* fz;
       fz = fopen(gainmode == 3 ? gaindifffile : gainfile, "wb");
       if (fz == NULL)
-         die("Failed to open %s.", gainmode == 3 ? gaindifffile : gainfile);
+         die(21, "Failed to open %s.", gainmode == 3 ? gaindifffile : gainfile);
       writecomplex(fz, gainD, N/2+1);
       fclose(fz);
    }
@@ -1184,7 +1249,7 @@ int main(int argc, char* argv[])
       for (int loop = lpause; loop;)
       {  printf("\r%u ", loop);
          if (fread(inbuffertmp, 2*sizeof *inbuffertmp * addch, N, in) != N)
-            die("failed to read data");
+            die(27, "failed to read data");
          --loop;
       }
       puts("\nNow at part 2.");
@@ -1204,7 +1269,7 @@ int main(int argc, char* argv[])
       FILE* fz;
       fz = fopen(zeromode == 5 ? zerodifffile : zerofile, "wb");
       if (fz == NULL)
-         die("Failed to open %s.", zeromode == 5 ? zerodifffile : zerofile);
+         die(21, "Failed to open %s.", zeromode == 5 ? zerodifffile : zerofile);
       write4complex(fz, zeroD, N/2);
       fclose(fz);
    }

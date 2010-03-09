@@ -55,6 +55,13 @@ void readdouble(const char* s, double* r);
 // store a reference to the string passed into the char pointer. So the
 // arguments should be in a static buffer that is not modified anymore.
 void readstring(const char* s, const char** cpp);
+// Read string parameter with default value
+// *param = &charpointer
+// iparam = "default value"
+// This function does not allocate a buffer for the string. Instead it
+// store a reference to the string passed into the char pointer. So the
+// arguments should be in a static buffer that is not modified anymore.
+void readstringdef(const char* s, const char** cpp, const char* def);
 
 // Set boolean parameter
 // *param = &bool
