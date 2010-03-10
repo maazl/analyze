@@ -1,20 +1,18 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-  <title>Analysetools - Rauschgenerator</title>
-  <link href="mm.css" rel="stylesheet" type="text/css">
+<html><head><title>Analysetools - Rauschgenerator</title>
+
+<link href="mm.css" rel="stylesheet" type="text/css">
 </head>
 <body>
 <a href="index.html">&rarr;&nbsp;Index</a>
-<a href="glossary.html">&rarr;&nbsp;Glossar
-</a>
+<a href="glossary.html">&rarr;&nbsp;Glossar</a>
 <h1>Referenzsignalgenerator f&uuml;r periodische Rauschsignale</h1>
 <p>Release: 0.1</p>
 <a href="#description">Beschreibung</a> <a href="#reference">Referenz</a> <a href="#method">Arbeitsweise</a>
-<a href="#download">Download</a>
+<a href="index.html#download">Download</a>
 <a href="#history">Historie</a>
 <a href="#todo">Todo</a>
-<a href="#build">Compilieren</a>
+<a href="index.html#build">Compilieren</a>
 <h2><a name="description"></a>Kurzbeschreibung</h2>
 <p>Dieses Programm generiert periodische <a href="glossary.html#MLS">Rauschsignale</a>
 definierter L&auml;nge mit einer parametrisierbaren
@@ -22,69 +20,78 @@ Energieverteilung. Durch die Periodizit&auml;t des Signals wird das
 Frequenzspektrum diskret und eignet sich f&uuml;r die Analyse per
 diskreter Fourier-Transformation ohne Fensterfunktion.</p>
 <h3>Einsatzbereich</h3>
-<blockquote>Messung von Impedanzen oder
+<blockquote>Referenzsignal f&uuml;r die Messung von
+Impedanzen oder
 &Uuml;bertragungsfunktionen.</blockquote>
 <ul>
 </ul>
 <h3>Programmablauf</h3>
 <blockquote>
-  <p>Das Programm liefert <strong>16-Bit PCM-kodierte
+<p>Das Programm liefert <strong>16-Bit PCM-kodierte
 Daten in 2 Kan&auml;len</strong> und gibt sie &uuml;ber <tt><strong>stdout</strong></tt>
 oder in eine Datei aus.</p>
-  <p>Die (plattformabh&auml;ngige) Ausgabe der PCM-Daten
+<p>Die (plattformabh&auml;ngige) Ausgabe der PCM-Daten
 &uuml;ber ein DAC-Device muss anderw&auml;rtig
 gew&auml;hrleistet werden.</p>
 </blockquote>
 <h2><a name="options"></a>Kommandozeilenparameter</h2>
 <blockquote>
-  <p><kbd>noise [<var>Optionen</var>] <var>nsamp</var>
-  <var>fmin</var> <var>fmax</var> </kbd>[<kbd><var>scale</var></kbd><kbd>
-  </kbd>[<kbd><var>n</var> </kbd>[<kbd><var>file</var></kbd>]]]</p>
-  <dl compact="compact">
-    <dt><a name="_nsamp"></a><kbd><var>nsamp</var></kbd></dt>
-    <dd>L&auml;nge einer Periode. Dies sollte der
+<dl compact="compact">
+<dt><strong><a name="_bn"></a><tt>bn<var>samples</var></tt></strong></dt>
+<dd>L&auml;nge der Periode. Dies sollte der
 L&auml;nge
 der zur Analyse verwendeten Fourier-Transformation entsprechen. Deshalb
-ist es typischerweise eine Zweierpotenz.</dd>
-    <dt><a name="_fmin"></a><a name="_fmax"></a><var><kbd>fmin</kbd></var>,
-      <var><kbd>fmax</kbd></var></dt>
-    <dd>Minimale bzw. maximale Frequenz bei der das MLS noch
-Intensit&auml;t enth&auml;lt.</dd>
-    <dt></dt>
-    <dt><a name="_scale"></a><kbd><var>scale</var></kbd></dt>
-    <dd>Exponent f&uuml;r die <a href="#method">Intensit&auml;tsgewichtung</a>.
+ist es sinnvollerweise eine Zweierpotenz.</dd>
+<dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt>
+und <tt>fmax<var>freq</var></tt></strong></dt>
+<dd>Minimale und maximale Frequenz zwischen denen das
+generierte Signal noch Energie enth&auml;lt.</dd><dt><tt><a name="_finc"></a>finc<var>channels</var></tt></dt><dd>Lineares Inkrement f&uuml;r benachbarte Frequenzkan&auml;le. Standardwert 1.<br>Dieser
+Wert gibt an wieviele Kan&auml;le in Einheiten der Grundfrequenz
+zwischen benachbarten Frequenzkan&auml;len mit Energie liegen. Ein Wert
+von 2 bedeutet, dass immer 2 Kan&auml;le weitergez&auml;hlt wird, also
+immer ein Kanal ohne Energie zwischen zwei genutzen
+Frequenzkan&auml;len liegt.</dd><dt><tt><a name="_flog"></a>flog<var>increment</var></tt></dt><dd>Logarithmischer Zuwachsfaktor f&uuml;r benachbarte Frequenzkan&auml;le. Standardwert 0.<br>Genutzte Frequenzkan&auml;le werden im mittel um den Faktor 1+<var><tt>increment</tt></var> auseinandergelegt.</dd><dt><tt><a name="_fsamp"></a>fsamp<var>freq</var></tt></dt><dd>Samplingfrequenz. Standardwert 48&nbsp;kHz.</dd>
+<dt><a name="_scale"></a><tt>scale<var>power</var></tt></dt>
+<dd>Exponent f&uuml;r die <a href="#method">Intensit&auml;tsgewichtung</a>.
 0: Wei&szlig;es Rauschen, -1: Rosa Rauschen. Standardwert: 0.</dd>
-    <dt><a name="_n"></a><kbd><var>n</var></kbd></dt>
-    <dd>Anzahl der Wiederholungen des MLS. Ein Wert von 0
-bedeutet eine Endlosschleife, also solange bis das Programm
-anderw&auml;rtig abgebrochen wird. Standardwert: 1.</dd>
-    <dt><a name="_file"></a><kbd><var>file</var></kbd></dt>
-    <dd>Ausgabedatei. Wenn kein Dateiname angegeben wurde, wird
+<dt><a name="_ln"></a><tt>ln<var>count</var></tt></dt>
+<dd>Anzahl der Wiederholungen des Signals bei der
+WAV-Ausgabe. Standardwert: 1.</dd>
+<dt><kbd><a name="_loop"></a>loop<var></var></kbd></dt>
+<dd>Signal in einer Endlosschleife als WAV ausgeben. Das
+Programm kann dann nur beendet werden, wenn entweder der
+Ausgabedatenstrom geschlossen wird oder durch ein Unterbrechungssignal
+abgebrochen wird.<br>
+</dd>
+<dt><a name="_wr"></a><tt>wd<var>file</var></tt></dt>
+
+
+<dd>Ausgabe der <a href="#design_dat">Designkoeffizienten
+als Textdatei</a>.</dd>
+<dt><a name="_wr"></a><tt>wr<var>file</var></tt></dt>
+
+<dd>Ausgabe des normalisierten Referenzsignals als Textdatei.
+F&uuml;r jeden St&uuml;tzpunkt wir eine Zeile geschrieben.</dd>
+<dt><a name="_ww"></a><tt>ww<var>file</var></tt></dt>
+<dd>Ausgabe des Audiosignals im WAV-Format. Wenn als Dateiname
+'<tt>-</tt>' angegeben wird, wird
 nach <tt>stdout</tt> geschrieben. Anstelle einer Datei
 kann auch ein Device (transienter Datenstrom) angegeben werden.</dd>
-  </dl>
-  <p><var><kbd>Optionen</kbd></var></p>
-  <dl compact="compact">
-    <dt><a name="_fsamp"></a><kbd>-fsamp<var>freq</var></kbd></dt>
-    <dd>Samplingrate. Standardwert: 48kHz.</dd>
-    <dt><kbd><a name="_ca"></a>-rawpcm<var></var></kbd></dt>
-    <dd>Unterdr&uuml;ckt den normalerweise immer vor den PCM
-Daten geschriebenen RIFF WAVEfmt&nbsp;Header.</dd>
-  </dl>
+</dl>
 </blockquote>
 <h3><a name="examples"></a>Beispiele<br>
 </h3>
 <blockquote>
-  <dl>
-    <dt><kbd>noise 65536 20 20000 100 rauschen.wav</kbd></dt>
-    <dd>Dies erzeugt 100 Zyklen eines 65536 Samples langen
+<dl>
+<dt><kbd>noise bn65536 fmin20 fmax20000 ln100 wwrauschen.wav</kbd></dt>
+<dd>Dies erzeugt 100 Zyklen eines 65536 Samples langen
 Wei&szlig;en Rauschens mit 48kHz Samplingrate (ca. 2&frac12;
 Minuten) und schreibt das in die Datei <tt>rauschen.wav</tt>.
 Frequenzen unter 20Hz und &uuml;ber 20kHz werden dabei
 unterdr&uuml;ckt.</dd>
-    <dt><kbd>noise -rawpcm 65536 50 20000&nbsp;0 -.5 | </kbd><var>irgendein
+<dt><kbd>noise&nbsp;65536 50 20000&nbsp;0 -.5 | </kbd><var>irgendein
 Ausgabeprogramm</var></dt>
-    <dd>Dies erzeugt ein unendlich oft wiederholte Folge mit
+<dd>Dies erzeugt ein unendlich oft wiederholte Folge mit
 65536
 Samples L&auml;nge und 48kHz Samplingrate. Die Intensit&auml;t
 des
@@ -93,53 +100,95 @@ und auf den Frequenzbereich von 50 bis 20kHz begrenzt. Die Ausgabe
 erfolgt &uuml;ber <tt>stdout</tt>, wo ein geeignetes
 Wiedergabeprogramm f&uuml;r eine kontinuierliche Wiedergabe des
 Testsignals sorgt.</dd>
-  </dl>
+</dl>
 </blockquote>
 <h2><a name="method"></a>Arbeitsweise</h2>
 <blockquote>
-  <p>Das Programm erzeugt das Testsignal per inverser, diskreter
-Fourier-Transformation. Dabei werden die Amplituden der einzelnen
+<p>Das Programm erzeugt das Testsignal per inverser, diskreter
+Fourier-Transformation. Dabei werden die <strong>Amplituden</strong>
+der einzelnen
 Koeffizienten nach folgender Formel berechnet:</p>
-  <blockquote>
-    <p><var>r<font size="-1"><sub>i</sub></font></var>
-= <var>f<font size="-1"><sub>i</sub><sup>k</sup></font></var></p>
-  </blockquote>
-  <p>Die Phasen dazu werden zuf&auml;llig gew&auml;hlt.</p>
-  <p>Alle Koeffizienten, die nicht im Frequenzintervall [<var>f<font size="-1"><sub>min</sub></font></var>,
-  <var>f<font size="-1"><sub>max</sub></font></var>]
-liegen, werden genullt.</p>
-  <p>Nach der R&uuml;cktransformation wird das Signal noch
-normalisiert bevor es ausgegeben wird.</p>
-</blockquote>
-<h2><a name="download"></a>Download</h2>
 <blockquote>
-  <p>Dieses Programm steht unter der <a href="gpl.txt"><i>GNU
-GENERAL PUBLIC LICENSE</i></a>.</p>
-  <p>Quellcode: <a href="mls_src.zip">Version&nbsp;0.1</a></p>
-  <p>OS/2 binary: <a href="mls_os2.zip">Version&nbsp;0.1</a><br>
-Die OS/2-Version ben&ouml;tigt die gcc Runtime <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.1-csd1.zip"><tt>libc061.dll</tt></a>
-(LGPL).</p>
+<p><var>r<font size="-1"><sub>i</sub></font></var>
+= <var>f<font size="-1"><sub>i</sub><sup>&kappa;</sup></font></var></p>
+</blockquote>
+<p>Die <strong>Phasen</strong> dazu werden
+zuf&auml;llig gew&auml;hlt.</p>
+<p>Der Exponent &kappa; steuert die
+<strong>Energiedichteverteilung</strong>. Eine homogene
+Verteilung (&kappa;&nbsp;=&nbsp;0) entspricht dabei
+Wei&szlig;em Rauschen. Positive Werte heben hohe Frequenzen an,
+negative Werte senken hohe Frequenzen ab.
+Bei&nbsp;&kappa;&nbsp;=
+-1 hat man rosa Rauschen.</p>
+<p>Alle Koeffizienten, die nicht im <strong>Frequenzintervall
+[<var>f<font size="-1"><sub>min</sub></font></var>,
+<var>f<font size="-1"><sub>max</sub></font></var>]</strong>
+liegen, werden genullt.</p>
+<p>Nach der R&uuml;cktransformation wird das Signal noch
+auf <strong>0dB FSR</strong> normalisiert bevor es
+ausgegeben wird.</p>
+</blockquote>
+<h2><a name="format"></a>Dateiformate</h2>
+<h3><a name="design_dat"></a><tt>design.dat</tt>
+Designkoeffizienten</h3>
+<blockquote>
+<table border="1" cellpadding="3" cellspacing="0">
+<tbody>
+<tr>
+<th>Spalte</th>
+<th>Kurzbezeichnung</th>
+<th>Beschreibung</th>
+</tr>
+<tr>
+<td>1</td>
+<td><var>f</var></td>
+<td>Frequenz</td>
+</tr>
+<tr>
+<td>2</td>
+<td>|<var>R</var>|</td>
+<td>Amplitude des Referenzsignals<var></var></td>
+</tr>
+<tr>
+<td>3</td>
+<td>arg <var>R</var></td>
+<td>Phase des Referenzsignals
+in Grad</td>
+</tr>
+<tr>
+<td>4</td>
+<td>re <var>R</var><var></var></td>
+<td>Realteil des Referenzsignals</td>
+</tr>
+<tr>
+<td>5</td>
+<td>im&nbsp;<var>R</var></td>
+<td>Imagin&auml;rteil des Referenzsignals</td>
+</tr>
+<tr>
+<td>6</td>
+<td><var>h</var></td>
+<td>Ordnung der Harmonischen</td>
+</tr>
+</tbody>
+</table>
 </blockquote>
 <h2><a name="history"></a>Historie</h2>
+<h4>Version 0.1.1</h4>
+<ul>
+<li>Unterst&uuml;tzung f&uuml;r Harmonische.<br>
+</li>
+</ul>
 <h4>Version 0.1</h4>
 <ul>
-  <li>erste &ouml;ffentliche Version</li>
+<li>Erste &ouml;ffentliche Version.</li>
 </ul>
 <h2><a name="todo"></a>TODOs, bekante Probleme</h2>
 <dl>
-  <dt><b>Endianess</b></dt>
-  <dd>Im moment werden alle PCM-Daten in der nativen Darstellung
+<dt><b>Endianess</b></dt>
+<dd>Im Moment werden alle PCM-Daten in der nativen Darstellung
 der verwendeten CPU ausgegeben. Das ist zur Zeit nur auf
 Little-Endian-Maschinen (darunter x86) mit dem RIFF-Header konsistent.</dd>
 </dl>
-<h2><a name="build"></a>Programm compilieren</h2>
-<p>Normalerweise wie &uuml;blich: <kbd>cd src</kbd>,
-<kbd>make</kbd>... - aber faktisch ist das Makefile
-f&uuml;r OS/2 gcc Version 3.3 geschrieben und enth&auml;lt
-zudem den Pfad zur rfftw-Library. Kurzum, da ist Feintuning
-erforderlich. Eine Anpassung der Pfade und Compiler-Optionen sollte
-aber im allgemeinen hinreichend sein. Wenn alles passt, werden beim
-Aufruf von make im Verzeichnis <tt>bin</tt> alle
-ausf&uuml;hrbaren Dateien erstellt.</p>
-</body>
-</html>
+</body></html>

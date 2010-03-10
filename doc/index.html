@@ -4,25 +4,22 @@
 
 
   <title>Analysetools</title><link type="text/css" rel="stylesheet" href="mm.css"></head>
-
 <body>
 
-<a href="glossary.html">&rarr;&nbsp;Glossar
+<a href="glossary.html">
 </a>
 <h1>Analysesoftware f&uuml;r Zweipol und Vierpolanalysen
 sowie Hysteresemessungen</h1>
 
-<a href="#description">Beschreibung</a> <a href="#reference">Referenz</a> <a href="#download">Download</a>
-<a href="#history">Historie</a>
-<a href="#todo">Todo</a>
-<a href="#build">Compilieren</a>
+<a href="#description">Beschreibung</a>&nbsp;<a href="#reference"></a><a href="#download">Download</a>
+<a href="#build">Compilieren</a> <a href="#contact">Kontakt</a>
 <h2><a name="description"></a>&Uuml;bersicht</h2>
 
 <p>Dies ist eine Reihe von Programmen und Skripten um <strong>me&szlig;technische
 Analysen</strong> mit einem <strong>PC mit Soundkarte</strong>
 durchzuf&uuml;hren.</p>
 
-<h4>Komponenten&uuml;bersicht</h4>
+<h3>Komponenten&uuml;bersicht</h3>
 
 <table border="1" cellpadding="3" cellspacing="0">
 
@@ -45,8 +42,8 @@ durchzuf&uuml;hren.</p>
 
       <td>-</td>
 
-      <td>plattformspezifisch, externe L&ouml;sung
-erforderlich</td>
+      <td>plattformspezifisch, <em>externe L&ouml;sung
+erforderlich</em></td>
       <td>Ben&ouml;tigt wird eine jeweils plattformspezifische L&ouml;sung, um 16-Bit stereo PCM-Daten von <tt>stdout</tt> zur Soundkarte und von Line-In zu <tt>stdin</tt> zu bekommen.</td>
 
     </tr>
@@ -134,21 +131,18 @@ GENERAL PUBLIC LICENSE</i></a>.</p>
 
 </dl>
 
-<h2><a name="build"></a>Programme compilieren</h2>
+<h2><a name="build"></a>Programme selber compilieren</h2>
 
-<p>F&uuml;r
-die Fast-Fourier-Transformation kommt die Bibliothek <a href="http://www.fftw.org/">FFTW</a> zum Einsatz.
-Normalerweise wie &uuml;blich: <kbd>cd src</kbd>,
-<kbd>make</kbd>...
-- aber faktisch ist das Makefile f&uuml;r OS/2 gcc Version 3.3
-geschrieben und enth&auml;lt zudem den Pfad zur rfftw-Library.
+<h3>Voraussetzungen</h3><p>F&uuml;r
+die Fast-Fourier-Transformation kommt die Bibliothek <strong><a href="http://www.fftw.org/">FFTW</a> in der Version 2.x</strong> zum Einsatz. Diese muss vorher in compilierter Form vorliegen.</p><h3>Konfiguration</h3><p>Das Makefile f&uuml;r OS/2 gcc Version 3.3
+geschrieben und enth&auml;lt zudem den <strong>Pfad zur rfftw-Library</strong>.
 Kurzum,
-da ist Feintuning erforderlich. Eine Anpassung der Pfade und
-Compiler-Optionen sollte aber im allgemeinen hinreichend sein. Wenn
+da ist Feintuning erforderlich.&nbsp;Eine Anpassung der Pfade und
+Compiler-Optionen sollte aber im allgemeinen hinreichend sein. </p><h3>Kompilieren</h3><p><strong><kbd>cd src</kbd><br><kbd>make</kbd></strong></p><p>Wenn
 alles passt, werden beim Aufruf von make im Verzeichnis <tt>bin</tt>
 alle ausf&uuml;hrbaren Dateien erstellt.</p>
 
-<h2><a name="todo"></a>Kontakt</h2><p><img alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" height="14" width="131"></p>
+<h2><a name="contact"></a>Kontakt</h2><p><img alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" height="14" width="131"></p>
 
 <dl>
 
