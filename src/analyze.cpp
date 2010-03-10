@@ -535,8 +535,10 @@ class FFTbin
       double   D;
       double   W;
       // internals
-      unsigned binc;
+      double   lf;   // last frequency (for numerical derivative)
       double   lphi; // last phase (for numerical derivative)
+      double   fnext;// next frequency for bin size
+      unsigned binc; // number of bins accumulated
    };
  private:
    const double finc;
@@ -577,7 +579,7 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
    // calibration
    docal(bin, f, U, I);
    // phase correction
-   I *= exp(Complex(0, linphase * f));
+   U *= Complex(cos(linphase*f), sin(linphase*f));
    // calc Y
    Complex Z(U/I);
    // group delay
@@ -586,16 +588,14 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
       D = (Zphi - curagg->lphi) / M_2PI;
       D -= floor(D+.5); // minimum phase
       //fprintf(stderr, "D: %f, %f\n", f, D);
-      D /= finc;
+      D /= f - curagg->lf;
+      curagg->lf   = f;
       curagg->lphi = Zphi;
    }
    if (nophase)
       Z = abs(Z);
    // weight
    double w = (*weightfn)(abs(U), abs(I), f);
-   // binsize
-   if (fbinsc)
-      binsz = (int)(bin * fbinsc + 1);
    if (curagg->binc == 0)
    {  // init
       curagg->f = f * w;
@@ -604,6 +604,7 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
       curagg->Z = Z * w;
       curagg->D = D * w;
       curagg->W = w;
+      curagg->fnext = f * (1+fbinsc) - finc;
    } else
    {  curagg->f += f * w;
       curagg->U += U * w;
@@ -612,7 +613,8 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
       curagg->D += D * w;
       curagg->W += w;
    }
-   if (++curagg->binc != binsz)
+   ++curagg->binc;
+   if (f < curagg->fnext)
       return Aggregated;
    curagg->f /= curagg->W;
    curagg->U /= curagg->W;
@@ -628,7 +630,7 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 }
 
 void FFTbin::PrintBin(FILE* dst) const
-{  fprintf(dst, "%12g %12g %12g %12g %12g " "%12g %12g %12g %12g %12g %12g %i\n",
+{  fprintf(dst, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g %12g %6i\n",
    // f    |Hl|      phil               |Hr|      phir
       f(), abs(U()), arg(U())*M_180_PI, abs(I()), arg(I())*M_180_PI,
    // |Hl|/|Hr| phil-phir          re          im
