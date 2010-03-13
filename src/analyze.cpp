@@ -34,15 +34,17 @@ typedef complex<double> Complex;
 
 
 // data buffers
-static short inbuffertmp[2*CA_MAX*N_MAX];
-static float* inbuffer1 = NULL;
-static float* inbuffer2 = NULL;
-static float* ovrbuffer1 = NULL;
-static float* ovrbuffer2 = NULL;
-static float* outbuffer1 = NULL;
-static float* outbuffer2 = NULL;
-static float window[N_MAX];
-static int* harmonics = NULL;
+static short inbuffertmp[2*CA_MAX*N_MAX]; // Buffer for raw input
+static float* inbuffer1 = NULL;  // Buffer for nominator input
+static float* inbuffer2 = NULL;  // Buffer for denominator input
+static float* ovrbuffer1 = NULL; // Buffer for overridden nominator
+static float* ovrbuffer2 = NULL; // Buffer for overridden denominator
+static float* outbuffer1 = NULL; // Buffer for FFT(inbuffer1)
+static float* outbuffer2 = NULL; // Buffer for FFT(inbuffer2)
+static float* ccbuffer1 = NULL;  // Buffer for cross correlation temporary data
+static float* ccbuffer2 = NULL;  // Buffer for cross correlation of outbuffer
+static float window[N_MAX];      // Buffer for window function
+static int* harmonics = NULL;    // Buffer for harmonics dispatch table
 
 
 static inline double sqr(double v)
@@ -141,6 +143,7 @@ static double     fbinsc      = 0;     // logarithmic binsize: fmin/fmax = 1 + f
 static double     f_inc       = 1;     // Absolute increment for harmonic table calculation
 static double     f_log       = 0;     // Relative increment for harmonic table calculation
 static unsigned   harmonic    = 0;     // analyze up to # harmonics
+static bool       crosscorr   = false; // Calculate and remove time delay by cross correlation
 static const char* datafile   = "data.dat";  // filename for analysis data
 static const char* zerofile   = "zero.dat";  // file name for zero calibration data
 static const char* zerodifffile = "zeroD.dat";// file name for differential zero calibration data
@@ -465,6 +468,48 @@ static void dofft()
    // append constant zero to FFT result to simplify analysis
    outbuffer1[N] = 0;
    outbuffer2[N] = 0;
+   
+   // Calculate cross correlation to compensate for constant group delay.
+   if (crosscorr)
+   {  // calculate outbuffer1[] * conjugate(outbuffer2[])
+      // f(0)
+      ccbuffer1[0] = outbuffer1[0] * outbuffer2[0];
+      // f(1..N/2-1)
+      for (unsigned i = 1; i < N/2; ++i)
+      { Complex c = Complex(outbuffer1[i], outbuffer1[N-i])
+                  * Complex(outbuffer2[i], -outbuffer2[N-i]);
+        ccbuffer1[i] = c.real();
+        ccbuffer1[N-i] = c.imag();
+      }
+      // f(N/2)
+      ccbuffer1[N/2] = outbuffer1[N/2] * outbuffer2[N/2];
+
+      // do the cross correlation
+      rfftw_one(PI, ccbuffer1, ccbuffer2);
+      FILE* F = fopen("cc.dat", "w");
+      write1ch(F, ccbuffer2, N);
+      fclose(F);
+
+      // use the result
+      double phiinc = M_2PI / N;
+      double asum = 0;
+      double bsum = 0;
+      double sum = 0;
+      for (unsigned i = 0; i < N; ++i)
+      { double amp = ccbuffer2[i];
+        amp *= amp;
+        asum += cos(phiinc * i) * amp;
+        bsum += sin(phiinc * i) * amp;
+        sum += amp;
+      }
+      asum /= sum;
+      bsum /= sum;
+      fprintf(stderr, "***** %12g %12g %12g %12g\n",
+        sqrt(asum*asum+bsum*bsum), atan2(bsum, asum)*M_180_PI, asum, bsum);
+        
+      // calc linphase to compensate for the group delay
+      linphase = atan2(bsum, asum) * N / freq;
+   }
 }
 
 static double* wsums;
@@ -642,62 +687,63 @@ void FFTbin::PrintBin(FILE* dst) const
 
 const ArgMap argmap[] = // must be sorted
 {  {"ainc", (ArgFn)&setflag,    &incremental, true}
- , {"al",   (ArgFn)&readuint,   &addloop, 0}
- , {"bin",  (ArgFn)&readuint,   &binsz, 0}
- , {"ca" ,  (ArgFn)&readuintdef,&addch, 2}
- , {"df" ,  (ArgFn)&readstring, &datafile, 0}
- , {"exec", (ArgFn)&readstring, &execcmd, 0}
- , {"famax",(ArgFn)&readdouble, &famax, 0}
- , {"famin",(ArgFn)&readdouble, &famin, 0}
- , {"fbin", (ArgFn)&readdouble, &fbinsc, 0}
- , {"finc", (ArgFn)&readdouble, &f_inc, 0}
- , {"flog", (ArgFn)&readdouble, &f_log, 0}
- , {"fmax", (ArgFn)&readdouble, &fmax, 0}
- , {"fmin", (ArgFn)&readdouble, &fmin, 0}
- , {"fq" ,  (ArgFn)&readdouble, &freq, 0}
- , {"g2f" , (ArgFn)&readstring, &gaindifffile, 0}
- , {"gd" ,  (ArgFn)&setuint,    &gainmode, 3}
- , {"gf" ,  (ArgFn)&readstring, &gainfile, 0}
- , {"gg" ,  (ArgFn)&setuint,    &gainmode, 2}
- , {"gr" ,  (ArgFn)&setuint,    &gainmode, 1}
- , {"h/f",  (ArgFn)&setuint,    &weightfn, (int)get1_fweight}
- , {"harm", (ArgFn)&readuint,   &harmonic, 0}
- , {"hd" ,  (ArgFn)&setuint,    &weightfn, (int)getweightD}
- , {"he" ,  (ArgFn)&setuint,    &weightfn, (int)getconstweight}
- , {"in" ,  (ArgFn)&readstring, &infile, 0}
- , {"ln" ,  (ArgFn)&readuint,   &loops, 1}
- , {"loop", (ArgFn)&setuint,    &loops, INT_MAX}
- , {"lp" ,  (ArgFn)&readuint,   &lpause, 0}
- , {"lvl",  (ArgFn)&readdouble, &noiselvl, 0}
- , {"mfft", (ArgFn)&setbit,     &method, 1}
- , {"mpca", (ArgFn)&setbit,     &method, 2}
- , {"mst",  (ArgFn)&setflag,    &stereo, true}
- , {"mxy",  (ArgFn)&setbit,     &method, 4}
- , {"n"  ,  (ArgFn)&readN,      &N, 0}
+ , {"al",   (ArgFn)&readuint,   &addloop,     0}
+ , {"bin",  (ArgFn)&readuint,   &binsz,       0}
+ , {"ca" ,  (ArgFn)&readuintdef,&addch,       2}
+ , {"df" ,  (ArgFn)&readstring, &datafile,    0}
+ , {"exec", (ArgFn)&readstring, &execcmd,     0}
+ , {"famax",(ArgFn)&readdouble, &famax,       0}
+ , {"famin",(ArgFn)&readdouble, &famin,       0}
+ , {"fbin", (ArgFn)&readdouble, &fbinsc,      0}
+ , {"finc", (ArgFn)&readdouble, &f_inc,       0}
+ , {"flog", (ArgFn)&readdouble, &f_log,       0}
+ , {"fmax", (ArgFn)&readdouble, &fmax,        0}
+ , {"fmin", (ArgFn)&readdouble, &fmin,        0}
+ , {"fq" ,  (ArgFn)&readdouble, &freq,        0}
+ , {"g2f" , (ArgFn)&readstring, &gaindifffile,0}
+ , {"gd" ,  (ArgFn)&setuint,    &gainmode,    3}
+ , {"gf" ,  (ArgFn)&readstring, &gainfile,    0}
+ , {"gg" ,  (ArgFn)&setuint,    &gainmode,    2}
+ , {"gr" ,  (ArgFn)&setuint,    &gainmode,    1}
+ , {"h/f",  (ArgFn)&setuint,    &weightfn,    (int)get1_fweight}
+ , {"harm", (ArgFn)&readuint,   &harmonic,    0}
+ , {"hd" ,  (ArgFn)&setuint,    &weightfn,    (int)getweightD}
+ , {"he" ,  (ArgFn)&setuint,    &weightfn,    (int)getconstweight}
+ , {"in" ,  (ArgFn)&readstring, &infile,      0}
+ , {"ln" ,  (ArgFn)&readuint,   &loops,       1}
+ , {"loop", (ArgFn)&setuint,    &loops,       INT_MAX}
+ , {"lp" ,  (ArgFn)&readuint,   &lpause,      0}
+ , {"lvl",  (ArgFn)&readdouble, &noiselvl,    0}
+ , {"mfft", (ArgFn)&setbit,     &method,      1}
+ , {"mpca", (ArgFn)&setbit,     &method,      2}
+ , {"mst",  (ArgFn)&setflag,    &stereo,      true}
+ , {"mxy",  (ArgFn)&setbit,     &method,      4}
+ , {"n"  ,  (ArgFn)&readN,      &N,           0}
  , {"olc",  (ArgFn)&readuint,   &overwrt[0].column, 0}
- , {"olf",  (ArgFn)&readstring, &overwrt[0].file, 0}
+ , {"olf",  (ArgFn)&readstring, &overwrt[0].file,   0}
  , {"orc",  (ArgFn)&readuint,   &overwrt[1].column, 0}
- , {"orf",  (ArgFn)&readstring, &overwrt[1].file, 0}
- , {"pdc",  (ArgFn)&readuintdef,&purgech, 1}
- , {"phl",  (ArgFn)&readdouble, &linphase, 0}
- , {"phn",  (ArgFn)&setuint,    &nophase, 1}
- , {"plot", (ArgFn)&readstring, &plotcmd, 0}
- , {"psa",  (ArgFn)&readuintdef,&discsamp, 1}
- , {"pte",  (ArgFn)&readuintdef,&disctrail, 1}
- , {"rf" ,  (ArgFn)&readstring, &rawfile, 0}
- , {"rref", (ArgFn)&readdouble, &rref, 0}
- , {"scm",  (ArgFn)&readuint,   &scalemode, 0}
- , {"wd" ,  (ArgFn)&setflag,    &writedata, true}
- , {"wf" ,  (ArgFn)&readstring, &windowfile, 0}
- , {"win",  (ArgFn)&readuintdef,&winfn, 2}
- , {"wr" ,  (ArgFn)&setflag,    &writeraw, true}
+ , {"orf",  (ArgFn)&readstring, &overwrt[1].file,   0}
+ , {"pdc",  (ArgFn)&readuintdef,&purgech,     1}
+ , {"phcc", (ArgFn)&setflag,    &crosscorr,   true}
+ , {"phl",  (ArgFn)&readdouble, &linphase,    0}
+ , {"phn",  (ArgFn)&setuint,    &nophase,     1}
+ , {"plot", (ArgFn)&readstring, &plotcmd,     0}
+ , {"psa",  (ArgFn)&readuintdef,&discsamp,    1}
+ , {"pte",  (ArgFn)&readuintdef,&disctrail,   1}
+ , {"rf" ,  (ArgFn)&readstring, &rawfile,     0}
+ , {"rref", (ArgFn)&readdouble, &rref,        0}
+ , {"scm",  (ArgFn)&readuint,   &scalemode,   0}
+ , {"wd" ,  (ArgFn)&setflag,    &writedata,   true}
+ , {"wf" ,  (ArgFn)&readstring, &windowfile,  0}
+ , {"win",  (ArgFn)&readuintdef,&winfn,       2}
+ , {"wr" ,  (ArgFn)&setflag,    &writeraw,    true}
  , {"ww" ,  (ArgFn)&setflag,    &writewindow, true}
- , {"z2f" , (ArgFn)&readstring, &zerodifffile, 0}
- , {"zd" ,  (ArgFn)&setuint,    &zeromode, 3}
- , {"zf" ,  (ArgFn)&readstring, &zerofile, 0}
- , {"zg" ,  (ArgFn)&setuint,    &zeromode, 2}
- , {"zn" ,  (ArgFn)&setuint,    &normalize, 1}
- , {"zr" ,  (ArgFn)&setuint,    &zeromode, 1}
+ , {"z2f" , (ArgFn)&readstring, &zerodifffile,0}
+ , {"zd" ,  (ArgFn)&setuint,    &zeromode,    3}
+ , {"zf" ,  (ArgFn)&readstring, &zerofile,    0}
+ , {"zg" ,  (ArgFn)&setuint,    &zeromode,    2}
+ , {"zn" ,  (ArgFn)&setuint,    &normalize,   1}
+ , {"zr" ,  (ArgFn)&setuint,    &zeromode,    1}
 };
 const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
@@ -723,7 +769,7 @@ int main(int argc, char* argv[])
    gainadj[1] /= 32767;
    // allocate buffers
    if (method & 4)
-   {  // reserver space for integrals and differentials too
+   {  // reserve space for integrals and differentials too
       inbuffer1 = new float[3*N];
       inbuffer2 = new float[3*N];
       outbuffer1 = new float[3*N+1];
@@ -733,6 +779,10 @@ int main(int argc, char* argv[])
       inbuffer2 = new float[N];
       outbuffer1 = new float[N+1];
       outbuffer2 = new float[N+1];
+   }
+   if (crosscorr && (method & 1))
+   {  ccbuffer1 = new float[N];
+      ccbuffer2 = new float[N];
    }
    harmonics = new int[N/2+1];
    wsums = new double[N_MAX/2+1];
