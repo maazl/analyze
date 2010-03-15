@@ -9,7 +9,7 @@
 <h1>Analysesoftware f&uuml;r &Uuml;bertragungsfunktions-
 und Hysterese-Messungen</h1>
 <p><span class="abstract">Release: 0.11</span></p>
-<a href="#description">Beschreibung</a> <a href="#reference">Referenz</a> <a href="#cal">Kalibrierung</a>
+ <a href="#options">Parameter</a> <a href="#cal">Kalibrierung</a>
 <a href="index.html#download">Download</a>
 <a href="#history">Historie</a>
 <a href="#todo">Todo</a>
@@ -20,14 +20,17 @@ Echtzeit und visualisiert die Ergebnisse z.B. mit
 <a href="http://www.gnuplot.info">Gnuplot</a>. Das
 Programm liegt als C++-Quelltext vor und sollte sich mit vertretbarem
 Aufwand auf anderen Plattform &uuml;bersetzen lassen. F&uuml;r
-die Fast-Fourier-Transformation kommt die Bibliothek <a href="http://www.fftw.org/">FFTW</a> zum Einsatz.</p>
+die Fast-Fourier-Transformation kommt die Bibliothek <a href="http://www.fftw.org/">FFTW</a> in
+der Version 2.x zum
+Einsatz.</p>
 <h3>Einsatzbereiche</h3>
 <ul>
 <li>Messung von <strong>Impedanzen</strong> oder <strong>&Uuml;bertragungsfunktionen</strong>
 mit Rausch- oder <a href="glossar.html#MLS">MLS-Signalen</a>.</li>
+<li>Messung von <strong>harmonischen Verzerrungen</strong> mit speziellen Rauschsignalen.</li>
 <li>Messung von <strong>Hysteresen</strong>.</li>
 </ul>
-<h2><a name="reference"></a>Referenz</h2>
+<h3><a name="sequence" id="sequence"></a>Programmablauf</h3>
 <blockquote>
 <p>Das Programm liest kontinuierlich <strong>16-Bit
 PCM-kodierte Daten in 2 Kan&auml;len</strong> von <tt><strong>stdin</strong></tt>, einer <a href="#_in">Datei</a>&nbsp;und analysiert
@@ -142,7 +145,7 @@ der Fourier-Transformation zur Verf&uuml;gung, aus dem sehr leicht <var>ESC</var
 bzw. <var>ESL</var>(<var>f</var>) und <var>ESR</var>(<var>f</var>)
 extrahiert werden kann.</p>
 </blockquote>
-<h3><a name="options"></a>Kommandozeilenparameter</h3>
+<h2><a name="options"></a>Kommandozeilenparameter</h2>
 <blockquote>
 <dl compact="compact">
 <dt><kbd><a name="_ainc"></a>ainc</kbd></dt>
@@ -494,7 +497,7 @@ angegebenen Datei gelesen. <a href="#gain_dat">&rarr;Dateiformat</a></dd>
 <blockquote>
 <p>@@@TODO</p>
 </blockquote>
-<h3><a name="fileformat"></a>Dateiformate</h3>
+<h2><a name="fileformat"></a>Dateiformate</h2>
 <blockquote>
 <p>Alle Dateien sind ASCII-Dateien, die aus
 tabulator-separierten,
@@ -505,8 +508,8 @@ Zuk&uuml;nftige Programmversionen k&ouml;nnten jedoch eine
 im ersten Zeichen zu erkennen und ebenfalls tabulator-separiert. Im
 folgenden sind die Bedeutungen der einzelnen Spalten beschrieben.</p>
 </blockquote>
-<h4><tt><a name="data_dat"></a>data.dat</tt>
-&ndash; FFT-Modus</h4>
+<h3><tt><a name="data_dat"></a>data.dat</tt>
+&ndash; FFT-Modus</h3>
 <blockquote>
 <table border="1" cellpadding="3" cellspacing="0">
 <tbody>
@@ -656,7 +659,7 @@ Serieninduktivit&auml;t</td>
 </tbody>
 </table>
 </blockquote>
-<h4><tt>data.dat</tt> &ndash;Hysteresis-Modus</h4>
+<h3><tt>data.dat</tt> &ndash;Hysteresis-Modus</h3>
 <blockquote>
 <table border="1" cellpadding="3" cellspacing="0">
 <tbody>
@@ -703,7 +706,7 @@ Serieninduktivit&auml;t</td>
 </tbody>
 </table>
 </blockquote>
-<h4><tt><a name="gain_dat"></a>gain.dat</tt></h4>
+<h3><tt><a name="gain_dat"></a>gain.dat</tt></h3>
 <blockquote>
 <table border="1" cellpadding="3" cellspacing="0">
 <tbody>
@@ -745,7 +748,7 @@ der Option <a href="#_gr"><tt>gr</tt></a>
 oder <a href="#_gd"><tt>gd</tt></a>
 werden nur die ersten beiden Spalten verwendet.</p>
 </blockquote>
-<h4><tt><a name="zero_dat"></a>zero.dat</tt></h4>
+<h3><tt><a name="zero_dat"></a>zero.dat</tt></h3>
 <blockquote>
 <table border="1" cellpadding="3" cellspacing="0">
 <tbody>
@@ -889,7 +892,7 @@ werden nur die ersten 8 Spalten verwendet. <a href="analyze.html#zero_cal">&rarr
 </tbody>
 </table>
 </blockquote>
-<h4><tt><a name="window_dat"></a>window.dat</tt></h4>
+<h3><tt><a name="window_dat"></a>window.dat</tt></h3>
 <blockquote>
 <table border="1" cellpadding="3" cellspacing="0">
 <tbody>
@@ -911,7 +914,7 @@ werden nur die ersten 8 Spalten verwendet. <a href="analyze.html#zero_cal">&rarr
 </tbody>
 </table>
 </blockquote>
-<h4><tt><a name="raw_dat"></a>raw.dat</tt></h4>
+<h3><tt><a name="raw_dat"></a>raw.dat</tt></h3>
 <blockquote>
 <table border="1" cellpadding="3" cellspacing="0">
 <tbody>
