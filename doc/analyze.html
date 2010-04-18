@@ -1,10 +1,8 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html><head>
-<meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type"><title>Analysesoftware f&uuml;r
-&Uuml;bertragungsfunktions- und Hysterese-Messungen</title>
+<meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type"><title>Analysesoftware f&uuml;r &Uuml;bertragungsfunktions- und Hysterese-Messungen</title>
 
-<link href="mm.css" rel="stylesheet" type="text/css">
-</head>
+<link href="mm.css" rel="stylesheet" type="text/css"></head>
 <body>
 <a href="index.html">&rarr;&nbsp;Index</a>
 <a href="glossary.html">&rarr;&nbsp;Glossar
@@ -18,7 +16,7 @@ und Hysterese-Messungen</h1>
 <a href="#todo">Todo</a>
 <a href="index.html#build">Compilieren</a>
 <h2><a name="description"></a>Kurzbeschreibung</h2>
-<p>Dieses Programm analysiert einlaufende Me&szlig;daten in
+<p>Dieses Programm analysiert einlaufende Messdaten in
 Echtzeit und visualisiert die Ergebnisse z.B. mit
 <a href="http://www.gnuplot.info">Gnuplot</a>. Das
 Programm liegt als C++-Quelltext vor und sollte sich mit vertretbarem
@@ -31,7 +29,7 @@ Einsatz.</p>
 <li>Messung von <strong>Impedanzen</strong> oder <strong>&Uuml;bertragungsfunktionen</strong>
 mit Rausch- oder <a href="glossar.html#MLS">MLS-Signalen</a>.</li>
 <li>Messung von <strong>harmonischen Verzerrungen</strong>
-mit speziellen Rauschsignalen.</li>
+mit speziellen Rauchsignalen.</li>
 <li>Messung von <strong>Hysteresen</strong>.</li>
 </ul>
 <h3><a name="sequence" id="sequence"></a>Programmablauf</h3>
@@ -114,7 +112,7 @@ sauber zu trennen. Vorausgesetzt es <em>ist</em> eine
 Serienschaltung. F&uuml;r ESR-Messungen von Elkos eignet sie sich
 daher nicht.<br>
 Ein anderer Vorteil der Methode ist der verschwindend geringe
-Rechenzeitaufwand. Die Aufwandsklasse ist O(n) in der Zahl der
+Rechenzeit. Die Aufwandsklasse ist O(n) in der Zahl der
 Messpunkte und die Berechnung kann auch auf sehr langsamen CPUs
 on-the-fly
 erfolgen.</p>
@@ -165,311 +163,306 @@ extrahiert werden kann.</p>
 <th>Kategorie</th>
 </tr>
 <tr>
-<td>ainc</td>
+<td><tt>ainc</tt></td>
 <td>Inkrementeller Modus</td>
 <td>aus</td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>al</td>
+<td><tt>al</tt></td>
 <td>Mehrere Zyklen addieren</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>bin</td>
+<td><tt>bin</tt></td>
 <td>FFT-Kan&auml;le zusammenfassen</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>ca</td>
+<td><tt>ca</tt></td>
 <td>Samples zusammenfassen</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>df</td>
+<td><tt>df</tt></td>
 <td>Name der Datendatei</td>
-<td>data.dat</td>
+<td><tt>data.dat</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>exec</td>
+<td><tt>exec</tt></td>
 <td>Kommando nach jeder Analyse</td>
 <td>-</td>
 <td>Programmablauf</td>
 </tr>
 <tr>
-<td>famin famax</td>
+<td><tt>famin famax</tt></td>
 <td>Frequenzbereich f&uuml;r die LCR-Analyse</td>
 <td>fmin bzw. fmax</td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>fbin</td>
+<td><tt>fbin</tt></td>
 <td>FFT-Kan&auml;le progressiv zusammenfassen</td>
-<td>0</td>
+<td><tt>0</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>fmin fmax</td>
+<td><tt>fmin fmax</tt></td>
 <td>Frequenzbereich f&uuml;r die Analyse</td>
-<td>0 bzw. Nyquist Freq.</td>
+<td><tt>0</tt> bzw. Nyquist Freq.</td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>fq</td>
+<td><tt>fq</tt></td>
 <td>Samplingfrequenz</td>
-<td>48000</td>
+<td><tt>48000</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>g2f</td>
+<td><tt>g2f</tt></td>
 <td>Dateiname f&uuml;r Validierung der <a href="analyze.html#gain-cal">Gainkalibrierung</a></td>
-<td>gainD.dat</td>
+<td><tt>gainD.dat</tt></td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>gd</td>
+<td><tt>gd</tt></td>
 <td>Verifikation der <a href="analyze.html#gain-cal">Gainkalibrierung</a>
 durchf&uuml;hren</td>
 <td>aus</td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>gf</td>
+<td><tt>gf</tt></td>
 <td>Dateiname f&uuml;r die Gainkalibrierung</td>
-<td>gain.dat</td>
+<td><tt>gain.dat</tt></td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>gg</td>
+<td><tt>gg</tt></td>
 <td><a href="analyze.html#gain-cal">Gainkalibrierung</a>
 durchf&uuml;hren</td>
 <td>aus</td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>gr</td>
+<td><tt>gr</tt></td>
 <td><a href="analyze.html#gain-cal">Gainkalibrierung</a>
 verwenden</td>
 <td>aus</td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>h/f</td>
+<td><tt>h/f</tt></td>
 <td>1/<var>f</var>-Gewichtung</td>
 <td>Standardgewichtung</td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>harm</td>
+<td><tt>harm</tt></td>
 <td>Die ersten <i><tt>n</tt></i>
 Harmonischen ber&uuml;cksichtigen</td>
-<td>0</td>
+<td><tt>0</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>hd</td>
-<td>Gewichtungsfunktion f&uuml;r differenziellen
+<td><tt>hd</tt></td>
+<td>Gewichtsfunktion f&uuml;r differenziellen
 Scanmodus</td>
 <td>Standardgewichtung</td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>he</td>
+<td><tt>he</tt></td>
 <td>Gewichtung deaktivieren</td>
 <td>Standardgewichtung</td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>in</td>
+<td><tt>in</tt></td>
 <td>Eingabedateiname</td>
 <td>stdin</td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>ln</td>
+<td><tt>ln</tt></td>
 <td>Nach <i><tt>n</tt></i>
 Analysen stoppen</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>Programmablauf</td>
 </tr>
 <tr>
-<td>loop</td>
+<td><tt>loop</tt></td>
 <td>In Endlosschleife analysieren</td>
 <td>aus</td>
 <td>Programmablauf</td>
 </tr>
 <tr>
-<td>lp</td>
+<td><tt>lp</tt></td>
 <td>Pause bei der <a href="analyze.html#gain-cal">Nullkalibrierung</a></td>
-<td>10</td>
+<td><tt>10</tt></td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>lvl</td>
+<td><tt>lvl</tt></td>
 <td>St&ouml;rpegel f&uuml;r Gewichtung</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>mfft mpca mxy</td>
+<td><tt>mfft mpca mxy</tt></td>
 <td>Analysemodus</td>
 <td>keine</td>
 <td>Programmablauf</td>
 </tr>
 <tr>
-<td>mst</td>
+<td><tt>mst</tt></td>
 <td>Stereo Modus</td>
 <td>aus</td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>n</td>
+<td><tt>n</tt></td>
 <td>Analyseblockl&auml;nge</td>
-<td>8192</td>
+<td><tt>8192</tt></td>
 <td>allg. Parameter</td>
 </tr>
 <tr>
-<td>olf olc</td>
+<td><tt>olf olc</tt></td>
 <td>Dateiname und Spalte zum &uuml;berschreiben des
 Nutzsignals</td>
-<td>keine bzw. 1</td>
+<td>keine bzw. <tt>1</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>orf orc</td>
+<td><tt>orf orc</tt></td>
 <td>Dateiname und Spalte zum &uuml;berschreiben des
 Referenzsignals</td>
-<td>keine bzw. 1</td>
+<td>keine bzw. <tt>1</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>pdc</td>
+<td><tt>pdc</tt></td>
 <td>Die ersten Frequenzkan&auml;le nullen</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>phcc</td>
+<td><tt>phcc</tt></td>
 <td>Gruppenlaufzeit anpassen</td>
 <td>aus</td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>phl</td>
+<td><tt>phl</tt></td>
 <td>Konstante Gruppenlaufzeit abziehen</td>
-<td>0</td>
+<td><tt>0</tt></td>
 <td>FFT-Parameter</td>
 </tr>
+
 <tr>
-<td>phn</td>
-<td>Phaseninformation Nullen</td>
-<td>aus</td>
-<td>FFT-Parameter</td>
-</tr>
-<tr>
-<td>plot</td>
+<td><tt>plot</tt></td>
 <td>Ausgabe nach stdout nach jeder Analyse</td>
 <td>keine</td>
 <td>Programmablauf</td>
 </tr>
 <tr>
-<td>psa</td>
+<td><tt>psa</tt></td>
 <td>Die ersten <kbd><var>num</var></kbd>
 Samples verwerfen</td>
-<td>0</td>
+<td><tt>0</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>pte</td>
+<td><tt>pte</tt></td>
 <td>Eingabedatenstrom bis zum Ende lesen</td>
 <td>aus</td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>rf</td>
+<td><tt>rf</tt></td>
 <td>Dateiname f&uuml;r Rohdaten</td>
-<td>raw.dat</td>
+<td><tt>raw.dat</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>rref</td>
+<td><tt>rref</tt></td>
 <td>Referenzwiderstand</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>scm</td>
+<td><tt>scm</tt></td>
 <td>Scanmodus</td>
-<td>1</td>
+<td><tt>1</tt></td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>wd</td>
+<td><tt>wd</tt></td>
 <td>Daten nach jeder Analyse schreiben</td>
 <td>aus</td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>wf</td>
+<td><tt>wf</tt></td>
 <td>Dateiname f&uuml;r die Fensterfunktion</td>
-<td>window.dat</td>
+<td><tt>window.dat</tt></td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>win</td>
+<td><tt>win</tt></td>
 <td>Fensterfunktion</td>
 <td>aus/Rechteck</td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>wr</td>
+<td><tt>wr</tt></td>
 <td>Rohdaten schreiben</td>
 <td>aus</td>
 <td>Eingabedaten</td>
 </tr>
 <tr>
-<td>ww</td>
+<td><tt>ww</tt></td>
 <td>Fensterfunktion schreiben</td>
 <td>aus</td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>z2f</td>
+<td><tt>z2f</tt></td>
 <td>Dateiname f&uuml;r Validierung der Nullkalibrierung</td>
-<td>zeroD.dat</td>
+<td><tt>zeroD.dat</tt></td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>zd</td>
+<td><tt>zd</tt></td>
 <td>Validierung der <a href="analyze.html#gain-cal">Nullkalibrierung</a>
 durchf&uuml;hren</td>
 <td>aus</td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>zf</td>
+<td><tt>zf</tt></td>
 <td>Dateiname f&uuml;r Nullkalibrierung</td>
-<td>zero.dat</td>
+<td><tt>zero.dat</tt></td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>zg</td>
+<td><tt>zg</tt></td>
 <td>Nullkalibrierung durchf&uuml;hren</td>
 <td>aus</td>
 <td>Kalibrierung</td>
 </tr>
 <tr>
-<td>zn</td>
+<td><tt>zn</tt></td>
 <td>Amplituden normalisieren</td>
 <td>aus</td>
 <td>FFT-Parameter</td>
 </tr>
 <tr>
-<td>zr</td>
+<td><tt>zr</tt></td>
 <td>Nullkalibrierung verwenden</td>
 <td>aus</td>
 <td>Kalibrierung</td>
@@ -500,7 +493,7 @@ bei der Verarbeitung der PCM-Daten. Dieses Feature kann genutzt werden,
 um die Samplingrate zu dr&uuml;cken und gleichzeitig das Rauschen
 zu
 mindern. Es handelt sich dabei nicht um eine geeignete Methode zum
-Downsampeln, sondern eher um eine Methode zur reduktion des
+Downsampeln, sondern eher um eine Methode zur Reduktion des
 ADC-Rauschens.<br>
 Fehlt der Parameter <var><kbd>num</kbd></var>,
 so werden je 2 Samples addiert und die effektive Samplingrate halbiert.</dd>
@@ -603,7 +596,7 @@ als eigene Zeile ausgeben. Dies kann z.B. verwendet werden, um eine
 grafische Visualisierung z.B. durch Gnuplot in Echtzeit zu
 aktualisieren.</dd>
 <dt><kbd><a name="_pte"></a>pte</kbd></dt>
-<dd>Nach Beedigung der angegebenen Anzahl an
+<dd>Nach Beendigung der angegebenen Anzahl an
 Analyse-Durchl&auml;ufen (Option <a href="analyze.html#_ln"><kbd>ln</kbd></a>)
 weiterhin Daten lesen, diese jedoch verwerfen. Dies kann
 n&uuml;tzlich
@@ -654,10 +647,10 @@ ausgegangen. Zuk&uuml;nftige Programmversionen k&ouml;nnten
 dies jedoch
 als einen Fehler werten.</dd>
 <dt><kbd><a name="_h_f"></a>h/f</kbd></dt>
-<dd>Automatische Gewichtungsfunktion bei der Analyse der
+<dd>Automatische Gewichtsfunktion bei der Analyse der
 FFT-Daten durch eine 1/<var>f</var>-Gewichtung ersetzen.</dd>
 <dt><kbd><a name="_hd"></a>hd</kbd></dt>
-<dd>Automatische Gewichtungsfunktion f&uuml;r den
+<dd>Automatische Gewichtsfunktion f&uuml;r den
 differenziellen Scanmodus <a href="analyze.html#_scm"><kbd>scm1</kbd></a>
 aktivieren.</dd>
 <dt><kbd><a name="_he"></a>he</kbd></dt>
@@ -733,12 +726,12 @@ von Kan&auml;len relevant. Siehe <a href="analyze.html#multichannel">Mehrkanalme
 <dt><kbd><a name="_pdc"></a>pdc<var>num</var></kbd></dt>
 <dd>Die ersten <var><kbd>num</kbd></var>
 Frequenzkan&auml;le bei der
-FFT-Analyse ausnullen. Diese Option kann alternativ zu <a href="analyze.html#_fmin"><kbd>fmin</kbd></a>
+FFT-Analyse nullen. Diese Option kann alternativ zu <a href="analyze.html#_fmin"><kbd>fmin</kbd></a>
 verwendet werden, um zu verhindern, dass nicht relevante DC-Offsets die
 automatische Achsenskalierung einer Grafik negativ beeinflussen. Im
 Gegensatz zu <kbd>fmin</kbd> werden die Zeilen dennoch in
 die
-Ergebnisdateien geschrieben und uninitialisierte Werte in den
+Ergebnisdateien geschrieben und nicht initialisierte Werte in den
 Kalibrierungsdateien vermieden. Das kann jedoch nach hinten losgehen,
 wenn sich einer dieser Werte im Nenner einer Folgekalkulation
 wiederfindet (z.B. der Strom bei der Impedanzberechnung). Deshalb wird
@@ -756,14 +749,10 @@ zusammenfassen der Kan&auml;le nicht zuverl&auml;ssig
 ausgewickelt werden k&ouml;nnen.
 Wenn die Option aktiviert ist, erfolgt eine zus&auml;tzliche
 Ausgabe der
-angepassten Verz&ouml;gerung bei der Analyse.</dd>
+angepassten Verz&ouml;gerung bei der Analyse. Die Daten in der <a href="#_wd">Ausgabedatei</a> enthalten die Verz&ouml;gerung dann aber nicht mehr.</dd>
 <dt><kbd><a name="_phl"></a>phl<var>delay</var></kbd></dt>
 <dd>Konstante Gruppenlaufzeit von den Phasendaten abziehen. <var><kbd>delay</kbd></var>
-ist in Sekunden anzugeben.</dd>
-<dt><kbd><a name="_phn"></a>phn</kbd></dt>
-<dd>Phaseninformation Nullen. Mit diese Option wird nur noch
-der Betrag der &Uuml;bertragungsfunktion analysiert.</dd>
-<dt><kbd><a name="_wd"></a>wd</kbd></dt>
+ist in Sekunden anzugeben.</dd><dt><kbd><a name="_wd"></a>wd</kbd></dt>
 <dd>Ausf&uuml;hrliche Ergebnisse nach Abschluss (je)der
 Analyse in die Datei <tt>data.dat</tt> oder die mit der
 Option <a href="analyze.html#_df"><kbd>df</kbd></a>
@@ -771,7 +760,7 @@ angegebene Datei schreiben. <a href="analyze.html#data_dat">&rarr;Dateiformat</a
 <dt><kbd><a name="_wf"></a>wf<var>filename</var></kbd></dt>
 <dd>Dateiname f&uuml;r die Ausgabe der Fensterfunktion
 (Option <a href="analyze.html#_ww"><kbd>ww</kbd></a>).
-Standardm&auml;&szlig;ig heisst die Datei <tt>window.dat</tt>.</dd>
+Standardm&auml;&szlig;ig hei&szlig;t die Datei <tt>window.dat</tt>.</dd>
 <dt><kbd><a name="_win"></a>win<var>typ</var></kbd></dt>
 <dd>Festerfunktion vor der FFT-Analyse verwenden. Derzeit
 gibt sind folgende Fensterfunktionen implementiert:<br>
@@ -893,13 +882,12 @@ angegebenen Datei gelesen. <a href="analyze.html#gain_dat">&rarr;Dateiformat</a>
 </blockquote>
 <h2><a name="fileformat"></a>Dateiformate</h2>
 <blockquote>
-<p>Alle Dateien sind ASCII-Dateien, die aus
-tabulator-separierten,
+<p>Alle Dateien sind ASCII-Dateien, die aus Tabulator-separierten,
 numerischen Spalten bestehen. Es gibt derzeit keine
 Spalten&uuml;berschriften. Die Daten beginnen sofort mit Zeile 1.
 Zuk&uuml;nftige Programmversionen k&ouml;nnten jedoch eine
 &Uuml;berschriftszeile generieren. Diese ist an einem <strong><tt>#</tt></strong>
-im ersten Zeichen zu erkennen und ebenfalls tabulator-separiert. Im
+im ersten Zeichen zu erkennen und ebenfalls Tabulator-separiert. Im
 folgenden sind die Bedeutungen der einzelnen Spalten beschrieben.</p>
 </blockquote>
 <h3><tt><a name="data_dat"></a>data.dat</tt>
@@ -913,60 +901,60 @@ folgenden sind die Bedeutungen der einzelnen Spalten beschrieben.</p>
 <th>Beschreibung</th>
 </tr>
 <tr>
-<td>$1</td>
+<td>[1]</td>
 <td><var>f</var></td>
 <td>Frequenz</td>
 </tr>
 <tr>
-<td>$2</td>
+<td>[2]</td>
 <td>|<var>U</var>|</td>
 <td>Amplitude von <var>U</var>(<var>f</var>)</td>
 </tr>
 <tr>
-<td>$3</td>
+<td>[3]</td>
 <td>arg <var>U</var></td>
 <td>Phase von <var>U</var>(<var>f</var>)
 in Grad</td>
 </tr>
 <tr>
-<td>$4</td>
+<td>[4]</td>
 <td>|<var>I</var>|</td>
 <td>Amplitude von <var>I</var>(<var>f</var>)</td>
 </tr>
 <tr>
-<td>$5</td>
+<td>[5]</td>
 <td>arg&nbsp;<var>I</var></td>
 <td>Phase von <var>I</var>(<var>f</var>)
 in Grad</td>
 </tr>
 <tr>
-<td>$6</td>
+<td>[6]</td>
 <td>|<var>U</var>/<var>I</var>|</td>
 <td>Amplitude der Impedanz <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)</td>
 </tr>
 <tr>
-<td>$7</td>
+<td>[7]</td>
 <td>arg <var>U</var>/<var>I</var></td>
 <td>Phase der Impedanz <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
 in Grad</td>
 </tr>
 <tr>
-<td>$8</td>
+<td>[8]</td>
 <td>re&nbsp;<var>U</var>/<var>I</var></td>
 <td>Realteil der Impedanz <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)</td>
 </tr>
 <tr>
-<td>$9</td>
+<td>[9]</td>
 <td>im <var>U</var>/<var>I</var></td>
 <td>Imagin&auml;rteil der Impedanz <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)</td>
 </tr>
 <tr>
-<td>$10</td>
+<td>[10]</td>
 <td><var>weight</var></td>
 <td>relativer Gewichtungsfaktor</td>
 </tr>
 <tr>
-<td>$11</td>
+<td>[11]</td>
 <td><var>delay</var></td>
 <td>Gruppenlaufzeit d(<var>U</var>/<var>I</var>)/d<var>&omega;</var>,
 ergibt nur f&uuml;r Vierpolmessungen Sinn.</td>
@@ -992,7 +980,7 @@ folgt berechnet werden:</p>
 <td valign="middle"><a href="glossary.htlm#ESR"><var>ESR</var></a></td>
 <td valign="middle">&Auml;quivalenter
 Serienwiderstand</td>
-<td valign="middle">$8 &middot; <var>R<sub>ref</sub></var></td>
+<td valign="middle">[8] &middot; <var>R<sub>ref</sub></var></td>
 <td valign="middle">&Omega;</td>
 <td valign="middle"></td>
 </tr>
@@ -1008,13 +996,13 @@ Serienkapazit&auml;t</td>
 </tr>
 <tr>
 <td style="border-top: 1px solid black;">2&pi;
-&middot; $1 &middot; $9 &middot; <var>R<sub>ref</sub></var></td>
+&middot; [1] &middot; [9] &middot; <var>R<sub>ref</sub></var></td>
 </tr>
 </tbody>
 </table>
 </td>
 <td valign="middle">F</td>
-<td valign="middle">nur, wenn $9 &le; 0</td>
+<td valign="middle">nur, wenn [9] &le; 0</td>
 </tr>
 <tr>
 <td valign="middle"><a href="glossary.html#ESL"><var>ESL</var></a></td>
@@ -1024,29 +1012,29 @@ Serieninduktivit&auml;t</td>
 <table border="0" cellpadding="0" cellspacing="0">
 <tbody>
 <tr>
-<td align="center" nowrap="nowrap">$9
+<td align="center" nowrap="nowrap">[9]
 &middot; <var>R<sub>ref</sub></var></td>
 </tr>
 <tr>
-<td align="center">2&pi; &middot; $1</td>
+<td align="center">2&pi; &middot; [1]</td>
 </tr>
 </tbody>
 </table>
 </td>
 <td valign="middle">H</td>
-<td valign="middle">nur, wenn $9 &ge; 0</td>
+<td valign="middle">nur, wenn [9] &ge; 0</td>
 </tr>
 <tr>
 <td valign="middle">|<var>Z</var>|</td>
 <td valign="middle">Betrag der Impedanz</td>
-<td valign="middle">$6 &middot; <var>R<sub>ref</sub></var></td>
+<td valign="middle">[6] &middot; <var>R<sub>ref</sub></var></td>
 <td valign="middle">&Omega;</td>
 <td valign="middle"></td>
 </tr>
 <tr>
 <td valign="middle"><var>Q</var></td>
 <td valign="middle">Effektive G&uuml;te</td>
-<td valign="middle">|$9| / $8</td>
+<td valign="middle">|[9]| / [8]</td>
 <td valign="middle"></td>
 <td valign="middle"></td>
 </tr>
@@ -1063,37 +1051,37 @@ Serieninduktivit&auml;t</td>
 <th>Beschreibung</th>
 </tr>
 <tr>
-<td>$1</td>
+<td>[1]</td>
 <td><var>t</var></td>
 <td>relativer Zeitindex (bei Zeile 1 immer 0)</td>
 </tr>
 <tr>
-<td>$2</td>
+<td>[2]</td>
 <td><var>U</var></td>
 <td>Momentanwert <var>U</var>(<var>t</var>)</td>
 </tr>
 <tr>
-<td>$3</td>
+<td>[3]</td>
 <td><var>I</var></td>
 <td>Momentanwert <var>I</var>(<var>t</var>)</td>
 </tr>
 <tr>
-<td>$4</td>
+<td>[4]</td>
 <td>TODO@@@</td>
 <td>&nbsp;</td>
 </tr>
 <tr>
-<td>$5</td>
+<td>[5]</td>
 <td>&nbsp;</td>
 <td>&nbsp;</td>
 </tr>
 <tr>
-<td>$6</td>
+<td>[6]</td>
 <td>&nbsp;</td>
 <td>&nbsp;</td>
 </tr>
 <tr>
-<td>$7</td>
+<td>[7]</td>
 <td>&nbsp;</td>
 <td>&nbsp;</td>
 </tr>
@@ -1116,22 +1104,22 @@ Serieninduktivit&auml;t</td>
 FFT-Frequenzen geschrieben, enthalten jedoch nicht die Frequenzkennung.</td>
 </tr>
 <tr>
-<td>$1</td>
+<td>[1]</td>
 <td><var>re</var></td>
 <td>Realteil</td>
 </tr>
 <tr>
-<td>$2</td>
+<td>[2]</td>
 <td><var>im</var></td>
 <td>Imagin&auml;rteil</td>
 </tr>
 <tr>
-<td>$3</td>
+<td>[3]</td>
 <td><var>abs</var></td>
 <td>Betrag</td>
 </tr>
 <tr>
-<td>$4</td>
+<td>[4]</td>
 <td><var>arg</var></td>
 <td>Phase in Grad</td>
 </tr>
@@ -1158,85 +1146,85 @@ werden nur die ersten beiden Spalten verwendet.</p>
 FFT-Frequenzen geschrieben, enthalten jedoch nicht die Frequenzkennung.</td>
 </tr>
 <tr>
-<td>$1</td>
+<td>[1]</td>
 <td>re <var>c<sub>ll</sub></var></td>
 <td>Realteil Koeffizient <var>c<sub>ll</sub></var></td>
 </tr>
 <tr>
-<td>$2</td>
+<td>[2]</td>
 <td>im&nbsp;<var>c<sub>ll</sub></var></td>
 <td>Imagin&auml;rteil Koeffizient <var>c<sub>ll</sub></var></td>
 </tr>
 <tr>
-<td>$3</td>
+<td>[3]</td>
 <td>re <var>c<sub>lr</sub></var></td>
 <td>Realteil Koeffizient <var>c<sub>lr</sub></var></td>
 </tr>
 <tr>
-<td>$4</td>
+<td>[4]</td>
 <td>im <var>c<sub>lr</sub></var></td>
 <td>Imagin&auml;rteil Koeffizient <var>c<sub>lr</sub></var></td>
 </tr>
 <tr>
-<td>$5</td>
+<td>[5]</td>
 <td>re <var>c<sub>rl</sub></var></td>
 <td>Realteil Koeffizient <var>c<sub>rl</sub></var></td>
 </tr>
 <tr>
-<td>$6</td>
+<td>[6]</td>
 <td>im <var>c<sub>rl</sub></var></td>
 <td>Imagin&auml;rteil Koeffizient <var>c<sub>rl</sub></var></td>
 </tr>
 <tr>
-<td>$7</td>
+<td>[7]</td>
 <td>re <var>c<sub>rr</sub></var></td>
 <td>Realteil Koeffizient <var>c<sub>rr</sub></var></td>
 </tr>
 <tr>
-<td>$8</td>
+<td>[8]</td>
 <td>im <var>c<sub>rr</sub></var></td>
 <td>Imagin&auml;rteil Koeffizient <var>c<sub>rr</sub></var></td>
 </tr>
 <tr>
-<td>$9</td>
+<td>[9]</td>
 <td>abs&nbsp;<var>c<sub>ll</sub></var></td>
 <td>Betrag Koeffizient <var>c<sub>ll</sub></var></td>
 </tr>
 <tr>
-<td>$10</td>
+<td>[10]</td>
 <td>arg&nbsp;<var>c<sub>ll</sub></var></td>
 <td>Phase Koeffizient <var>c<sub>ll</sub></var>
 in Grad</td>
 </tr>
 <tr>
-<td>$11</td>
+<td>[11]</td>
 <td>abs <var>c<sub>lr</sub></var></td>
 <td>Betrag Koeffizient <var>c<sub>lr</sub></var></td>
 </tr>
 <tr>
-<td>$12</td>
+<td>[12]</td>
 <td>arg <var>c<sub>lr</sub></var></td>
 <td>Phase Koeffizient <var>c<sub>lr</sub></var>
 in Grad</td>
 </tr>
 <tr>
-<td>$13</td>
+<td>[13]</td>
 <td>abs <var>c<sub>rl</sub></var></td>
 <td>Betrag Koeffizient <var>c<sub>rl</sub></var></td>
 </tr>
 <tr>
-<td>$14</td>
+<td>[14]</td>
 <td>arg <var>c<sub>rl</sub></var></td>
 <td>Phase Koeffizient <var>c<sub>rl</sub></var>
 in Grad</td>
 </tr>
 <tr>
-<td>$15</td>
+<td>[15]</td>
 <td>abs <var>c<sub>rr</sub></var></td>
 <td>Betrag Koeffizient <var>c<sub>rr</sub></var></td>
 </tr>
 <tr>
-<td>$16</td>
+<td>[16]</td>
 <td>arg <var>c<sub>rr</sub></var></td>
 <td>Phase Koeffizient <var>c<sub>rr</sub></var>
 in Grad</td>
@@ -1341,7 +1329,7 @@ werden nur die ersten 8 Spalten verwendet. <a href="analyze.html#zero_cal">&rarr
 <p>Bei der einfachsten Art der Kalibrierung wird mit einer
 Messung lediglich der <em>Gleichlauf</em>
 der beiden Kan&auml;le korrigiert. Damit k&ouml;nnen
-Torleranzen der
+Toleranzen der
 Soundkarten sowie bauartbedingte Phasenverschiebungen zwischen den
 beiden Kan&auml;len korrigiert werden. Das ist besonders dann
 wichtig,
@@ -1365,8 +1353,8 @@ AU8820 Chip) bei 48kHz und einer FFT-L&auml;nge von 65536 Samples,
 gemittelt &uuml;ber ca. 10 Zyklen.<br>
 Der Amplitudenfehler ist mit &lt; 0,1dB ziemlich gut, aber die
 Kan&auml;le werden offenbar nicht exakt gleichzeitig gesampelt. Die
-Verschiebung von &frac14; Sample bei der Nyquistfrequenz deutet auf
-eine serielle Konertierung der Kan&auml;le sowie ein
+Verschiebung von &frac14; Sample bei der Nyquist-Frequenz deutet auf
+eine serielle Konvertierung der Kan&auml;le sowie ein
 Zweifach-Oversampling zur Verminderung von Aliasing hin. </div>
 <p>Das Resultat der Korrektur ist der komplexe,
 frequenzabh&auml;ngige Quotient:</p>
@@ -1410,7 +1398,7 @@ Kanal 1 korrigiert, da die Korrektur ohnehin nur relativ ist.</p>
 </blockquote>
 <h3><a name="zero-cal"></a>Null-Kalibrierung</h3>
 <blockquote>
-<p>Die bessere Art der Kalibrieirung f&uuml;r
+<p>Die bessere Art der Kalibrierung f&uuml;r
 Impedanzmessungen (2-Pol)
 ist die Null-Kalibrierung. Bei dieser wird neben dem
 Verst&auml;rkungsfaktoren auch noch das <em>&Uuml;bersprechen</em>
@@ -1433,10 +1421,9 @@ ergibt sich die die reale Impedanz:</p>
 </table>
 </blockquote>
 <p>In Realit&auml;t hat man es aber mit den
-transformnierten
-Werten&nbsp;<var>L<sub>real</sub></var> und<var></var>
+transformierten Signalen <var>L<sub>real</sub></var> und<var></var>
 <var>R<sub>real</sub></var> zu tun.
-Selbstverst&auml;ndlich sind alle Koeffizienten c<sub>xx</sub>
+Selbstverst&auml;ndlich sind alle Koeffizienten <var>c<sub>xx</sub></var>
 komplex und
 frequenzabh&auml;ngig.</p>
 </blockquote>
@@ -1462,17 +1449,17 @@ frequenzabh&auml;ngig.</p>
 </table>
 </blockquote>
 <h4>Durchf&uuml;hrung</h4>
-<p>Zur Null-Kalibirierung wird mit dem gesamten realen
+<p>Zur Null-Kalibrierung wird mit dem gesamten realen
 Messequipment einmal bei <var>Z</var>&nbsp;=&nbsp;0
 (<var>L<sub>ideal</sub></var>&nbsp;=&nbsp;0)
 und einmal mit <var>Z&nbsp;</var>=&nbsp;&infin;
 (<var>R<sub>ideal</sub></var>&nbsp;=&nbsp;0)
 gemessen, also Kurzschluss und keine Verbindung. Dabei wird neben der
-Soundkarte auch das gesamte Messequipment mit kalibriert. Wenn eine
+Soundkarte auch die gesamte Apparatur mit kalibriert. Wenn eine
 Kalibrierung mit der Option <a href="#_zg"><tt>zg</tt></a>
 gestartet wird, Erwartet das Analyseprogramm zun&auml;chst einmal <a href="#_ln"><tt>ln</tt></a> Perioden
 mit&nbsp;<var>Z</var>&nbsp;=&nbsp;0.
-Anschlie&szlig;end kommt eine Bildschrirmausgabe nach <tt>stdout</tt>
+Anschlie&szlig;end kommt eine Bildschirmausgabe nach <tt>stdout</tt>
 und eine kurze Pause. In der Pause muss das Messequipment auf <var>Z&nbsp;</var>=&nbsp;&infin;
 umgestellt werden. Dann werden nochmal <a href="analyze.html#_ln"><tt>ln</tt></a>
 Perioden aufgenommen, bevor das Ergebnis feststeht und der
@@ -1496,7 +1483,7 @@ n&auml;hern, dass <var>U<sub>ref</sub></var>&nbsp;&prop;&nbsp;<var>L<sub>ideal</
 ist (siehe Option <a href="#_zn"><tt>zn</tt></a>).
 Dabei macht man einen Fehler: die zus&auml;tzlichen zu <var>R<sub>ref</sub></var>
 und <var>Z</var> in Reihe geschalteten Impedanzen allen
-voran die <strong>Zuleitungsinduktivit&auml;ten werden nicht
+voran die <strong>Induktivit&auml;t der Zuleitung wird nicht
 ber&uuml;cksichtigt</strong>.</p>
 <h4>Ergebnis</h4>
 <div class="figure"><img src="images/ZeroSample.png" alt="Beispiel f&uuml;r Gainkorrektur" height="484" width="748"><br>
@@ -1511,10 +1498,10 @@ Koeffizienten (rechts) der Transformationsmatrix jeweils in Betrag
 Man erkennt ein kapazitives &Uuml;bersprechen vom linken zum
 rechten Kanal. Die Asymmetrie beim &Uuml;bersprechen
 erkl&auml;rt sich durch die Asymmetrie der Innenschaltung des
-Messadapter und den definitiv nicht hochfrequenztauglichen Aufbau.<br>
+Messadapter und den definitiv nicht hochfrequenztauglichen Aufbau.<br>Am Phasengang der Koeffizienten <i>c<sub>ll</sub></i> und <i>c<sub>rr</sub></i>dd erkennt man eine Zeitverz&ouml;gerung von ca 12ns (!) zwischen den Kan&auml;len.<br>
 Der Koeffizient <i>c<sub>lr</sub></i> ist in
 seiner Amplitude so klein (ca. -70dB), dass die Phase nahezu unbestimmt
-ist. Daher die relativ willk&uuml;rliche Verteilung der Phase. </div>
+ist. Daher die relativ willk&uuml;rliche Verteilung der Phase mit Tendenz zu -90&deg;. </div>
 <h4>Korrektur</h4>
 <p>Durch Inversion der Transformationsmatrix kann man die
 gemessenen Werte kompensieren:</p>
@@ -1559,8 +1546,8 @@ gemessenen Werte kompensieren:</p>
 <h2><a name="todo"></a>TODOs, bekante Probleme</h2>
 <dl>
 <dt><b>3-Punkt-Kalibrierung</b></dt>
-<dd>Aufgrund den unzul&auml;nglichkeiten der
-Zweipunkteichung ist eine 3-Punkt-Kalibrierung mit einer bekannten
+<dd>Aufgrund den Unzul&auml;nglichkeiten der
+<a href="#zero-cal">Zweipunktkalibrierung</a> ist eine 3-Punkt-Kalibrierung mit einer bekannten
 Referenzimpedanz w&uuml;nschenswert.</dd>
 </dl>
 </body></html>
