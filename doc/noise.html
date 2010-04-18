@@ -1,8 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html><head><title>Analysetools - Rauschgenerator</title>
 
-<link href="mm.css" rel="stylesheet" type="text/css">
-</head>
+<link href="mm.css" rel="stylesheet" type="text/css"></head>
 <body>
 <a href="index.html">&rarr;&nbsp;Index</a>
 <a href="glossary.html">&rarr;&nbsp;Glossar</a>
@@ -42,12 +41,7 @@ ist es sinnvollerweise eine Zweierpotenz.</dd>
 <dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt>
 und <tt>fmax<var>freq</var></tt></strong></dt>
 <dd>Minimale und maximale Frequenz zwischen denen das
-generierte Signal noch Energie enth&auml;lt.</dd><dt><tt><a name="_finc"></a>finc<var>channels</var></tt></dt><dd>Lineares Inkrement f&uuml;r benachbarte Frequenzkan&auml;le. Standardwert 1.<br>Dieser
-Wert gibt an wieviele Kan&auml;le in Einheiten der Grundfrequenz
-zwischen benachbarten Frequenzkan&auml;len mit Energie liegen. Ein Wert
-von 2 bedeutet, dass immer 2 Kan&auml;le weitergez&auml;hlt wird, also
-immer ein Kanal ohne Energie zwischen zwei genutzen
-Frequenzkan&auml;len liegt.</dd><dt><tt><a name="_flog"></a>flog<var>increment</var></tt></dt><dd>Logarithmischer Zuwachsfaktor f&uuml;r benachbarte Frequenzkan&auml;le. Standardwert 0.<br>Genutzte Frequenzkan&auml;le werden im mittel um den Faktor 1+<var><tt>increment</tt></var> auseinandergelegt.</dd><dt><tt><a name="_fsamp"></a>fsamp<var>freq</var></tt></dt><dd>Samplingfrequenz. Standardwert 48&nbsp;kHz.</dd>
+generierte Signal noch Energie enth&auml;lt.</dd><dt><tt><a name="_fsamp"></a>fsamp<var>freq</var></tt></dt><dd>Samplingfrequenz. Standardwert 48&nbsp;kHz.</dd>
 <dt><a name="_scale"></a><tt>scale<var>power</var></tt></dt>
 <dd>Exponent f&uuml;r die <a href="#method">Intensit&auml;tsgewichtung</a>.
 0: Wei&szlig;es Rauschen, -1: Rosa Rauschen. Standardwert: 0.</dd>
@@ -85,7 +79,7 @@ Wei&szlig;en Rauschens mit 48kHz Samplingrate (ca. 2&frac12;
 Minuten) und schreibt das in die Datei <tt>rauschen.wav</tt>.
 Frequenzen unter 20Hz und &uuml;ber 20kHz werden dabei
 unterdr&uuml;ckt.</dd>
-<dt><kbd>noise&nbsp;65536 50 20000&nbsp;0 -.5 | </kbd><var>irgendein
+<dt><kbd>noise bn65536 fmin50 fmax20000 loop scale-.5 | </kbd><var>irgendein
 Ausgabeprogramm</var></dt>
 <dd>Dies erzeugt ein unendlich oft wiederholte Folge mit
 65536
@@ -120,11 +114,9 @@ Bei&nbsp;&kappa;&nbsp;=
 <p>Alle Koeffizienten, die nicht im <strong>Frequenzintervall
 [<var>f<font size="-1"><sub>min</sub></font></var>,
 <var>f<font size="-1"><sub>max</sub></font></var>]</strong>
-liegen, werden genullt.</p>
-<p>Nach der R&uuml;cktransformation wird das Signal noch
+liegen, werden genullt.</p><p>Nach der R&uuml;cktransformation wird das Signal noch
 auf <strong>0dB FSR</strong> normalisiert bevor es
-ausgegeben wird.</p>
-</blockquote>
+ausgegeben wird.</p></blockquote><h3><a name="harmonics"></a>Analyse von Harmonischen<br></h3><blockquote>Zus&auml;tzlich werden Koeffizienten, die zu sich &uuml;berschneidenden Harmonischen Frequenzen geh&ouml;ren, genullt. Siehe <a href="noise.html#harmonics">Analyse von Harmonischen</a>.</blockquote>
 <h2><a name="format"></a>Dateiformate</h2>
 <h3><a name="design_dat"></a><tt>design.dat</tt>
 Designkoeffizienten</h3>
