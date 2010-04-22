@@ -1,70 +1,86 @@
-/* header */
-h1 {	color: #ff0000;
-	font-family: Arial,Helvetica,sans-serif;
-	font-size: xx-large;
-	text-align: center
+h1 {
+  color: #ff0000;
+  font-family: Arial,Helvetica,sans-serif;
+  font-size: xx-large;
+  text-align: center;
 }
-h2 {	color: #000000;
-	background-color: #cccccc;
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: x-large;
-	margin-top: 35px;
-	clear: both;
-	padding: 3px;
+h2 {
+  padding: 3px;
+  color: #000000;
+  background-color: #cccccc;
+  font-family: Arial,Helvetica,sans-serif;
+  font-size: x-large;
+  margin-top: 35px;
+  clear: both;
 }
-h3 {	font-family: Arial, Helvetica, sans-serif;
-	font-size: large;
+h3 {
+  font-family: Arial,Helvetica,sans-serif;
+  font-size: large;
 }
-h4 {	font-family: Arial,Helvetica,sans-serif;
-	font-size: medium;
+h4 {
+  font-family: Arial,Helvetica,sans-serif;
+  font-size: medium;
 }
-h5 {	font-weight: normal;
-	font-style: italic;
-	font-family: Arial,Helvetica,sans-serif;
-	padding-bottom: 0px
+h5 {
+  font-weight: normal;
+  font-style: italic;
+  font-family: Arial,Helvetica,sans-serif;
+  padding-bottom: 0px;
 }
-
-.notes { text-decoration: underline; }
-
-/* indent */
-ol,ul { margin-left: 0px; padding-left: 25px }
-blockquote,dd { margin-left: 25px; padding-left: 0px }
-
-/* tables */
-tr {	vertical-align: baseline; }
-th {  background-color: #EEEEEE}
-.tl {  background-color: #EEEEEE}
-
-/* indices */
-sub,sup { font-size: 1.2em; }
-
-/* images */
+.notes {
+  text-decoration: underline;
+}
+ol, ul {
+  margin-left: 0px;
+  padding-left: 25px;
+}
+blockquote, dd {
+  margin-left: 25px;
+  padding-left: 0px;
+}
+tr {
+  vertical-align: baseline;
+}
+th {
+  background-color: #eeeeee;
+}
+.tl {
+  background-color: #eeeeee;
+}
+sub, sup {
+  font-size: smaller;
+}
 .rightbox {
-	margin: 5 0 10 15;
-	float: right;
+  margin: 5px 0 10px 15px;
+  float: right;
 }
 .leftbox {
-	margin: 5 15 10 0;
-	float: left;
+  margin: 5px 15px 10px 0;
+  float: left;
 }
-
 .lefticon {
-	float: left;
-	margin: 3 5 3 0;
+  margin: 3px 5px 3px 0;
+  float: left;
 }
-
 .righticon {
-	float: right;
-	margin: 3 0 3 5;
+  margin: 3px 0 3px 5px;
+  float: right;
 }
-
-.figure,.leftbox,.rightbox {
-	font-size: smaller;
+.figure, .leftbox, .rightbox {
+  font-size: smaller;
 }
-
-/* misc */
-body {  background-color: #FFFFFF}
-a:link { color: #000066 }
-a:visited { color: #660066 }
-.abstract {  font-style: italic}
-.symbol { font-family: Arial, Helvetica, sans-serif}
+body {
+  background-color: #ffffff;
+}
+a:link {
+  color: #000066;
+}
+a:visited {
+  color: #660066;
+}
+.abstract {
+  font-style: italic;
+}
+.symbol {
+  font-family: Arial,Helvetica,sans-serif;
+}
