@@ -1,181 +1,249 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head><title>Analysetools - Rauschgenerator</title>
-
-<link href="mm.css" rel="stylesheet" type="text/css"></head>
+<html>
+<head>
+  <title>Analysetools - Rauschgenerator</title>
+  <link href="mm.css" rel="stylesheet" type="text/css">
+</head>
 <body>
-<a href="index.html">&rarr;&nbsp;Index</a>
-<a href="glossary.html">&rarr;&nbsp;Glossar</a>
-<h1>Referenzsignalgenerator f&uuml;r periodische Rauschsignale</h1>
+<a href="index.html">&#8594;&nbsp;Index</a>
+<h1>Signal generator for cyclic noise patterns</h1>
 <p>Release: 0.1</p>
-<a href="#reference">Parameter</a> <a href="#method">Arbeitsweise</a> <a href="#format">Dateiformate</a> <a href="index.html#download">Download</a>
+<a href="#reference">Parameters</a> <a href="#method">Arbeitsweise</a>
+<a href="#format">Dateiformate</a> <a href="index.html#download">Download</a>
 <a href="#history">Historie</a>
 <a href="#todo">Todo</a>
 <a href="index.html#build">Compilieren</a>
-<h2><a name="description"></a>Kurzbeschreibung</h2>
-<p>Dieses Programm generiert periodische <a href="glossary.html#MLS">Rauschsignale</a>
-definierter L&auml;nge mit einer parametrisierbaren
-Energieverteilung. Durch die Periodizit&auml;t des Signals wird das
-Frequenzspektrum diskret und eignet sich f&uuml;r die Analyse per
-diskreter Fourier-Transformation ohne Fensterfunktion.</p>
-<h3>Einsatzbereich</h3>
-<blockquote>Referenzsignal f&uuml;r die Messung von
-Impedanzen oder
-&Uuml;bertragungsfunktionen.</blockquote>
-<h3>Programmablauf</h3>
+<h2><a name="overview"></a>Overview</h2>
+<p>This program <span style="font-family: monospace;">noise</span>
+generates cyclic noise patterns with adjustable properties, like energy
+distribution and relatively prime frequencies. The cyclic nature of the
+patterns makes the spectrum discrete which is ideal for FFT analysis
+without the need of a window function.</p>
+<p>The program does not handle the platform dependent output of the
+data to an DAC like a sound device. This is up to your environment. In
+general you should pipe the output to some device or application that
+can play PCM data.<br>
+</p>
+<h3>Use cases<br>
+</h3>
+<blockquote>Reference signal for measurements of impedance or transfer
+functions.</blockquote>
+<h3>Program sequence<br>
+</h3>
 <blockquote>
-<p>Das Programm liefert <strong>16-Bit PCM-kodierte
-Daten in 2 Kan&auml;len</strong> und gibt sie &uuml;ber <tt><strong>stdout</strong></tt>
-oder in eine Datei aus.</p>
-<p>Die (plattformabh&auml;ngige) Ausgabe der PCM-Daten
-&uuml;ber ein DAC-Device muss anderw&auml;rtig
-gew&auml;hrleistet werden.</p>
+  <p>The program writes<strong> 16-Bit PCM encoded
+audio data with two channels</strong> to <tt><strong>stdout</strong></tt>
+or a destination file in RIFF wave format.</p>
 </blockquote>
-<h2><a name="options"></a>Kommandozeilenparameter</h2>
+<h2><a name="options"></a>Command line options<br>
+</h2>
 <blockquote>
-<dl compact="compact">
-<dt><strong><a name="_bn"></a><tt>bn<var>samples</var></tt></strong></dt>
-<dd>L&auml;nge der Periode. Dies sollte der
-L&auml;nge
-der zur Analyse verwendeten Fourier-Transformation entsprechen. Deshalb
-ist es sinnvollerweise eine Zweierpotenz.</dd>
-<dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt>
-und <tt>fmax<var>freq</var></tt></strong></dt>
-<dd>Minimale und maximale Frequenz zwischen denen das
-generierte Signal noch Energie enth&auml;lt.</dd><dt><tt><a name="_fsamp"></a>fsamp<var>freq</var></tt></dt><dd>Samplingfrequenz. Standardwert 48&nbsp;kHz.</dd>
-<dt><a name="_scale"></a><tt>scale<var>power</var></tt></dt>
-<dd>Exponent f&uuml;r die <a href="#method">Intensit&auml;tsgewichtung</a>.
-0: Wei&szlig;es Rauschen, -1: Rosa Rauschen. Standardwert: 0.</dd>
-<dt><a name="_ln"></a><tt>ln<var>count</var></tt></dt>
-<dd>Anzahl der Wiederholungen des Signals bei der
-WAV-Ausgabe. Standardwert: 1.</dd>
-<dt><kbd><a name="_loop"></a>loop<var></var></kbd></dt>
-<dd>Signal in einer Endlosschleife als WAV ausgeben. Das
-Programm kann dann nur beendet werden, wenn entweder der
-Ausgabedatenstrom geschlossen wird oder durch ein Unterbrechungssignal
-abgebrochen wird.<br>
-</dd>
-<dt><a name="_wr"></a><tt>wd<var>file</var></tt></dt>
-
-
-<dd>Ausgabe der <a href="#design_dat">Designkoeffizienten
-als Textdatei</a>.</dd>
-<dt><a name="_wr"></a><tt>wr<var>file</var></tt></dt>
-
-<dd>Ausgabe des normalisierten Referenzsignals als Textdatei.
-F&uuml;r jeden St&uuml;tzpunkt wir eine Zeile geschrieben.</dd>
-<dt><a name="_ww"></a><tt>ww<var>file</var></tt></dt>
-<dd>Ausgabe des Audiosignals im WAV-Format. Wenn als Dateiname
-'<tt>-</tt>' angegeben wird, wird
-nach <tt>stdout</tt> geschrieben. Anstelle einer Datei
-kann auch ein Device (transienter Datenstrom) angegeben werden.</dd>
-</dl>
+  <dl compact="compact">
+    <dt><strong><a name="_bn"></a><tt>bn<var>samples - </var></tt></strong>cycle
+length<strong><tt><var><br>
+      </var></tt></strong></dt>
+    <dd>This is the number of samples in one period of the signal. This
+should be the same as the FFT length used for analysis. So powers of 2
+should be preferred.</dd>
+    <dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt></strong>
+und <strong><tt>fmax<var>freq - </var></tt></strong>frequency range<strong><tt><var><br>
+      </var></tt></strong></dt>
+    <dd>Minimum and maximum frequency where the output contains energy.<br>
+    </dd>
+    <dt><tt><a name="_fsamp"></a>fsamp<var>freq - </var></tt>sampling
+frequency<tt><var><br>
+      </var></tt></dt>
+    <dd><span style="font-family: monospace;">48000</span> Hz by
+default.</dd>
+    <dt><a name="_scale"></a><tt>scale<var>power - </var></tt>noise
+type<tt><var><br>
+      </var></tt></dt>
+    <dd>Exponent of the <a href="#method">energy distribution</a>. <span
+ style="font-family: monospace;">0</span> := white noise, <span
+ style="font-family: monospace;">-1</span> := pink noise. <span
+ style="font-family: monospace;">0</span> by default.<br>
+    </dd>
+    <dt><a name="_ln"></a><tt>ln<var>count - </var></tt>number of
+cycles<tt><var><br>
+      </var></tt></dt>
+    <dd>Number of cycles to generate until the program completes. The
+loop count ony applies to <a href="#_ww">PCM output</a>.&nbsp; <span
+ style="font-family: monospace;">1</span> by default. <br>
+    </dd>
+    <dt><kbd><a name="_loop"></a>loop - </kbd>infinite output<kbd><var></var></kbd></dt>
+    <dd>Switches the program to continuous mode. It can only be
+terminated by either sending a interrupt signal or when the output
+stream gets closed. You should not use this mode with file output,
+because it will not terminate until the disk is full.<br>
+    </dd>
+    <dt><a name="_wr"></a><tt>wd<var>file - </var></tt>write design
+data<tt><var><br>
+      </var></tt></dt>
+    <dd>Writes the design coefficients into a <a href="#design_dat">text
+file</a>. See @@@@@<br>
+    </dd>
+    <dt><a name="_wr"></a><tt>wr<var>file - </var></tt>write reference
+signal<tt><var><br>
+      </var></tt></dt>
+    <dd>Writes one cycle of the reference signal to a <a
+ href="#ref_dat">text file</a>.
+For each sample exactly one line is written.</dd>
+    <dt><a name="_ww"></a><tt>ww<var>file - </var></tt>write PCM data<tt><var><br>
+      </var></tt></dt>
+    <dd>Writes the binary data as RIFF wave format. If <var><span
+ style="font-family: monospace;">file</span></var> is <span
+ style="font-family: monospace;">-</span>, the output is written to <tt>stdout</tt>.
+The Output is always normalized to 0 dBFSR. You could use a transient
+stream like a character device or a pipe (fifo) as destination too.</dd>
+  </dl>
 </blockquote>
-<h3><a name="examples"></a>Beispiele</h3>
+<h3><a name="examples"></a>Examples</h3>
 <blockquote>
-<dl>
-<dt><kbd>noise bn65536 fmin20 fmax20000 ln100 wwrauschen.wav</kbd></dt>
-<dd>Dies erzeugt 100 Zyklen eines 65536 Samples langen
-Wei&szlig;en Rauschens mit 48kHz Samplingrate (ca. 2&frac12;
-Minuten) und schreibt das in die Datei <tt>rauschen.wav</tt>.
-Frequenzen unter 20Hz und &uuml;ber 20kHz werden dabei
-unterdr&uuml;ckt.</dd>
-<dt><kbd>noise bn65536 fmin50 fmax20000 loop scale-.5 | </kbd><var>irgendein
-Ausgabeprogramm</var></dt>
-<dd>Dies erzeugt ein unendlich oft wiederholte Folge mit
-65536
-Samples L&auml;nge und 48kHz Samplingrate. Die Intensit&auml;t
-des
-Rauschen wird mit&nbsp;<var>f<font size="-1"><sup>-</sup></font></var><font size="-1"><sup>0,5</sup></font> gewichtet
-und auf den Frequenzbereich von 50 bis 20kHz begrenzt. Die Ausgabe
-erfolgt &uuml;ber <tt>stdout</tt>, wo ein geeignetes
-Wiedergabeprogramm f&uuml;r eine kontinuierliche Wiedergabe des
-Testsignals sorgt.</dd>
-</dl>
+  <dl>
+    <dt><kbd>noise bn65536 fmin20 fmax20000 ln100 wwnoise.wav</kbd></dt>
+    <dd>Creates a file <tt>noise.wav</tt> with 100 cycles of a 65536
+samples white noise pattern with 48 kHz sampling rate (about 2½
+minutes).
+Frequencies below 20 Hz and above 20 kHz are suppressed.<br>
+    </dd>
+    <dt><kbd>noise bn65536 fmin50 fmax20000 loop scale-.5 | </kbd><var>some
+output device</var></dt>
+    <dd>This creates an infinite repetition of 65536 samples noise,
+weighted with <var>f<font size="-1"><sup>-</sup></font></var><font
+ size="-1"><sup>0,5</sup></font> at 48 kHz sampling rate. Frequencies
+below 50 Hz and above 20 kHz are suppressed. The output is written to <span
+ style="font-family: monospace;">stdout</span> where a appropriate
+program or device handles the DAC output.</dd>
+  </dl>
 </blockquote>
-<h2><a name="method"></a>Arbeitsweise</h2>
+<h2><a name="method"></a>How does it work?<br>
+</h2>
 <blockquote>
-<p>Das Programm erzeugt das Testsignal per inverser, diskreter
-Fourier-Transformation. Dabei werden die <strong>Amplituden</strong>
-der einzelnen
-Koeffizienten nach folgender Formel berechnet:</p>
-<blockquote>
-<p><var>r<font size="-1"><sub>i</sub></font></var>
-= <var>f<font size="-1"><sub>i</sub><sup>&kappa;</sup></font></var></p>
+  <p>The program creates the noise reference by inverse discrete
+Fourier Transform. The <strong>amplitudes</strong>
+of the Fourier coefficients are calculated by:</p>
+  <blockquote>
+    <p><var>r<font size="-1"><sub>i</sub></font></var>
+= <var>f<font size="-1"><sub>i</sub><sup>&#954;</sup></font></var></p>
+  </blockquote>
+  <p>The <strong>phase angles</strong> are chosen randomly.<br>
+  </p>
+  <p>The exponent &#954; controls the <strong>energy distribution</strong>.
+An homogeneous distribution (&#954;&nbsp;=&nbsp;0) represents white noise.
+Positive values prefer high frequencies,
+negative values prefer low frequencies. &#954;&nbsp;=
+-1 creates pink noise.</p>
+  <p>All coefficients, outside the <strong>frequency range
+[<var>f<font size="-1"><sub>min</sub></font></var>, <var>f<font
+ size="-1"><sub>max</sub></font></var>]</strong>, are
+zeroed. This is particularly required when &#954; &lt; 0, because otherwise
+the amplitude of the DC component gets singular.<br>
+  </p>
+  <p>After the inverse Fourier Transform the wave form is normalized to
+  <strong>0dB FSR</strong>.</p>
 </blockquote>
-<p>Die <strong>Phasen</strong> dazu werden
-zuf&auml;llig gew&auml;hlt.</p>
-<p>Der Exponent &kappa; steuert die
-<strong>Energiedichteverteilung</strong>. Eine homogene
-Verteilung (&kappa;&nbsp;=&nbsp;0) entspricht dabei
-Wei&szlig;em Rauschen. Positive Werte heben hohe Frequenzen an,
-negative Werte senken hohe Frequenzen ab.
-Bei&nbsp;&kappa;&nbsp;=
--1 hat man rosa Rauschen.</p>
-<p>Alle Koeffizienten, die nicht im <strong>Frequenzintervall
-[<var>f<font size="-1"><sub>min</sub></font></var>,
-<var>f<font size="-1"><sub>max</sub></font></var>]</strong>
-liegen, werden genullt.</p><p>Nach der R&uuml;cktransformation wird das Signal noch
-auf <strong>0dB FSR</strong> normalisiert bevor es
-ausgegeben wird.</p></blockquote><h3><a name="harmonics"></a>Analyse von Harmonischen<br></h3><blockquote>Zus&auml;tzlich werden Koeffizienten, die zu sich &uuml;berschneidenden Harmonischen Frequenzen geh&ouml;ren, genullt. Siehe <a href="noise.html#harmonics">Analyse von Harmonischen</a>.</blockquote>
-<h2><a name="format"></a>Dateiformate</h2>
-<h3><a name="design_dat"></a><tt>design.dat</tt>
-Designkoeffizienten</h3>
+<h3><a name="harmonics"></a>Dealing with harmonics<br>
+</h3>
+<blockquote><br>
+</blockquote>
+<h2><a name="format"></a>File formats<br>
+</h2>
+<h3><a name="design_dat"></a><tt>design.dat</tt> - design coefficients<br>
+</h3>
 <blockquote>
-<table border="1" cellpadding="3" cellspacing="0">
-<tbody>
-<tr>
-<th>Spalte</th>
-<th>Kurzbezeichnung</th>
-<th>Beschreibung</th>
-</tr>
-<tr>
-<td>1</td>
-<td><var>f</var></td>
-<td>Frequenz</td>
-</tr>
-<tr>
-<td>2</td>
-<td>|<var>R</var>|</td>
-<td>Amplitude des Referenzsignals<var></var></td>
-</tr>
-<tr>
-<td>3</td>
-<td>arg <var>R</var></td>
-<td>Phase des Referenzsignals
-in Grad</td>
-</tr>
-<tr>
-<td>4</td>
-<td>re <var>R</var><var></var></td>
-<td>Realteil des Referenzsignals</td>
-</tr>
-<tr>
-<td>5</td>
-<td>im&nbsp;<var>R</var></td>
-<td>Imagin&auml;rteil des Referenzsignals</td>
-</tr>
-<tr>
-<td>6</td>
-<td><var>h</var></td>
-<td>Ordnung der Harmonischen</td>
-</tr>
-</tbody>
-</table>
+  <table border="1" cellpadding="3" cellspacing="0">
+    <tbody>
+      <tr>
+        <th>Column</th>
+        <th>Symbol</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>[1]</td>
+        <td><var>f</var></td>
+        <td>Frequency</td>
+      </tr>
+      <tr>
+        <td>[2]</td>
+        <td>|<var>R</var>|</td>
+        <td>Magnitude<var></var></td>
+      </tr>
+      <tr>
+        <td>[3]</td>
+        <td>arg <var>R</var></td>
+        <td>Phase angle
+in degrees</td>
+      </tr>
+      <tr>
+        <td>[4]</td>
+        <td>re <var>R</var><var></var></td>
+        <td>Real part (<var>a<sub>i</sub></var>)<br>
+        </td>
+      </tr>
+      <tr>
+        <td>[5]</td>
+        <td>im&nbsp;<var>R</var></td>
+        <td>Imaginary part (<var>b<sub>i</sub></var>)</td>
+      </tr>
+      <tr>
+        <td>[6]</td>
+        <td><var>h</var></td>
+        <td>Ordinal of the harmonics<br>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</blockquote>
+<h3><a name="ref_dat"></a><span style="font-family: monospace;">ref.dat</span>
+- reference waveform</h3>
+<blockquote>
+  <table border="1" cellpadding="3" cellspacing="0">
+    <tbody>
+      <tr>
+        <th>Column</th>
+        <th>Symbol</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>line no.<br>
+        </td>
+        <td><var>i</var><br>
+        </td>
+        <td>sample index<br>
+        </td>
+      </tr>
+      <tr>
+        <td>[1]</td>
+        <td><span style="font-style: italic;">s<sub>i</sub></span><var></var><br>
+        </td>
+        <td>sample value<var></var></td>
+      </tr>
+    </tbody>
+  </table>
+</blockquote>
+<h3><a name="wav_dat"></a><span style="font-family: monospace;">wav.dat</span>
+- PCM output<br>
+</h3>
+<blockquote>RIFF WAVEfmt file.<br>
 </blockquote>
 <h2><a name="history"></a>Historie</h2>
 <h4>Version 0.1.1</h4>
 <ul>
-<li>Unterst&uuml;tzung f&uuml;r Harmonische.</li>
+  <li>Support of harmonics</li>
+  <li>Changed command line interface<br>
+  </li>
 </ul>
 <h4>Version 0.1</h4>
 <ul>
-<li>Erste &ouml;ffentliche Version.</li>
+  <li>Internal revision<br>
+  </li>
 </ul>
-<h2><a name="todo"></a>TODOs, bekante Probleme</h2>
+<h2><a name="todo"></a>known issues<br>
+</h2>
 <dl>
-<dt><b>Endianess</b></dt>
-<dd>Im Moment werden alle PCM-Daten in der nativen Darstellung
-der verwendeten CPU ausgegeben. Das ist zur Zeit nur auf
-Little-Endian-Maschinen (darunter x86) mit dem RIFF-Header konsistent.</dd>
+  <dt><b>RIFF format and endianess</b></dt>
+  <dd>Currently only PCM data in RIFF wave format is supported for
+binary output and the endianness is always the platforms native one.</dd>
 </dl>
-</body></html>
+</body>
+</html>

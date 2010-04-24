@@ -43,6 +43,7 @@ tr {
 }
 th {
   background-color: #eeeeee;
+  horizontal-align: left;
 }
 .tl {
   background-color: #eeeeee;
