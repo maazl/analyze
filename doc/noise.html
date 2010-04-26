@@ -1,18 +1,20 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
+<html lang="en">
 <head>
-  <title>Analysetools - Rauschgenerator</title>
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+  <title>Noise reference generator</title>
   <link href="mm.css" rel="stylesheet" type="text/css">
+  <meta content="Marcel Müller" name="author">
 </head>
 <body>
 <a href="index.html">&#8594;&nbsp;Index</a>
 <h1>Signal generator for cyclic noise patterns</h1>
-<p>Release: 0.1</p>
-<a href="#reference">Parameters</a> <a href="#method">Arbeitsweise</a>
-<a href="#format">Dateiformate</a> <a href="index.html#download">Download</a>
-<a href="#history">Historie</a>
+<p>Release: 0.1.1</p>
+<a href="#reference">Parameters</a> <a href="#method">How it works</a>
+<a href="#format">File format</a> <a href="index.html#download">Download</a>
+<a href="#history">History</a>
 <a href="#todo">Todo</a>
-<a href="index.html#build">Compilieren</a>
+<a href="index.html#build">Build</a>
 <h2><a name="overview"></a>Overview</h2>
 <p>This program <span style="font-family: monospace;">noise</span>
 generates cyclic noise patterns with adjustable properties, like energy
@@ -48,52 +50,68 @@ should be preferred.</dd>
     <dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt></strong>
 und <strong><tt>fmax<var>freq - </var></tt></strong>frequency range<strong><tt><var><br>
       </var></tt></strong></dt>
-    <dd>Minimum and maximum frequency where the output contains energy.<br>
+    <dd>Minimum and maximum frequency where the output contains energy.</dd>
+    <dt><tt><a name="_finc"></a>finc<var>channels</var></tt> and <tt><a
+ name="_flog"></a>flog<var>increment </var></tt><tt><var>- </var></tt>linear
+and logarithmic increment for used frequencies<br>
+    </dt>
+    <dd>This is creates a discrete energy distribution. Subsequent used
+frequencies have at
+least the
+distance <var>f<small><sub>n+1</sub></small>&nbsp;= f<small><sub>n</sub></small></var>&nbsp;·&nbsp;<tt><var>channels</var>&nbsp;+&nbsp;<var>increment</var></tt>
+rounded to the closest multiple of the cycle frequency. All frequencies
+in
+between have no intensity.<br>
+This could be used to create support points in an approximately
+logarithmic frequency axis.<br>
     </dd>
     <dt><tt><a name="_fsamp"></a>fsamp<var>freq - </var></tt>sampling
 frequency<tt><var><br>
       </var></tt></dt>
     <dd><span style="font-family: monospace;">48000</span> Hz by
 default.</dd>
-    <dt><a name="_scale"></a><tt>scale<var>power - </var></tt>noise
-type<tt><var><br>
-      </var></tt></dt>
-    <dd>Exponent of the <a href="#method">energy distribution</a>. <span
- style="font-family: monospace;">0</span> := white noise, <span
- style="font-family: monospace;">-1</span> := pink noise. <span
- style="font-family: monospace;">0</span> by default.<br>
-    </dd>
+    <dt><kbd><a name="_harm"></a>harm<var>n - </var></kbd>use harmonics<kbd><var><br>
+      </var></kbd></dt>
+    <dd>With this option the first <i><tt>n</tt></i>
+harmonics of any used frequency are reserved and do not contain energy.
+Instead the next free frequency will be used. This could be used
+to do very fast measurements of harmonics of loudspeakers. See <a
+ href="#harmonics">dealing with harmonics</a>.</dd>
     <dt><a name="_ln"></a><tt>ln<var>count - </var></tt>number of
-cycles<tt><var><br>
-      </var></tt></dt>
+cycles</dt>
     <dd>Number of cycles to generate until the program completes. The
 loop count ony applies to <a href="#_ww">PCM output</a>.&nbsp; <span
- style="font-family: monospace;">1</span> by default. <br>
-    </dd>
+ style="font-family: monospace;">1</span> by default.</dd>
     <dt><kbd><a name="_loop"></a>loop - </kbd>infinite output<kbd><var></var></kbd></dt>
     <dd>Switches the program to continuous mode. It can only be
 terminated by either sending a interrupt signal or when the output
 stream gets closed. You should not use this mode with file output,
-because it will not terminate until the disk is full.<br>
-    </dd>
+because it will not terminate until the disk is full.</dd>
+    <dt><kbd><a name="_mst"></a>mst - </kbd>two channel mode</dt>
+    <dd>In two channel mode the used frequencies are alternately used
+for as channel 1 and channel 2.</dd>
+    <dt><a name="_scale"></a><tt>scale<var>power - </var></tt>noise
+type</dt>
+    <dd>Exponent of the <a href="noise.html#method">energy distribution</a>.
+      <span style="font-family: monospace;">0</span> := white noise, <span
+ style="font-family: monospace;">-1</span> := pink noise. <span
+ style="font-family: monospace;">0</span> by default.</dd>
     <dt><a name="_wr"></a><tt>wd<var>file - </var></tt>write design
-data<tt><var><br>
-      </var></tt></dt>
+data</dt>
     <dd>Writes the design coefficients into a <a href="#design_dat">text
 file</a>. See @@@@@<br>
     </dd>
     <dt><a name="_wr"></a><tt>wr<var>file - </var></tt>write reference
-signal<tt><var><br>
-      </var></tt></dt>
+signal</dt>
     <dd>Writes one cycle of the reference signal to a <a
  href="#ref_dat">text file</a>.
 For each sample exactly one line is written.</dd>
-    <dt><a name="_ww"></a><tt>ww<var>file - </var></tt>write PCM data<tt><var><br>
-      </var></tt></dt>
-    <dd>Writes the binary data as RIFF wave format. If <var><span
- style="font-family: monospace;">file</span></var> is <span
- style="font-family: monospace;">-</span>, the output is written to <tt>stdout</tt>.
-The Output is always normalized to 0 dBFSR. You could use a transient
+    <dt><a name="_ww"></a><tt>ww<var>file - </var></tt>write PCM data</dt>
+    <dd>Writes the <a href="#pcm-dat">binary data</a> as RIFF wave
+format. If <var><span style="font-family: monospace;">file</span></var>
+is <span style="font-family: monospace;">-</span>, the output is
+written to <tt>stdout</tt>.
+The Output is always normalized to 0 dB FSR. You could use a transient
 stream like a character device or a pipe (fifo) as destination too.</dd>
   </dl>
 </blockquote>
@@ -104,8 +122,7 @@ stream like a character device or a pipe (fifo) as destination too.</dd>
     <dd>Creates a file <tt>noise.wav</tt> with 100 cycles of a 65536
 samples white noise pattern with 48 kHz sampling rate (about 2½
 minutes).
-Frequencies below 20 Hz and above 20 kHz are suppressed.<br>
-    </dd>
+Frequencies below 20 Hz and above 20 kHz are suppressed.</dd>
     <dt><kbd>noise bn65536 fmin50 fmax20000 loop scale-.5 | </kbd><var>some
 output device</var></dt>
     <dd>This creates an infinite repetition of 65536 samples noise,
@@ -116,8 +133,7 @@ below 50 Hz and above 20 kHz are suppressed. The output is written to <span
 program or device handles the DAC output.</dd>
   </dl>
 </blockquote>
-<h2><a name="method"></a>How does it work?<br>
-</h2>
+<h2><a name="method"></a>How does it work?</h2>
 <blockquote>
   <p>The program creates the noise reference by inverse discrete
 Fourier Transform. The <strong>amplitudes</strong>
@@ -126,8 +142,7 @@ of the Fourier coefficients are calculated by:</p>
     <p><var>r<font size="-1"><sub>i</sub></font></var>
 = <var>f<font size="-1"><sub>i</sub><sup>&#954;</sup></font></var></p>
   </blockquote>
-  <p>The <strong>phase angles</strong> are chosen randomly.<br>
-  </p>
+  <p>The <strong>phase angles</strong> are chosen randomly.</p>
   <p>The exponent &#954; controls the <strong>energy distribution</strong>.
 An homogeneous distribution (&#954;&nbsp;=&nbsp;0) represents white noise.
 Positive values prefer high frequencies,
@@ -142,14 +157,12 @@ the amplitude of the DC component gets singular.<br>
   <p>After the inverse Fourier Transform the wave form is normalized to
   <strong>0dB FSR</strong>.</p>
 </blockquote>
-<h3><a name="harmonics"></a>Dealing with harmonics<br>
-</h3>
-<blockquote><br>
+<h3><a name="harmonics"></a>Dealing with harmonics</h3>
+<blockquote>
+xdx
 </blockquote>
-<h2><a name="format"></a>File formats<br>
-</h2>
-<h3><a name="design_dat"></a><tt>design.dat</tt> - design coefficients<br>
-</h3>
+<h2><a name="format"></a>File formats</h2>
+<h3><a name="design_dat"></a><tt>design.dat</tt> - design coefficients</h3>
 <blockquote>
   <table border="1" cellpadding="3" cellspacing="0">
     <tbody>
@@ -171,8 +184,7 @@ the amplitude of the DC component gets singular.<br>
       <tr>
         <td>[3]</td>
         <td>arg <var>R</var></td>
-        <td>Phase angle
-in degrees</td>
+        <td>Phase angle in degrees</td>
       </tr>
       <tr>
         <td>[4]</td>
@@ -187,9 +199,10 @@ in degrees</td>
       </tr>
       <tr>
         <td>[6]</td>
-        <td><var>h</var></td>
-        <td>Ordinal of the harmonics<br>
-        </td>
+        <td><var>hamonic</var></td>
+        <td>Ordinal of the harmonic. Negative values indicate the
+second channel in case <a href="#_mst">two channel mode</a> is
+activated</td>
       </tr>
     </tbody>
   </table>
@@ -205,41 +218,53 @@ in degrees</td>
         <th>Description</th>
       </tr>
       <tr>
-        <td>line no.<br>
-        </td>
-        <td><var>i</var><br>
-        </td>
-        <td>sample index<br>
-        </td>
+        <td>line no.</td>
+        <td><var>i</var></td>
+        <td>sample index</td>
       </tr>
       <tr>
         <td>[1]</td>
-        <td><span style="font-style: italic;">s<sub>i</sub></span><var></var><br>
-        </td>
-        <td>sample value<var></var></td>
+        <td>&#931;<var>s<sub>ij</sub></var></td>
+        <td>sample value (sum over all channels)</td>
+      </tr>
+      <tr>
+        <td>[2], two channel mode only</td>
+        <td><var>s<sub>i1</sub></var></td>
+        <td>sample value of first channel</td>
+      </tr>
+      <tr>
+        <td>[3], two channel mode only</td>
+        <td><var>s<sub>i2</sub></var></td>
+        <td>sample value of second channel</td>
       </tr>
     </tbody>
   </table>
 </blockquote>
-<h3><a name="wav_dat"></a><span style="font-family: monospace;">wav.dat</span>
-- PCM output<br>
-</h3>
-<blockquote>RIFF WAVEfmt file.<br>
+<h3><a name="pcm_dat"></a><span style="font-family: monospace;">pcm.dat</span>
+- PCM output</h3>
+<blockquote>
+  <p>In single channel mode the output is still
+stereo. The two
+channels are used symmetrically: <var>s<sub>i1</sub></var>
+= -<var>s<sub>i2</sub></var>. This could
+be used for an improved SNR. The output will always be normalized to
+the maximum sample value ±32767.<br>
+  </p>
+  <p>In <a href="#_mst">two channel mode</a> the two channels contain
+the two channels as you might suggest.<br>
+  </p>
 </blockquote>
-<h2><a name="history"></a>Historie</h2>
+<h2><a name="history"></a>Change log</h2>
 <h4>Version 0.1.1</h4>
 <ul>
   <li>Support of harmonics</li>
-  <li>Changed command line interface<br>
-  </li>
+  <li>Changed command line interface</li>
 </ul>
 <h4>Version 0.1</h4>
 <ul>
-  <li>Internal revision<br>
-  </li>
+  <li>Internal revision</li>
 </ul>
-<h2><a name="todo"></a>known issues<br>
-</h2>
+<h2><a name="todo"></a>TODOs, known issues</h2>
 <dl>
   <dt><b>RIFF format and endianess</b></dt>
   <dd>Currently only PCM data in RIFF wave format is supported for
