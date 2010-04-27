@@ -159,7 +159,41 @@ the amplitude of the DC component gets singular.<br>
 </blockquote>
 <h3><a name="harmonics"></a>Dealing with harmonics</h3>
 <blockquote>
-xdx
+  <p>The harmonics option exculdes frequencies from the resulting
+spectrum<br>
+  </p>
+  <ul>
+    <li>if the current frequency is a harmonic of another used
+frequency or<br>
+    </li>
+    <li>if one of the first <var>n</var> harmonics of the current
+frequency is a harmonic of another used frequency.</li>
+  </ul>
+  <p>Because of the second condition it is strongly recommended to set
+the minimum frequency at least higher than the <var>n</var>th harmonic
+of the ground frequency of the generated pattern. Otherwise a large gap
+would occur after the first used frequency.<br>
+  </p>
+  <img style="width: 771px; height: 368px;" alt="" src="images/64H3.png"><br>
+  <p>The graph shows the generated frequencies for a 64 sample noise
+pattern with 3 harmonics and a minimum frequency of 4:<br>
+  <samp>noise fsamp64 fmin3 fmax32 harm3 wdnoise.dat</samp></p>
+  <ul>
+    <li>Frequency 4 is the first after fmin. This is always used.</li>
+    <li>Frequency 6 has a collision at its 2nd harmonic with the 3rd
+harmonic of frequency 4 at frequency 12 and therefore cannot be used.</li>
+    <li>Frequency 5 has also a collision at its 4th harmonic with the
+5th harmonic of frequency 4, but both are beyond the maximum harmonic
+to analye (3) and so this does not care.</li>
+    <li>Frequency 8 has a direct collision with the 2nd harmonic of
+frequency 4 and must not be used.</li>
+    <li>Frequency 16 has a direct collision with the 4th harmonic of
+frequency 4. Although this harmonic is not analyzed it might get
+energy, so it is not used either.</li>
+  </ul>
+In effect the noise pattern contains only energy at the frequencies
+with red circles. While all the frequencies with red or pink circles
+are used for analysis.<br>
 </blockquote>
 <h2><a name="format"></a>File formats</h2>
 <h3><a name="design_dat"></a><tt>design.dat</tt> - design coefficients</h3>
