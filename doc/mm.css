@@ -43,7 +43,7 @@ tr {
 }
 th {
   background-color: #eeeeee;
-  horizontal-align: left;
+  text-align: left;
 }
 .tl {
   background-color: #eeeeee;
@@ -81,6 +81,7 @@ a:visited {
 }
 .abstract {
   font-style: italic;
+  text-align: center;
 }
 .symbol {
   font-family: Arial,Helvetica,sans-serif;

@@ -122,7 +122,7 @@ static bool       writeraw    = false; // write raw data to file
 static bool       writedata   = false; // write analysis data to file
 static bool       writewindow = false; // write window function data to file
 static unsigned   method      = 0;     // analysis method: 0 = none, 1 = PCA, 2 = FFT, 3 = PCA & FFT, 4 = XY
-static unsigned   purgech     = 0;     // set the first FFT frequencies to 0
+static unsigned   purgech     = 1;     // set the first FFT frequencies to 0
 static unsigned   discsamp    = 0;     // skip the first samples
 static bool       disctrail   = false; // comsume trailing samples after completion
 static unsigned   addch       = 1;     // binsize in raw samples
@@ -135,8 +135,7 @@ static unsigned   loops       = 1;     // number of analysis loops
 static unsigned   lpause      = 10;    // number of loops between zero calibration parts
 static unsigned   zeromode    = 0;     // zero calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
 static unsigned   gainmode    = 0;     // gain calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta
-static double     linphase    = 0;     // lienar phase correction [s]
-static bool       nophase     = false; // purge any phase information
+static double     linphase    = 0;     // linear phase correction [s]
 static bool       normalize   = false; // normalize L+R to 1. for impedance measurements
 static unsigned   binsz       = 1;     // binsize in FFT channels
 static double     fbinsc      = 0;     // logarithmic binsize: fmin/fmax = 1 + fbinsc
@@ -144,12 +143,12 @@ static double     f_inc       = 1;     // Absolute increment for harmonic table 
 static double     f_log       = 0;     // Relative increment for harmonic table calculation
 static unsigned   harmonic    = 0;     // analyze up to # harmonics
 static bool       crosscorr   = false; // Calculate and remove time delay by cross correlation
-static const char* datafile   = "data.dat";  // filename for analysis data
-static const char* zerofile   = "zero.dat";  // file name for zero calibration data
-static const char* zerodifffile = "zeroD.dat";// file name for differential zero calibration data
-static const char* gainfile   = "gain.dat";  // file name for gain calibration data
-static const char* gaindifffile = "gainD.dat";// file name for differential gain calibration data
-static const char* rawfile    = "raw.dat";   // file name for raw data
+static const char* datafile   = "data.dat"; // filename for analysis data
+static const char* zerofile   = "zero.dat"; // file name for zero calibration data
+static const char* zerodifffile="zeroD.dat";// file name for differential zero calibration data
+static const char* gainfile   = "gain.dat"; // file name for gain calibration data
+static const char* gaindifffile="gainD.dat";// file name for differential gain calibration data
+static const char* rawfile    = "raw.dat";  // file name for raw data
 static const char* windowfile = "window.dat";// file name for window data
 static struct ovrwrt                   // overwrite channel with ...
 { const char* file;                    // ... file
@@ -484,11 +483,11 @@ static void dofft()
       // f(N/2)
       ccbuffer1[N/2] = outbuffer1[N/2] * outbuffer2[N/2];
 
-      // do the cross correlation
+      /*// do the cross correlation
       rfftw_one(PI, ccbuffer1, ccbuffer2);
       FILE* F = fopen("cc.dat", "w");
       write1ch(F, ccbuffer2, N);
-      fclose(F);
+      fclose(F);*/
 
       // use the result
       double phiinc = M_2PI / N;
@@ -504,9 +503,9 @@ static void dofft()
       }
       asum /= sum;
       bsum /= sum;
-      fprintf(stderr, "***** %12g %12g %12g %12g\n",
-        sqrt(asum*asum+bsum*bsum), atan2(bsum, asum)*M_180_PI, asum, bsum);
-        
+      /*fprintf(stderr, "***** %12g %12g %12g %12g\n",
+        sqrt(asum*asum+bsum*bsum), atan2(bsum, asum)*M_180_PI, asum, bsum);*/
+  
       // calc linphase to compensate for the group delay
       linphase = atan2(bsum, asum) * N / freq;
    }
@@ -562,6 +561,16 @@ static void docal(int bin, double f, Complex& U, Complex& I)
    }
 }
 
+// Phase unwrapper
+// Adjusts phase by adding a multiple of 2pi so that the result
+// is as close as possible to lph.
+//   lph     last phase
+//   phase   current calculated phase
+//   returns unwrapped phase
+static double unwrap(double lph, double phase)
+{ return phase - M_2PI * floor((phase-lph) / M_2PI +.5);
+}
+
 class FFTbin
 {public:
    enum    StoreRet
@@ -574,14 +583,19 @@ class FFTbin
  private:
    struct  aggentry
    {  double   f;
-      Complex  U;
-      Complex  I;
-      Complex  Z;
-      double   D;
-      double   W;
+      double   Uabs; // Magnitude of nomiator
+      double   Uarg; // Phase of nominator
+      double   Iabs; // Magnitude of denominator
+      double   Iarg; // Phase of denomiator 
+      double   Zabs; // Magnitude of quotient
+      double   Zarg; // Phase of quotient
+      double   D;    // Group delay
+      double   W;    // weight sum
       // internals
       double   lf;   // last frequency (for numerical derivative)
-      double   lphi; // last phase (for numerical derivative)
+      double   lUarg;// last phase of nomiator
+      double   lIarg;// last phase of denomiator
+      double   lZarg;// last phase of quotient
       double   fnext;// next frequency for bin size
       unsigned binc; // number of bins accumulated
    };
@@ -591,6 +605,7 @@ class FFTbin
    aggentry  agg[2*HA_MAX+1];
    int       ch;
    aggentry* curagg;
+   Complex   Zcache;
 
  public:
    FFTbin(double finc) : finc(finc)
@@ -601,12 +616,19 @@ class FFTbin
    void    PrintBin(FILE* dst) const;
 
    double   f() const { return curagg->f; } // frequency
-   Complex  U() const { return curagg->U; } // voltage, nominator or wanted signal
-   Complex  I() const { return curagg->I; } // cuurrent, denominator or reference signal
-   Complex  Z() const { return curagg->Z; } // impedance, quotient or relative signal
-   double   D() const { return curagg->D; } // group delay
+   Complex  U() const { return polar(curagg->Uabs, curagg->Uarg); } // voltage, nominator or wanted signal
+   double   Uabs() const { return curagg->Uabs; } // voltage magnitude
+   double   Uarg() const { return curagg->Uarg; } // voltage phase
+   Complex  I() const { return polar(curagg->Iabs, curagg->Iarg); } // current, denominator or reference signal
+   double   Iabs() const { return curagg->Iabs; } // current magnitude
+   double   Iarg() const { return curagg->Iarg; } // current phase
+   Complex  Z() const { return Zcache; } // impedance, quotient or relative signal
+   double   Zabs() const { return curagg->Zabs; } // impedance magnitude
+   double   Zarg() const { return curagg->Zarg; } // impedance phase
+   double   D() const { return curagg->D / M_2PI; } // group delay
    double   W() const { return curagg->W; } // weight
-   int      h() const { return ch; }        // harmonic 
+   int      h() const { return ch; }        // harmonic
+ private:
 };
 
 FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
@@ -627,46 +649,60 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
    U *= Complex(cos(linphase*f), sin(linphase*f));
    // calc Y
    Complex Z(U/I);
+   // convert to polar
+   double Uabs = abs(U);
+   double Uarg = unwrap(curagg->lUarg, arg(U));
+   double Iabs = abs(I);
+   double Iarg = unwrap(curagg->lIarg, arg(I));
+   double Zabs = abs(Z);
+   double Zarg = unwrap(curagg->lZarg, arg(Z));
    // group delay
-   double D;
-   {  double Zphi = arg(Z);
-      D = (Zphi - curagg->lphi) / M_2PI;
-      D -= floor(D+.5); // minimum phase
-      //fprintf(stderr, "D: %f, %f\n", f, D);
-      D /= f - curagg->lf;
-      curagg->lf   = f;
-      curagg->lphi = Zphi;
-   }
-   if (nophase)
-      Z = abs(Z);
+   double D = (Zarg - curagg->lZarg) / (f - curagg->lf);
+   // store values for next point
+   curagg->lUarg = Uarg;
+   curagg->lIarg = Iarg;
+   curagg->lZarg = Zarg; 
+   curagg->lf    = f;
+
    // weight
-   double w = (*weightfn)(abs(U), abs(I), f);
+   double w = (*weightfn)(Uabs, Iabs, f);
    if (curagg->binc == 0)
    {  // init
-      curagg->f = f * w;
-      curagg->U = U * w;
-      curagg->I = I * w;
-      curagg->Z = Z * w;
-      curagg->D = D * w;
-      curagg->W = w;
+      curagg->f    = f * w;
+      curagg->Uabs = Uabs * w;
+      curagg->Uarg = Uarg * w;
+      curagg->Iabs = Iabs * w;
+      curagg->Iarg = Iarg * w;
+      curagg->Zabs = Zabs * w;
+      curagg->Zarg = Zarg * w;
+      curagg->D    = D * w;
+      curagg->W    = w;
       curagg->fnext = f * (1+fbinsc) - finc;
    } else
-   {  curagg->f += f * w;
-      curagg->U += U * w;
-      curagg->I += I * w;
-      curagg->Z += Z * w;
-      curagg->D += D * w;
-      curagg->W += w;
+   {  curagg->f    += f * w;
+      curagg->Uabs += Uabs * w;
+      curagg->Uarg += Uarg * w;
+      curagg->Iabs += Iabs * w;
+      curagg->Iarg += Iarg * w;
+      curagg->Zabs += Zabs * w;
+      curagg->Zarg += Zarg * w;
+      curagg->D    += D * w;
+      curagg->W    += w;
    }
    ++curagg->binc;
    if (f < curagg->fnext)
       return Aggregated;
-   curagg->f /= curagg->W;
-   curagg->U /= curagg->W;
-   curagg->I /= curagg->W;
-   curagg->Z /= curagg->W;
-   curagg->D /= curagg->W;
+   w = curagg->W;
+   curagg->f    /= w;
+   curagg->Uabs /= w;
+   curagg->Uarg /= w;
+   curagg->Iabs /= w;
+   curagg->Iarg /= w;
+   curagg->Zabs /= w;
+   curagg->Zarg /= w;
+   curagg->D    /= w;
    curagg->binc = 0;
+   Zcache = polar(curagg->Zabs, curagg->Zarg);
    /*if (curagg->f < fmin)
       return BelowMin;
    if (curagg->f > fmax)
@@ -677,9 +713,9 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 void FFTbin::PrintBin(FILE* dst) const
 {  fprintf(dst, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g %12g %6i\n",
    // f    |Hl|      phil               |Hr|      phir
-      f(), abs(U()), arg(U())*M_180_PI, abs(I()), arg(I())*M_180_PI,
+      f(), Uabs(), Uarg()*M_180_PI, Iabs(), Iarg()*M_180_PI,
    // |Hl|/|Hr| phil-phir          re          im
-      abs(Z()), arg(Z())*M_180_PI, Z().real(), Z().imag(),
+      Zabs(), Zarg()*M_180_PI, Z().real(), Z().imag(),
    // weight delay harmonic
       W(), D(), h());
 }
@@ -689,6 +725,7 @@ const ArgMap argmap[] = // must be sorted
 {  {"ainc", (ArgFn)&setflag,    &incremental, true}
  , {"al",   (ArgFn)&readuint,   &addloop,     0}
  , {"bin",  (ArgFn)&readuint,   &binsz,       0}
+ , {"bn" ,  (ArgFn)&readN,      &N,           0}
  , {"ca" ,  (ArgFn)&readuintdef,&addch,       2}
  , {"df" ,  (ArgFn)&readstring, &datafile,    0}
  , {"exec", (ArgFn)&readstring, &execcmd,     0}
@@ -718,7 +755,6 @@ const ArgMap argmap[] = // must be sorted
  , {"mpca", (ArgFn)&setbit,     &method,      2}
  , {"mst",  (ArgFn)&setflag,    &stereo,      true}
  , {"mxy",  (ArgFn)&setbit,     &method,      4}
- , {"n"  ,  (ArgFn)&readN,      &N,           0}
  , {"olc",  (ArgFn)&readuint,   &overwrt[0].column, 0}
  , {"olf",  (ArgFn)&readstring, &overwrt[0].file,   0}
  , {"orc",  (ArgFn)&readuint,   &overwrt[1].column, 0}
@@ -726,7 +762,6 @@ const ArgMap argmap[] = // must be sorted
  , {"pdc",  (ArgFn)&readuintdef,&purgech,     1}
  , {"phcc", (ArgFn)&setflag,    &crosscorr,   true}
  , {"phl",  (ArgFn)&readdouble, &linphase,    0}
- , {"phn",  (ArgFn)&setuint,    &nophase,     1}
  , {"plot", (ArgFn)&readstring, &plotcmd,     0}
  , {"psa",  (ArgFn)&readuintdef,&discsamp,    1}
  , {"pte",  (ArgFn)&readuintdef,&disctrail,   1}
@@ -763,7 +798,7 @@ int main(int argc, char* argv[])
    noiselvl_ = 1/noiselvl;
    freq /= addch;
    linphase *= M_2PI;
-   f_inc -= .5; // increment compensation + rounding
+   f_inc -= .5;
    f_log += 1;
    gainadj[0] /= 32767;
    gainadj[1] /= 32767;
@@ -798,11 +833,13 @@ int main(int argc, char* argv[])
    {  memset(harmonics, 0, (N/2+1) * sizeof *harmonics);
       int sign = 1;
       for (unsigned i = (int)floor(fmin/freq*N +.5); i <= floor(fmax/freq*N +.5); ++i)
-      {  for (unsigned j = 1; j <= harmonic && i*j <= N/2; ++j)
-            if (harmonics[i*j])
-               goto next_f;
-         for (unsigned j = 1; i*j <= N/2; ++j)
-            harmonics[i*j] = j * sign;
+      {  if (i)
+         {  for (unsigned j = 1; j <= harmonic && i*j <= N/2; ++j)
+               if (harmonics[i*j])
+                  goto next_f;
+            for (unsigned j = 1; i*j <= N/2; ++j)
+               harmonics[i*j] = j * sign;
+         }
          if (stereo)
             sign = -sign;
          i = (int)floor(i * f_log + f_inc);
@@ -1087,6 +1124,8 @@ int main(int argc, char* argv[])
              , rref * R, rref * RE
              , 1/(rref*C*M_2PI), 1 / (CE * rref*M_2PI)
              , rref*L/M_2PI, LE * rref / M_2PI );
+            if (crosscorr)
+              fprintf(stderr, "delay        \t%12g\n", linphase/M_2PI);
 
          }
          break;
@@ -1176,6 +1215,8 @@ int main(int argc, char* argv[])
                               "imaginary: L [æH] \t%12g\n"
 //             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
                , R0, C0*1E6, L0*1E6);
+            if (crosscorr)
+              fprintf(stderr, "delay        \t%12g\n", linphase/M_2PI);
          }
          break;
 
@@ -1258,9 +1299,8 @@ int main(int argc, char* argv[])
          }
       }
 
-      /*if (execcmd)
-      {  system(execcmd);
-      }*/
+      if (execcmd)
+         system(execcmd);
       if (plotcmd)
       {  // for gnuplot!
          puts(plotcmd);

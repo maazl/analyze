@@ -11,7 +11,7 @@
 <h1>Signal generator for cyclic noise patterns</h1>
 <p>Release: 0.1.1</p>
 <a href="#reference">Parameters</a> <a href="#method">How it works</a>
-<a href="#format">File format</a> <a href="index.html#download">Download</a>
+<a href="#format">File formats</a> <a href="index.html#download">Download</a>
 <a href="#history">History</a>
 <a href="#todo">Todo</a>
 <a href="index.html#build">Build</a>
@@ -135,7 +135,7 @@ program or device handles the DAC output.</dd>
 </blockquote>
 <h2><a name="method"></a>How does it work?</h2>
 <blockquote>
-  <p>The program creates the noise reference by inverse discrete
+  <p>The program creates the noise reference by inverse Discrete
 Fourier Transform. The <strong>amplitudes</strong>
 of the Fourier coefficients are calculated by:</p>
   <blockquote>
@@ -160,13 +160,13 @@ the amplitude of the DC component gets singular.<br>
 <h3><a name="harmonics"></a>Dealing with harmonics</h3>
 <blockquote>
   <p>The harmonics option exculdes frequencies from the resulting
-spectrum<br>
+spectrum if<br>
   </p>
   <ul>
-    <li>if the current frequency is a harmonic of another used
+    <li>the current frequency is a harmonic of another used
 frequency or<br>
     </li>
-    <li>if one of the first <var>n</var> harmonics of the current
+    <li>one of the first <var>n</var> harmonics of the current
 frequency is a harmonic of another used frequency.</li>
   </ul>
   <p>Because of the second condition it is strongly recommended to set
@@ -175,25 +175,33 @@ of the ground frequency of the generated pattern. Otherwise a large gap
 would occur after the first used frequency.<br>
   </p>
   <img style="width: 771px; height: 368px;" alt="" src="images/64H3.png"><br>
-  <p>The graph shows the generated frequencies for a 64 sample noise
+  <p>The graph shows an example of the generated frequencies for a 64
+sample noise
 pattern with 3 harmonics and a minimum frequency of 4:<br>
   <samp>noise fsamp64 fmin3 fmax32 harm3 wdnoise.dat</samp></p>
+  <p>Comments<samp><br>
+  </samp></p>
   <ul>
-    <li>Frequency 4 is the first after fmin. This is always used.</li>
+    <li>Frequency 4 is the first after <a href="#_fmin"><span
+ style="font-family: monospace;">fmin</span></a>. This is always used.</li>
     <li>Frequency 6 has a collision at its 2nd harmonic with the 3rd
-harmonic of frequency 4 at frequency 12 and therefore cannot be used.</li>
+harmonic of frequency 4 at frequency 12 and therefore cannot be used
+because it would make frequency 12 ambigeous.</li>
     <li>Frequency 5 has also a collision at its 4th harmonic with the
 5th harmonic of frequency 4, but both are beyond the maximum harmonic
-to analye (3) and so this does not care.</li>
+to analye (3 in this case) and so this does not care.</li>
     <li>Frequency 8 has a direct collision with the 2nd harmonic of
 frequency 4 and must not be used.</li>
     <li>Frequency 16 has a direct collision with the 4th harmonic of
 frequency 4. Although this harmonic is not analyzed it might get
-energy, so it is not used either.</li>
+additional energy by non-linearities, so it is not used either.</li>
   </ul>
 In effect the noise pattern contains only energy at the frequencies
-with red circles. While all the frequencies with red or pink circles
-are used for analysis.<br>
+with red circles. While all the frequencies with red <em>or</em> pink
+circles
+are used for analysis. See <a
+ href="http://www.maazl.de/electronics/LS/Noise.html">'The Art of Noise'</a>
+for further information.<br>
 </blockquote>
 <h2><a name="format"></a>File formats</h2>
 <h3><a name="design_dat"></a><tt>design.dat</tt> - design coefficients</h3>
@@ -281,12 +289,14 @@ activated</td>
 stereo. The two
 channels are used symmetrically: <var>s<sub>i1</sub></var>
 = -<var>s<sub>i2</sub></var>. This could
-be used for an improved SNR. The output will always be normalized to
-the maximum sample value ±32767.<br>
+be used for an improved SNR. But if you don't need this, simply use
+only one of them.<br>
   </p>
   <p>In <a href="#_mst">two channel mode</a> the two channels contain
-the two channels as you might suggest.<br>
-  </p>
+distinct data as you might suggest.</p>
+  <p>The output will always be normalized to
+the maximum sample value ±32767. In two channel mode they are
+normalized simultaneously. </p>
 </blockquote>
 <h2><a name="history"></a>Change log</h2>
 <h4>Version 0.1.1</h4>

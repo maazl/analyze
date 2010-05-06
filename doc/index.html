@@ -1,142 +1,119 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head>
-  
-
-
-  <title>Analysetools</title><link type="text/css" rel="stylesheet" href="mm.css"></head>
+<html>
+<head>
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+  <title>Analysis software</title>
+  <link type="text/css" rel="stylesheet" href="mm.css">
+</head>
 <body>
-
 <a href="glossary.html">
 </a>
-<h1>Analysesoftware f&uuml;r Zweipol und Vierpolanalysen
-sowie Hysteresemessungen</h1>
-
-<a href="#description">Beschreibung</a>&nbsp;<a href="#reference"></a><a href="#download">Download</a>
-<a href="#build">Compilieren</a> <a href="#contact">Kontakt</a>
-<h2><a name="description"></a>&Uuml;bersicht</h2>
-
-<p>Dies ist eine Reihe von Programmen und Skripten um <strong>me&szlig;technische
-Analysen</strong> mit einem <strong>PC mit Soundkarte</strong>
-durchzuf&uuml;hren.</p>
-
-<h3>Komponenten&uuml;bersicht</h3>
-
+<h1>Software to do 1-port or 2-port measurements</h1>
+<p class="abstract">This is a set of programs and scripts to do <strong>impedance
+measurements</strong> and <strong>transfer function measurements</strong>
+(network analyzer) with PC sound devices.</p>
+<a href="#software">&#8594;&nbsp;Components</a> <a href="#setup">&#8594;&nbsp;Setup</a>
+<a href="#download">&#8594;&nbsp;Download</a>
+<a href="#build">&#8594;&nbsp;Build</a> <a href="#contact">&#8594;&nbsp;Contact</a>
+<h2><a name="software"></a>Software components<br>
+</h2>
 <table border="1" cellpadding="3" cellspacing="0">
-
   <tbody>
-
     <tr>
-
-      <th align="left">Funktion</th>
-
-      <th align="left">Name</th>
-
-      <th align="left">Typ</th>
-      <th>Bemerkung</th>
-
+      <th>Function</th>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Remarks</th>
     </tr>
-
     <tr>
-
-      <td calss="tl">Kommunikation mit der Soundkarte</td>
-
+      <td calss="tl">Access to the sound device<br>
+      </td>
       <td>-</td>
-
-      <td>plattformspezifisch, <em>externe L&ouml;sung
-erforderlich</em></td>
-      <td>Ben&ouml;tigt wird eine jeweils plattformspezifische L&ouml;sung, um 16-Bit stereo PCM-Daten von <tt>stdout</tt> zur Soundkarte und von Line-In zu <tt>stdin</tt> zu bekommen.</td>
-
+      <td>platform dependent, <em>external tool required</em></td>
+      <td>You need a platform dependent way to record and play 16 bit
+two channel audio data via a pipe or provide an appropriate character
+device.<br>
+On Linux there are usually matching character devices. OS/2 has the
+application Playrec 0.20b21 to record into and play from a pipe. Win*:
+don't know.<br>
+      </td>
     </tr>
-
     <tr>
-
-      <td calss="tl">Erzeugung von breitbandigen Referenzsignalen (Rauschen)</td>
-
+      <td calss="tl">Generation of noise reference<br>
+      </td>
       <td><a href="noise.html">noise</a></td>
-
-      <td>C++-Programm</td>
-      <td colspan="1" rowspan="2">F&uuml;r Breitbandmessungen.</td>
-
+      <td>C++ application<br>
+      </td>
+      <td colspan="1" rowspan="2">Wide band measurements<br>
+      </td>
     </tr>
-
     <tr>
-
-      <td calss="tl">Analyse von breitbandigen Signalen</td>
-
+      <td calss="tl">FFT analysis<br>
+      </td>
       <td><a href="analyze.html">analyze</a></td>
-
-      <td>C++-Programm</td>
-
+      <td>C++ application</td>
     </tr>
-
     <tr>
-
-      <td calss="tl">Erzeugung von&nbsp;Sinus-Referenzsignalen
-(Frequenzscan)</td>
-
+      <td calss="tl">Generation of sine wave reference<br>
+      </td>
       <td colspan="1" rowspan="2"><a href="sweep.html">sweep</a></td>
-
-      <td colspan="1" rowspan="2">C++-Programm</td>
-      <td colspan="1" rowspan="2">F&uuml;r Frequenzscans.</td>
-
+      <td colspan="1" rowspan="2">C++ application</td>
+      <td colspan="1" rowspan="2">Sweep measurements (frequency scan)<br>
+      </td>
     </tr>
-
     <tr>
-
-      <td calss="tl">Analyse von Frequenzscans</td>
-
+      <td calss="tl">Analysis of frequency scans<br>
+      </td>
     </tr>
-
     <tr>
-
-      <td calss="tl">Visualisierung der Ergebnisse</td>
-
-      <td><var>diverse</var></td>
-
-      <td>gnuplot 3.x Makros</td>
-      <td>Prinzipliell kann die Visualisierung mit jedem beliebigen
-Programm erfolgen. Au&szlig;er den Beispiel-Makros gibt es keine
-Abh&auml;ngigkeit zu gnuplot.</td>
-
+      <td calss="tl">Show the result<br>
+      </td>
+      <td><var>various<br>
+      </var></td>
+      <td>Gnuplot 3.x macros</td>
+      <td>In general you can use any graphics application to show the
+results. But only macros for Gnuplot are part of this package.<br>
+      </td>
     </tr>
-
     <tr>
-
-      <td calss="tl">Ablaufsteuerung</td>
-
+      <td calss="tl">Control</td>
       <td>measure.cmd</td>
-
-      <td>REXX-Skript, <em>nur f&uuml;r OS/2!</em></td>
-      <td>REXX-Skripte sind nicht sinnvoll&nbsp;portierbar. F&uuml;r
-andere Plattformen ist eine Implementierung in einer unabh&auml;ngigen
-Skriptsprache wie Perl erforderlich.</td>
-
+      <td>REXX skript, <em>OS/2 only!</em></td>
+      <td>The REXX scripts are non-portable.</td>
     </tr>
-
   </tbody>
 </table>
-
-
-
 <h2><a name="download"></a>Download</h2>
-
-<p>Dieses Programm steht unter der <a href="gpl.txt"><i>GNU
+<p>The program is licensed under <a href="gpl.txt"><i>GNU
 GENERAL PUBLIC LICENSE</i></a>.</p>
-
-<p>Quellcodes und Skripte: <a href="analyze_src.zip">Repository Snapshot</a></p>
-
-<p>OS/2 Binaries: <a href="analyze_os2.zip">gcc 3.3 Kompilat</a> (braucht <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.3-csd3.zip">libc063.dll</a>)</p>
-
-<h2><a name="build"></a>Programme selber compilieren</h2>
-
-<h3>Voraussetzungen</h3><p>F&uuml;r
-die Fast-Fourier-Transformation kommt die Bibliothek <strong><a href="http://www.fftw.org/">FFTW</a> in der Version 2.x</strong> zum Einsatz. Diese muss vorher in compilierter Form vorliegen.</p><h3>Konfiguration</h3><p>Das Makefile f&uuml;r OS/2 gcc Version 3.3
-geschrieben und enth&auml;lt zudem den <strong>Pfad zur rfftw-Library</strong>.
-Kurzum,
-da ist Feintuning erforderlich.&nbsp;Eine Anpassung der Pfade und
-Compiler-Optionen sollte aber im allgemeinen hinreichend sein. </p><h3>Kompilieren</h3><p><strong><kbd>cd src</kbd><br><kbd>make</kbd></strong></p><p>Wenn
-alles passt, werden beim Aufruf von make im Verzeichnis <tt>bin</tt>
-alle ausf&uuml;hrbaren Dateien erstellt.</p>
-
-<h2><a name="contact"></a>Kontakt</h2><p><img alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" height="14" width="131"></p>
-</body></html>
+<p>Source code and scripts: <a href="analyze_src.zip">repository
+snapshot</a></p>
+<p>OS/2 binaries: <a href="analyze_os2.zip">bulid with gcc 3.3.5</a>
+(requires <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.3-csd3.zip">libc063.dll</a>)</p>
+<h2><a name="build"></a>Build the package<br>
+</h2>
+<h3>Preconditions</h3>
+<p>For FFT the library <strong><a href="http://www.fftw.org/">FFTW</a>,
+version 2.x</strong> is required. This must be available as shared or
+static library and the header files.<br>
+</p>
+<h3>Configuration</h3>
+<p>The Makefile is currently adjusted to OS/2 gcc version 3.3.5 and
+contains the <strong>path to rfftw</strong><span
+ style="font-weight: bold;"></span>. You have to change that on other
+platforms. In general adjusting the paths and the compiler options
+should be sufficient. </p>
+<h3>Compile</h3>
+<p><strong><kbd>cd src</kbd><br>
+<kbd>make</kbd></strong></p>
+<p>If everything is fine the executables are built in the <tt>bin</tt>
+sub folder. Feel free to <a href="#contact">contact me</a> if you
+don't succeed.<br>
+</p>
+<h2><a name="contact"></a>Contact</h2>
+<p>Suggestions, help, complaints (but not too much:-): <img
+ style="width: 131px; height: 14px;"
+ alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png"
+ align="middle"></p>
+</body>
+</html>
