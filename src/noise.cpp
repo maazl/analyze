@@ -19,7 +19,7 @@ typedef complex<double> Complex;
 #define M_180_PI (180./M_PI)
 
 
-static unsigned    n_fft      = 0;
+static unsigned    n_fft      = 0;     // period in samples
 static unsigned    f_samp     = 48000; // sampling rate
 static double      mgain      = 0;     // master gain [dB]
 static double      f_min      = 0;
@@ -30,9 +30,10 @@ static double      scalepow   = 0;
 static unsigned    n_harmonic = 0;
 static bool        stereo     = false;
 static bool        sweep      = false;
+static size_t      synclen    = 0;
 static const char* F_data     = NULL;
 static const char* F_res      = NULL;
-static const char* resmode   = "w";
+static const char* resmode    = "w";
 static const char* F_wav      = NULL;
 static unsigned    n_rep      = 1;
 //static int chirpphase = 0;
@@ -108,6 +109,7 @@ const ArgMap argmap[] = // must be sorted
  ,	{"mst",  (ArgFn)&setflag,    &stereo,      true}
  ,	{"msweep",(ArgFn)&setflag,   &sweep,       true}
  ,	{"scale",(ArgFn)&readdouble, &scalepow,    0}
+ ,	{"sync", (ArgFn)&readintdef, &synclen,     2}
  ,	{"wd",   (ArgFn)&readstring, &F_data,      0}
  ,	{"wr",   (ArgFn)&readstring, &F_res,       0}
  ,	{"ww",   (ArgFn)&readstring, &F_wav,       0}
@@ -177,7 +179,7 @@ int main(int argc, char**argv)
 		// next frequency
 		if (stereo && !sweep)
 			sign = -sign;
-		//fprintf(stderr, "f %i %i\n", i, (int)floor(i * f_log + f_inc)); 
+		//fprintf(stderr, "f %i %i\n", i, (int)floor(i * f_log + f_inc));
 		i = (int)floor(i * f_log + f_inc);
 	 next_f:;
 	}

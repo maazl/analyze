@@ -13,7 +13,7 @@ LDFLAGSRFFTW = -lrfftw -lfftw
 EXEEXT = .exe
 
 
-ALL : $(BINPATH)Analyze$(EXEEXT) $(BINPATH)noise$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)fft$(EXEEXT) $(BINPATH)sampledist$(EXEEXT)
+ALL : $(BINPATH)Analyze$(EXEEXT) $(BINPATH)noise$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)sampledist$(EXEEXT)
 
 $(BINPATH)Analyze$(EXEEXT) : Analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h
 	$(CC) $(CFLAGS) -o $@ Analyze.cpp nrc.cpp parser.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
@@ -26,9 +26,6 @@ $(BINPATH)noise$(EXEEXT) : noise.cpp parser.cpp parser.h
 
 $(BINPATH)ref$(EXEEXT) : ref.cpp
 	$(CC) $(CFLAGS) -o $@ ref.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
-
-$(BINPATH)fft$(EXEEXT) : fft.cpp
-	$(CC) $(CFLAGS) -o $@ fft.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
 $(BINPATH)sampledist$(EXEEXT) : sampledist.cpp
 	$(CC) $(CFLAGS) -o $@ sampledist.cpp $(LDFLAGS)

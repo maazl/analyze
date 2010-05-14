@@ -483,9 +483,9 @@ static void dofft()
       // f(N/2)
       ccbuffer1[N/2] = outbuffer1[N/2] * outbuffer2[N/2];
 
-      /*// do the cross correlation
+      // do the cross correlation
       rfftw_one(PI, ccbuffer1, ccbuffer2);
-      FILE* F = fopen("cc.dat", "w");
+      /*FILE* F = fopen("cc.dat", "w");
       write1ch(F, ccbuffer2, N);
       fclose(F);*/
 
