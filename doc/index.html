@@ -1,23 +1,28 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
+<html><head>
+  
   <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
   <title>Analysis software</title>
+
+  
+  
   <link type="text/css" rel="stylesheet" href="mm.css">
-</head>
-<body>
-<a href="glossary.html">
-</a>
+
+</head><body>
 <h1>Software to do 1-port or 2-port measurements</h1>
+
 <p class="abstract">This is a set of programs and scripts to do <strong>impedance
 measurements</strong> and <strong>transfer function measurements</strong>
 (network analyzer) with PC sound devices.</p>
-<a href="#software">&#8594;&nbsp;Components</a> <a href="#setup">&#8594;&nbsp;Setup</a>
-<a href="#download">&#8594;&nbsp;Download</a>
-<a href="#build">&#8594;&nbsp;Build</a> <a href="#contact">&#8594;&nbsp;Contact</a>
+
+<a href="#software">&rarr;&nbsp;Components</a> <a href="#setup">&rarr;&nbsp;Setup</a>
+<a href="#download">&rarr;&nbsp;Download</a>
+<a href="#build">&rarr;&nbsp;Build</a> <a href="#contact">&rarr;&nbsp;Contact</a>
 <h2><a name="software"></a>Software components<br>
 </h2>
+
 <table border="1" cellpadding="3" cellspacing="0">
+
   <tbody>
     <tr>
       <th>Function</th>
@@ -84,37 +89,47 @@ results. But only macros for Gnuplot are part of this package.<br>
     </tr>
   </tbody>
 </table>
+
 <h2><a name="download"></a>Download</h2>
+
 <p>The program is licensed under <a href="gpl.txt"><i>GNU
 GENERAL PUBLIC LICENSE</i></a>.</p>
-<p>Source code and scripts: <a href="analyze_src.zip">repository
+
+<p>Source code and scripts: <a href="../analyze-src.zip">repository
 snapshot</a></p>
-<p>OS/2 binaries: <a href="analyze_os2.zip">bulid with gcc 3.3.5</a>
+
+<p>OS/2 binaries: <a href="../analyze-os2.zip">bulid with gcc 3.3.5</a>
 (requires <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.3-csd3.zip">libc063.dll</a>)</p>
+
 <h2><a name="build"></a>Build the package<br>
 </h2>
+
 <h3>Preconditions</h3>
+
 <p>For FFT the library <strong><a href="http://www.fftw.org/">FFTW</a>,
 version 2.1.x</strong> is required. This must be available as shared or
 static library and the header files.<br>
 </p>
+
 <h3>Configuration</h3>
+
 <p>The Makefile is currently adjusted to OS/2 gcc version 3.3.5 and
-contains the <strong>path to rfftw</strong><span
- style="font-weight: bold;"></span>. You have to change that on other
+contains the <strong>path to rfftw</strong><span style="font-weight: bold;"></span>. You have to change that on other
 platforms. In general adjusting the paths and the compiler options
 should be sufficient. </p>
+
 <h3>Compile</h3>
+
 <p><strong><kbd>cd src</kbd><br>
 <kbd>make</kbd></strong></p>
+
 <p>If everything is fine the executables are built in the <tt>bin</tt>
 sub folder. Feel free to <a href="#contact">contact me</a> if you
 don't succeed.<br>
 </p>
+
 <h2><a name="contact"></a>Contact</h2>
-<p>Suggestions, help, complaints (but not too much:-): <img
- style="width: 131px; height: 14px;"
- alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png"
- align="middle"></p>
-</body>
-</html>
+
+<p>Suggestions, help, complaints (but not too much:-): <img style="width: 131px; height: 14px;" alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" align="middle"></p>
+
+</body></html>

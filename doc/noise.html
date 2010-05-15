@@ -1,13 +1,12 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html lang="en">
-<head>
-  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
-  <title>Noise reference generator</title>
+<html lang="en"><head>
+
+
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type"><title>Noise reference generator</title>
+  
   <link href="mm.css" rel="stylesheet" type="text/css">
-  <meta content="Marcel Müller" name="author">
-</head>
-<body>
-<a href="index.html">&#8594;&nbsp;Index</a>
+  <meta content="Marcel M&uuml;ller" name="author"></head><body>
+<a href="index.html">&rarr;&nbsp;Index</a>
 <h1>Signal generator for cyclic noise patterns</h1>
 <p>Release: 0.1.1</p>
 <a href="#reference">Parameters</a> <a href="#method">How it works</a>
@@ -47,18 +46,16 @@ length<strong><tt><var><br>
     <dd>This is the number of samples in one period of the signal. This
 should be the same as the FFT length used for analysis. So powers of 2
 should be preferred.</dd>
-    <dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt></strong>
-und <strong><tt>fmax<var>freq - </var></tt></strong>frequency range<strong><tt><var><br>
+    <dt><strong><a name="_fmin"></a><a name="_fmax"></a><tt>fmin<var>freq</var></tt></strong> and <strong><tt>fmax<var>freq - </var></tt></strong>frequency range<strong><tt><var><br>
       </var></tt></strong></dt>
     <dd>Minimum and maximum frequency where the output contains energy.</dd>
-    <dt><tt><a name="_finc"></a>finc<var>channels</var></tt> and <tt><a
- name="_flog"></a>flog<var>increment </var></tt><tt><var>- </var></tt>linear
+    <dt><tt><a name="_finc"></a>finc<var>channels</var></tt> and <tt><a name="_flog"></a>flog<var>increment </var></tt><tt><var>- </var></tt>linear
 and logarithmic increment for used frequencies<br>
     </dt>
     <dd>This is creates a discrete energy distribution. Subsequent used
 frequencies have at
 least the
-distance <var>f<small><sub>n+1</sub></small>&nbsp;= f<small><sub>n</sub></small></var>&nbsp;·&nbsp;<tt><var>channels</var>&nbsp;+&nbsp;<var>increment</var></tt>
+distance <var>f<small><sub>n+1</sub></small>&nbsp;= f<small><sub>n</sub></small></var>&nbsp;&middot;&nbsp;<tt><var>channels</var>&nbsp;+&nbsp;<var>increment</var></tt>
 rounded to the closest multiple of the cycle frequency. All frequencies
 in
 between have no intensity.<br>
@@ -75,13 +72,11 @@ default.</dd>
     <dd>With this option the first <i><tt>n</tt></i>
 harmonics of any used frequency are reserved and do not contain energy.
 Instead the next free frequency will be used. This could be used
-to do very fast measurements of harmonics of loudspeakers. See <a
- href="#harmonics">dealing with harmonics</a>.</dd>
+to do very fast measurements of harmonics of loudspeakers. See <a href="#harmonics">dealing with harmonics</a>.</dd>
     <dt><a name="_ln"></a><tt>ln<var>count - </var></tt>number of
 cycles</dt>
     <dd>Number of cycles to generate until the program completes. The
-loop count ony applies to <a href="#_ww">PCM output</a>.&nbsp; <span
- style="font-family: monospace;">1</span> by default.</dd>
+loop count only applies to <a href="#_ww">PCM output</a>.&nbsp; <span style="font-family: monospace;">1</span> by default.</dd>
     <dt><kbd><a name="_loop"></a>loop - </kbd>infinite output<kbd><var></var></kbd></dt>
     <dd>Switches the program to continuous mode. It can only be
 terminated by either sending a interrupt signal or when the output
@@ -93,9 +88,7 @@ for as channel 1 and channel 2.</dd>
     <dt><a name="_scale"></a><tt>scale<var>power - </var></tt>noise
 type</dt>
     <dd>Exponent of the <a href="noise.html#method">energy distribution</a>.
-      <span style="font-family: monospace;">0</span> := white noise, <span
- style="font-family: monospace;">-1</span> := pink noise. <span
- style="font-family: monospace;">0</span> by default.</dd>
+      <span style="font-family: monospace;">0</span> := white noise, <span style="font-family: monospace;">-1</span> := pink noise. <span style="font-family: monospace;">0</span> by default.</dd>
     <dt><a name="_wr"></a><tt>wd<var>file - </var></tt>write design
 data</dt>
     <dd>Writes the design coefficients into a <a href="#design_dat">text
@@ -103,8 +96,7 @@ file</a>. See @@@@@<br>
     </dd>
     <dt><a name="_wr"></a><tt>wr<var>file - </var></tt>write reference
 signal</dt>
-    <dd>Writes one cycle of the reference signal to a <a
- href="#ref_dat">text file</a>.
+    <dd>Writes one cycle of the reference signal to a <a href="#ref_dat">text file</a>.
 For each sample exactly one line is written.</dd>
     <dt><a name="_ww"></a><tt>ww<var>file - </var></tt>write PCM data</dt>
     <dd>Writes the <a href="#pcm-dat">binary data</a> as RIFF wave
@@ -120,16 +112,14 @@ stream like a character device or a pipe (fifo) as destination too.</dd>
   <dl>
     <dt><kbd>noise bn65536 fmin20 fmax20000 ln100 wwnoise.wav</kbd></dt>
     <dd>Creates a file <tt>noise.wav</tt> with 100 cycles of a 65536
-samples white noise pattern with 48 kHz sampling rate (about 2½
+samples white noise pattern with 48 kHz sampling rate (about 2&frac12;
 minutes).
 Frequencies below 20 Hz and above 20 kHz are suppressed.</dd>
     <dt><kbd>noise bn65536 fmin50 fmax20000 loop scale-.5 | </kbd><var>some
 output device</var></dt>
     <dd>This creates an infinite repetition of 65536 samples noise,
-weighted with <var>f<font size="-1"><sup>-</sup></font></var><font
- size="-1"><sup>0,5</sup></font> at 48 kHz sampling rate. Frequencies
-below 50 Hz and above 20 kHz are suppressed. The output is written to <span
- style="font-family: monospace;">stdout</span> where a appropriate
+weighted with <var>f<font size="-1"><sup>-</sup></font></var><font size="-1"><sup>0,5</sup></font> at 48 kHz sampling rate. Frequencies
+below 50 Hz and above 20 kHz are suppressed. The output is written to <span style="font-family: monospace;">stdout</span> where a appropriate
 program or device handles the DAC output.</dd>
   </dl>
 </blockquote>
@@ -140,18 +130,17 @@ Fourier Transform. The <strong>amplitudes</strong>
 of the Fourier coefficients are calculated by:</p>
   <blockquote>
     <p><var>r<font size="-1"><sub>i</sub></font></var>
-= <var>f<font size="-1"><sub>i</sub><sup>&#954;</sup></font></var></p>
+= <var>f<font size="-1"><sub>i</sub><sup>&kappa;</sup></font></var></p>
   </blockquote>
   <p>The <strong>phase angles</strong> are chosen randomly.</p>
-  <p>The exponent &#954; controls the <strong>energy distribution</strong>.
-An homogeneous distribution (&#954;&nbsp;=&nbsp;0) represents white noise.
+  <p>The exponent &kappa; controls the <strong>energy distribution</strong>.
+An homogeneous distribution (&kappa;&nbsp;=&nbsp;0) represents white noise.
 Positive values prefer high frequencies,
-negative values prefer low frequencies. &#954;&nbsp;=
+negative values prefer low frequencies. &kappa;&nbsp;=
 -1 creates pink noise.</p>
   <p>All coefficients, outside the <strong>frequency range
-[<var>f<font size="-1"><sub>min</sub></font></var>, <var>f<font
- size="-1"><sub>max</sub></font></var>]</strong>, are
-zeroed. This is particularly required when &#954; &lt; 0, because otherwise
+[<var>f<font size="-1"><sub>min</sub></font></var>, <var>f<font size="-1"><sub>max</sub></font></var>]</strong>, are
+zeroed. This is particularly required when &kappa; &lt; 0, because otherwise
 the amplitude of the DC component gets singular.<br>
   </p>
   <p>After the inverse Fourier Transform the wave form is normalized to
@@ -159,7 +148,7 @@ the amplitude of the DC component gets singular.<br>
 </blockquote>
 <h3><a name="harmonics"></a>Dealing with harmonics</h3>
 <blockquote>
-  <p>The harmonics option exculdes frequencies from the resulting
+  <p>The harmonics option excludes frequencies from the resulting
 spectrum if<br>
   </p>
   <ul>
@@ -182,14 +171,13 @@ pattern with 3 harmonics and a minimum frequency of 4:<br>
   <p>Comments<samp><br>
   </samp></p>
   <ul>
-    <li>Frequency 4 is the first after <a href="#_fmin"><span
- style="font-family: monospace;">fmin</span></a>. This is always used.</li>
+    <li>Frequency 4 is the first after <a href="#_fmin"><span style="font-family: monospace;">fmin</span></a>. This is always used.</li>
     <li>Frequency 6 has a collision at its 2nd harmonic with the 3rd
 harmonic of frequency 4 at frequency 12 and therefore cannot be used
-because it would make frequency 12 ambigeous.</li>
+because it would make frequency 12 ambiguous.</li>
     <li>Frequency 5 has also a collision at its 4th harmonic with the
 5th harmonic of frequency 4, but both are beyond the maximum harmonic
-to analye (3 in this case) and so this does not care.</li>
+to analyze (3 in this case) and so this does not care.</li>
     <li>Frequency 8 has a direct collision with the 2nd harmonic of
 frequency 4 and must not be used.</li>
     <li>Frequency 16 has a direct collision with the 4th harmonic of
@@ -199,8 +187,7 @@ additional energy by non-linearities, so it is not used either.</li>
 In effect the noise pattern contains only energy at the frequencies
 with red circles. While all the frequencies with red <em>or</em> pink
 circles
-are used for analysis. See <a
- href="http://www.maazl.de/electronics/LS/Noise.html">'The Art of Noise'</a>
+are used for analysis. See <a href="http://www.maazl.de/electronic/LS/Noise.html">'The Art of Noise'</a>
 for further information.<br>
 </blockquote>
 <h2><a name="format"></a>File formats</h2>
@@ -266,7 +253,7 @@ activated</td>
       </tr>
       <tr>
         <td>[1]</td>
-        <td>&#931;<var>s<sub>ij</sub></var></td>
+        <td>&Sigma;<var>s<sub>ij</sub></var></td>
         <td>sample value (sum over all channels)</td>
       </tr>
       <tr>
@@ -295,7 +282,7 @@ only one of them.<br>
   <p>In <a href="#_mst">two channel mode</a> the two channels contain
 distinct data as you might suggest.</p>
   <p>The output will always be normalized to
-the maximum sample value ±32767. In two channel mode they are
+the maximum sample value &plusmn;32767. In two channel mode they are
 normalized simultaneously. </p>
 </blockquote>
 <h2><a name="history"></a>Change log</h2>
@@ -312,7 +299,6 @@ normalized simultaneously. </p>
 <dl>
   <dt><b>RIFF format and endianess</b></dt>
   <dd>Currently only PCM data in RIFF wave format is supported for
-binary output and the endianness is always the platforms native one.</dd>
+binary output and the endianess is always the platforms native one.</dd>
 </dl>
-</body>
-</html>
+</body></html>
