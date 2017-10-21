@@ -1,25 +1,25 @@
-FFTWPATH = ../../k6fftwgel-1.1/
+FFTWPATH = ../../fftw-2.1.5/
 BINPATH = ../bin/
 
 CC = gcc
-CFLAGS = -W -Wall -Zomf -Zcrtdll -Wcast-qual -Wpointer-arith -Wcast-align -pedantic
-CFLAGS += -O6 -fomit-frame-pointer -malign-double -fstrict-aliasing -mcpu=k6
+CFLAGS = -W -Wall -Wcast-qual -Wpointer-arith -Wcast-align -pedantic
+CFLAGS += -O6 -fomit-frame-pointer -malign-double -fstrict-aliasing
 CFLAGS += -I$(FFTWPATH)fftw -I$(FFTWPATH)rfftw
 #CFLAGS += -g
-GCC3FIX = -lgcc3fix
+#GCC3FIX = -lgcc3fix
 LDFLAGS = -L$(FFTWPATH)fftw/.libs -L$(FFTWPATH)rfftw/.libs -lstdc++
-LDFLAGS += -s -Zno-fork
+LDFLAGS += -s
 LDFLAGSRFFTW = -lrfftw -lfftw
-EXEEXT = .exe
+#EXEEXT = .exe
 
 
-ALL : $(BINPATH)Analyze$(EXEEXT) $(BINPATH)noise$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)sampledist$(EXEEXT)
+ALL : $(BINPATH)analyze$(EXEEXT) $(BINPATH)noise$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)sampledist$(EXEEXT)
 
-$(BINPATH)Analyze$(EXEEXT) : Analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h
-	$(CC) $(CFLAGS) -o $@ Analyze.cpp nrc.cpp parser.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
+$(BINPATH)analyze$(EXEEXT) : analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h
+	$(CC) $(CFLAGS) -o $@ analyze.cpp nrc.cpp parser.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
-$(BINPATH)AnalyzeE$(EXEEXT) : AnalyzeE.cpp
-	$(CC) $(CFLAGS) -o $@ AnalyzeE.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
+$(BINPATH)analyzeE$(EXEEXT) : analyzeE.cpp
+	$(CC) $(CFLAGS) -o $@ analyzeE.cpp $(LDFLAGSRFFTW) $(LDFLAGS)
 
 $(BINPATH)noise$(EXEEXT) : noise.cpp parser.cpp parser.h
 	$(CC) $(CFLAGS) -o $@ noise.cpp parser.cpp $(LDFLAGSRFFTW) $(LDFLAGS)

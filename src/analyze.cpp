@@ -3,8 +3,9 @@
 #include <float.h>
 #include <string.h>
 #include <limits.h>
-#include <386/builtin.h>
+//#include <386/builtin.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include <io.h>
 #define INCL_DOS
@@ -30,8 +31,6 @@ typedef complex<double> Complex;
 #define CA_MAX 2
 #define HA_MAX 5
 
-//#define _cdecl // semms to make trouble
-
 // avoid name clash with math.h
 #define fmin fmin__
 #define fmax fmax__
@@ -39,15 +38,15 @@ typedef complex<double> Complex;
 
 // data buffers
 static short inbuffertmp[2*CA_MAX*N_MAX]; // Buffer for raw input
-static float* inbuffer1 = NULL;  // Buffer for nominator input
-static float* inbuffer2 = NULL;  // Buffer for denominator input
-static float* ovrbuffer1 = NULL; // Buffer for overridden nominator
-static float* ovrbuffer2 = NULL; // Buffer for overridden denominator
-static float* outbuffer1 = NULL; // Buffer for FFT(inbuffer1)
-static float* outbuffer2 = NULL; // Buffer for FFT(inbuffer2)
-static float* ccbuffer1 = NULL;  // Buffer for cross correlation temporary data
-static float* ccbuffer2 = NULL;  // Buffer for cross correlation of outbuffer
-static float window[N_MAX];      // Buffer for window function
+static rfftw_real* inbuffer1 = NULL;  // Buffer for nominator input
+static rfftw_real* inbuffer2 = NULL;  // Buffer for denominator input
+static rfftw_real* ovrbuffer1 = NULL; // Buffer for overridden nominator
+static rfftw_real* ovrbuffer2 = NULL; // Buffer for overridden denominator
+static rfftw_real* outbuffer1 = NULL; // Buffer for FFT(inbuffer1)
+static rfftw_real* outbuffer2 = NULL; // Buffer for FFT(inbuffer2)
+static rfftw_real* ccbuffer1 = NULL;  // Buffer for cross correlation temporary data
+static rfftw_real* ccbuffer2 = NULL;  // Buffer for cross correlation of outbuffer
+static rfftw_real window[N_MAX];      // Buffer for window function
 static int* harmonics = NULL;    // Buffer for harmonics dispatch table
 
 
@@ -97,23 +96,23 @@ static double get1_fweight(double, double, double f)
 {  return noiselvl_/f;
 }
 
-static void vectorscale(float* data, double factor, size_t len)
+static void vectorscale(fftw_real* data, double factor, size_t len)
 {  while (len--)
       *data++ *= factor;
 }
 
-static void vectoradd(float* dst, float* src, size_t len)
+static void vectoradd(fftw_real* dst, fftw_real* src, size_t len)
 {  while (len--)
       *dst++ += *src++;
 }
 
-static void vektormul(float* dst, float* src, size_t len)
+static void vektormul(fftw_real* dst, fftw_real* src, size_t len)
 {  while (len--)
       *dst++ *= *src++;
 }
 
 // config
-static float      gainadj[2]  = {1,1}; // gain {l, r}
+static fftw_real  gainadj[2]  = {1,1}; // gain {l, r}
 static unsigned   N           = 8192;  // FFT length
 static double     noiselvl    = 1;     // ?
 static unsigned   winfn       = 0;     // window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
@@ -167,10 +166,10 @@ static rfftw_plan P;    // FFT plan for forward transformation
 static rfftw_plan PI;   // FFT plan for inverse transformation
 
 
-static void createwindow(float* dst, int type, size_t len)
+static void createwindow(fftw_real* dst, int type, size_t len)
 {  ++len;
    double sum = 0;
-   float* win = dst;
+   fftw_real* win = dst;
    for (size_t i = 1; i < len; i++)
    {  double w;
       switch (type)
@@ -199,7 +198,8 @@ static void createwindow(float* dst, int type, size_t len)
 
 
 static inline short fromraw(short v)
-{  return _srotl(v, 8);
+{  //return _srotl(v, 8);
+   return (short)((0x10001) * v >> 8);
 }
 
 static int minmax[4];
@@ -212,7 +212,7 @@ static inline short storeminmax(short val, int* dst)
    return val;
 }
 
-static void short2float(float* dst, const short* src, size_t len)
+static void short2float(fftw_real* dst, const short* src, size_t len)
 {  while (len)
    {  double d = 0;
       int i = addch;
@@ -223,7 +223,7 @@ static void short2float(float* dst, const short* src, size_t len)
    }
 }
 
-static void short2float2(float* dst1, float* dst2, const short* src, size_t len)
+static void short2float2(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {  while (len)
    {  double d1 = 0;
       double d2 = 0;
@@ -239,7 +239,7 @@ static void short2float2(float* dst1, float* dst2, const short* src, size_t len)
    }
 }
 
-static void short2float2add(float* dst1, float* dst2, const short* src, size_t len)
+static void short2float2add(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {  while (len)
    {  double d1 = 0;
       double d2 = 0;
@@ -255,8 +255,8 @@ static void short2float2add(float* dst1, float* dst2, const short* src, size_t l
    }
 }
 
-static void short2float2window(float* dst1, float* dst2, const short* src, size_t len)
-{  const float* win = window;
+static void short2float2window(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
+{  const fftw_real* win = window;
    while (len)
    {  double d1 = 0;
       double d2 = 0;
@@ -272,7 +272,7 @@ static void short2float2window(float* dst1, float* dst2, const short* src, size_
    }
 }
 
-static void short2floatD(float* dst1, float* dst2, const short* src, size_t len)
+static void short2floatD(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {  while (len)
    {  double d1 = 0;
       double d2 = 0;
@@ -288,7 +288,7 @@ static void short2floatD(float* dst1, float* dst2, const short* src, size_t len)
    }
 }
 
-static void short2floatDadd(float* dst1, float* dst2, const short* src, size_t len)
+static void short2floatDadd(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {  while (len)
    {  double d1 = 0;
       double d2 = 0;
@@ -305,8 +305,8 @@ static void short2floatDadd(float* dst1, float* dst2, const short* src, size_t l
    }
 }
 
-static void short2floatDwindow(float* dst1, float* dst2, const short* src, size_t len)
-{  const float* win = window;
+static void short2floatDwindow(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
+{  const fftw_real* win = window;
    while (len)
    {  double d1 = 0;
       double d2 = 0;
@@ -323,14 +323,14 @@ static void short2floatDwindow(float* dst1, float* dst2, const short* src, size_
    }
 }
 
-static void applywindow(float* dst, size_t len)
-{  const float* win = window;
+static void applywindow(fftw_real* dst, size_t len)
+{  const fftw_real* win = window;
    while (len)
       *dst++ *= *win++;
 }
 
-static void applywindowI(float* dst, size_t len)
-{  const float* win = window;
+static void applywindowI(fftw_real* dst, size_t len)
+{  const fftw_real* win = window;
    while (len)
       *dst++ /= *win++;
 }
@@ -339,8 +339,8 @@ static inline double abs(double d1, double d2)
 {  return sqrt(sqr(d1) + sqr(d2));
 }
 
-static void complex2polar(float* data, size_t len)
-{  float *data2 = data + len;
+static void complex2polar(fftw_real* data, size_t len)
+{  fftw_real *data2 = data + len;
    while (++data < --data2)
    {  register double phi = atan2(*data2, *data);
       *data = abs(*data, *data2);
@@ -355,7 +355,7 @@ static void init()
    minmax[3] = INT_MIN;
 }
 
-static void write1ch(FILE* out, const float* data, size_t len)
+static void write1ch(FILE* out, const rfftw_real* data, size_t len)
 {  while (len--)
       fprintf(out, "%g\n", *data++);
 }
@@ -367,20 +367,20 @@ static void write2ch(FILE* out, const short* data, size_t len)
    }
 }
 
-static void write2ch(FILE* out, const float* data, size_t len)
+static void write2ch(FILE* out, const rfftw_real* data, size_t len)
 {  while (len--)
    {  fprintf(out, "%g\t%g\n", data[0], data[1]);
       data += 2;
    }
 }
 
-static void write2ch(FILE* out, const float* data1, const float* data2, size_t len)
+static void write2ch(FILE* out, const rfftw_real* data1, const rfftw_real* data2, size_t len)
 {  while (len--)
       fprintf(out, "%g\t%g\n", *data1++, *data2++);
 }
 
-static void writepolar(FILE* out, const float* data, size_t len, double inc)
-{  const float* data2 = data + len;
+static void writepolar(FILE* out, const rfftw_real* data, size_t len, double inc)
+{  const rfftw_real* data2 = data + len;
    // 1st line
    fprintf(out, "0\t%g\t0\n", *data++);
    len = 1;
@@ -426,7 +426,7 @@ static void read4complex(FILE* in, Complex (* data)[4], size_t len)
       ++data;
 }  }
 
-static void readfloat_2(FILE* in, unsigned column, size_t count, float* dest, size_t inc = 1)
+static void readfloat_2(FILE* in, unsigned column, size_t count, rfftw_real* dest, size_t inc = 1)
 {  while (count--)
    {  unsigned col = column;
       while (--col)
@@ -444,7 +444,7 @@ static void readfloat_2(FILE* in, unsigned column, size_t count, float* dest, si
 
 static void readN(const char* s, unsigned* r)
 {  bool ex;
-   if (ex = *s == '^')
+   if ((ex = *s == '^'))
       ++s;
    readuint(s, r);
    if (ex)
@@ -816,19 +816,19 @@ int main(int argc, char* argv[])
    // allocate buffers
    if (method & 4)
    {  // reserve space for integrals and differentials too
-      inbuffer1 = new float[3*N];
-      inbuffer2 = new float[3*N];
-      outbuffer1 = new float[3*N+1];
-      outbuffer2 = new float[3*N+1];
+      inbuffer1 = new rfftw_real[3*N];
+      inbuffer2 = new rfftw_real[3*N];
+      outbuffer1 = new rfftw_real[3*N+1];
+      outbuffer2 = new rfftw_real[3*N+1];
    } else
-   {  inbuffer1 = new float[N];
-      inbuffer2 = new float[N];
-      outbuffer1 = new float[N+1];
-      outbuffer2 = new float[N+1];
+   {  inbuffer1 = new fftw_real[N];
+      inbuffer2 = new fftw_real[N];
+      outbuffer1 = new fftw_real[N+1];
+      outbuffer2 = new fftw_real[N+1];
    }
    if (crosscorr && (method & 1))
-   {  ccbuffer1 = new float[N];
-      ccbuffer2 = new float[N];
+   {  ccbuffer1 = new rfftw_real[N];
+      ccbuffer2 = new rfftw_real[N];
    }
    harmonics = new int[N/2+1];
    wsums = new double[N_MAX/2+1];
@@ -837,7 +837,7 @@ int main(int argc, char* argv[])
    zero = new Complex[N_MAX/2+1][4];
    zeroD = new Complex[N_MAX/2+1][4];
    // create plan
-   //float in[N], tout[N], power_spectrum[N/2+1];
+   // rfftw_real in[N], tout[N], power_spectrum[N/2+1];
    P = rfftw_create_plan(N, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
    PI = rfftw_create_plan(N, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
    // create harmonics table
@@ -891,7 +891,7 @@ int main(int argc, char* argv[])
    {  FILE* fin = fopen(overwrt[0].file, "r");
       if (fin == NULL)
          die(20, "Failed to open %s for reading.", overwrt[0].file);
-      ovrbuffer1 = new float[N];
+      ovrbuffer1 = new rfftw_real[N];
       readfloat_2(fin, overwrt[0].column, N, ovrbuffer1);
       fclose(fin);
    }
@@ -899,7 +899,7 @@ int main(int argc, char* argv[])
    {  FILE* fin = fopen(overwrt[1].file, "r");
       if (fin == NULL)
          die(20, "Failed to open %s for reading.", overwrt[1].file);
-      ovrbuffer2 = new float[N];
+      ovrbuffer2 = new rfftw_real[N];
       readfloat_2(fin, overwrt[0].column, N, ovrbuffer2);
       fclose(fin);
    }
@@ -1028,8 +1028,8 @@ int main(int argc, char* argv[])
        case 2: // PCA analysis
          {  PCA<5> pca;
             double data[6];
-            float* U = inbuffer1 +1;
-            float* I = inbuffer2 +1;
+            fftw_real* U = inbuffer1 +1;
+            fftw_real* I = inbuffer2 +1;
             data[2] = 1;   // offset
             data[3] = 0;   // integral
             data[4] = 0;   // linear
@@ -1242,10 +1242,10 @@ int main(int argc, char* argv[])
 
             const double inc = freq/N;
             // U(f)
-            float* a1 = outbuffer1;
-            float* a2 = outbuffer2;
-            float* b1 = a1 + N;
-            float* b2 = a2 + N;
+            rfftw_real* a1 = outbuffer1;
+            rfftw_real* a2 = outbuffer2;
+            rfftw_real* b1 = a1 + N;
+            rfftw_real* b2 = a2 + N;
             *b1 = 0; // well, somewhat easier this way
             *b2 = 0;
             for (int len = 0; a1 < b1; len += harmonic, a1 += harmonic, a2 += harmonic, b1 -= harmonic, b2 -= harmonic)
@@ -1301,8 +1301,8 @@ int main(int argc, char* argv[])
                if (fout == NULL)
                   die(21, "Failed to create %s.", datafile);
 
-               const float* Up = inbuffer1;
-               const float* Ip = inbuffer2;
+               const fftw_real* Up = inbuffer1;
+               const fftw_real* Ip = inbuffer2;
                for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
                   fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
                   // t         U    I    INT U  INT I  D U      D I
