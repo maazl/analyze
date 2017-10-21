@@ -73,6 +73,7 @@ SELECT
       CALL SysSleep 1
       END
    'start /C sp t2 o playrec \pipe\refplay.wav /bufcnt:8 /i:'cfg.odevice
+   
    /*'CALL play FILE="\pipe\refplay.wav"'*/
    /*CALL SysSetPriority 2, -1*/
    CALL SysSleep 2
@@ -80,7 +81,32 @@ SELECT
    IF cfg.initexec \= '' THEN
       cfg.initexec
 
-   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | sp t1 o buffer2 -b=32M - - | analyze psa32000 loop fq"cfg.fsamp" rref"cfg.rref" scm"cfg.scm" mfft he bn"cfg.fftlen" mst"cfg.mst" wd ""plot"cfg.plotcmd""" fmax"cfg.fmax" fbin"cfg.fbin" fmin"cfg.fmin" harm"cfg.harm" finc"cfg.finc" flog"cfg.flog" famin"cfg.famin" famax"cfg.famax" "opt" "cfg.xopt"|gnuplot gpenv -"
+   /* analyze environment */
+   CALL STREAM 'analyze.cfg', 'c', 'open write replace'
+   CALL LINEOUT 'analyze.cfg', 'psa32000'
+   CALL LINEOUT 'analyze.cfg', 'loop'
+   CALL LINEOUT 'analyze.cfg', 'fq'cfg.fsamp
+   CALL LINEOUT 'analyze.cfg', 'rref'cfg.rref
+   CALL LINEOUT 'analyze.cfg', 'scm'cfg.scm
+   CALL LINEOUT 'analyze.cfg', 'mfft'
+   CALL LINEOUT 'analyze.cfg', 'he'
+   CALL LINEOUT 'analyze.cfg', 'bn'cfg.fftlen
+   CALL LINEOUT 'analyze.cfg', 'mst'cfg.mst
+   CALL LINEOUT 'analyze.cfg', 'wd'
+   CALL LINEOUT 'analyze.cfg', 'plot'cfg.plotcmd
+   CALL LINEOUT 'analyze.cfg', 'fmax'cfg.fmax
+   CALL LINEOUT 'analyze.cfg', 'fmin'cfg.fmin
+   CALL LINEOUT 'analyze.cfg', 'fbin'cfg.fbin
+   CALL LINEOUT 'analyze.cfg', 'harm'cfg.harm
+   CALL LINEOUT 'analyze.cfg', 'finc'cfg.finc
+   CALL LINEOUT 'analyze.cfg', 'flog'cfg.flog
+   CALL LINEOUT 'analyze.cfg', 'famin'cfg.famin
+   CALL LINEOUT 'analyze.cfg', 'famax'cfg.famax
+   CALL LINEOUT 'analyze.cfg', opt
+   CALL LINEOUT 'analyze.cfg', cfg.xopt
+   CALL STREAM 'analyze.cfg', 'c', 'close'
+
+   "playrec /f:"cfg.fsamp" /i:"cfg.idevice" /v:100 /r con | buffer2 -b=32M - - | bin\analyze @analyze.cfg | gnuplot gpenv -"
    END
 
  WHEN cfg.mtype = 'sweep' THEN DO

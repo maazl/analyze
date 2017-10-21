@@ -36,11 +36,13 @@ void parsearg(const char* arg)
          // strip whitespaces
          while (strchr(" \t\r\n", buffer[--l]) != NULL)
             buffer[l] = 0;
+         if (buffer[0] == 0)
+            continue; // skip empty lines
          const char* ap = buffer;
          while (strchr(" \t\r\n", *ap) != NULL)
             ++ap;
-         if (ap[0] == 0 || ap[0] == '#')
-            continue; // skip empty lines and comments
+         if (ap[0] == '#')
+            continue; // skip comments
          parsearg(ap); // THIS WILL NOT WORK WITH STRING ARGS !
       }
       return;
@@ -92,10 +94,10 @@ void readdouble(const char* s, double* r)
 }
 
 void readstring(const char* s, const char** cpp)
-{  *cpp = s;
+{  *cpp = strdup(s);
 }
 void readstringdef(const char* s, const char** cpp, const char* def)
-{  *cpp = *s ? s : def;
+{  *cpp = strdup(*s ? s : def);
 }
 
 void setflag(const char* s, bool* r)

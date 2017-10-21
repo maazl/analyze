@@ -6,6 +6,10 @@
 #include <386/builtin.h>
 #include <stdarg.h>
 
+#include <io.h>
+#define INCL_DOS
+#include <os2.h>
+
 #include <rfftw.h>
 #include <complex>
 #include <vector>
@@ -711,7 +715,7 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 }
 
 void FFTbin::PrintBin(FILE* dst) const
-{  fprintf(dst, "%12g %12g %12g %12g %12g %12g %12g %12g %12g %12g %12g %6i\n",
+{  fprintf(dst, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%6i\n",
    // f    |Hl|      phil               |Hr|      phir
       f(), Uabs(), Uarg()*M_180_PI, Iabs(), Iarg()*M_180_PI,
    // |Hl|/|Hr| phil-phir          re          im
@@ -783,7 +787,14 @@ const ArgMap argmap[] = // must be sorted
 const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
 int main(int argc, char* argv[])
-{  // parse cmdl
+{  
+   /*for (int i = 0; i < 3; ++i)
+   { puts("");
+     fflush(stdout);
+     DosSleep(500);
+   }*/
+
+   // parse cmdl
    while (--argc)
       parsearg(*++argv);
 
@@ -854,12 +865,11 @@ int main(int argc, char* argv[])
    createwindow(window, winfn, N);
    // write window data
    if (writewindow)
-   {  FILE* tout;
-      tout = fopen(windowfile, "wt");
-      if (tout == NULL)
+   {  FILE* fout = fopen(windowfile, "wt");
+      if (fout == NULL)
          die(21, "Failed to open %s for writing.", windowfile);
-      write1ch(tout, window, N);
-      fclose(tout);
+      write1ch(fout, window, N);
+      fclose(fout);
    }
 
    FILE* in = NULL;
@@ -901,16 +911,16 @@ int main(int argc, char* argv[])
    memset(gainD, 0, sizeof gain);
    memset(zeroD, 0, sizeof zeroD);
    // prepare gainmode
-   FILE* fz;
-   switch (gainmode)
-   {case 1: // read
-    case 3:
-      fz = fopen(gainfile, "r");
-      if (fz == NULL)
-         die(20, "Failed to open %s for reading.", gainfile);
-      readcomplex(fz, gain, N/2+1);
-      fclose(fz);
-   }
+   {  FILE* fz;
+      switch (gainmode)
+      {case 1: // read
+       case 3:
+         fz = fopen(gainfile, "r");
+         if (fz == NULL)
+            die(20, "Failed to open %s for reading.", gainfile);
+         readcomplex(fz, gain, N/2+1);
+         fclose(fz);
+   }  }
  restart_zero:
    // prepare zeromode
    switch (zeromode)
@@ -935,11 +945,11 @@ int main(int argc, char* argv[])
 
          // write raw data
          if (writeraw)
-         {  FILE* tout = fopen(rawfile, "wt");
-            if (tout == NULL)
+         {  FILE* fout = fopen(rawfile, "wt");
+            if (fout == NULL)
                die(21, "Failed to open %s for writing.", rawfile);
-            write2ch(tout, inbuffertmp, N * addch);
-            fclose(tout);
+            write2ch(fout, inbuffertmp, N * addch);
+            fclose(fout);
          }
 
          // reset min/max
@@ -1038,7 +1048,7 @@ int main(int argc, char* argv[])
             } while (i > 0);
 
             Vektor<4> res = pca.Result()*rref;
-            printf("\nPCA: %12g %12g %12g %12g %12g %12g\n", res[0], res[1], 2./freq/res[2], res[3], 1./2*freq*res[2]/M_2PI/res[0], freq*res[4]/2);
+            fprintf(stderr, "\nPCA: %12g %12g %12g %12g %12g %12g\n", res[0], res[1], 2./freq/res[2], res[3], 1./2*freq*res[2]/M_2PI/res[0], freq*res[4]/2);
          }
          break;
 
@@ -1105,7 +1115,9 @@ int main(int argc, char* argv[])
                d2sum = calc.W() * sqr(calc.Z().imag());
             }
             if (tout)
-               fclose(tout);
+            {  fclose(tout);
+               tout = NULL;
+            }
 
             // calculate summary
             double R = Rsum / wsum;
@@ -1117,7 +1129,7 @@ int main(int argc, char* argv[])
             double CE = sqrt((L2sum*d2sum - sqr(Lsum) - (d2sum*sqr(wsum) - 2*Csum*wsum*Lsum + L2sum*sqr(Csum))/C2sum) * sLC / (nsum -2));
 
             // write summary
-            fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
+            // fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
             fprintf(stderr, "\nreal (R)     \t%12g ñ %g\n"
                             "imaginary (C)\t%12g ñ %g\n"
                             "imaginary (L)\t%12g ñ %g\n"
@@ -1126,7 +1138,6 @@ int main(int argc, char* argv[])
              , rref*L/M_2PI, LE * rref / M_2PI );
             if (crosscorr)
               fprintf(stderr, "delay        \t%12g\n", linphase/M_2PI);
-
          }
          break;
 
@@ -1191,7 +1202,9 @@ int main(int argc, char* argv[])
                pcaIm.Store(PCAdataIm, calc.W());
             }
             if (tout)
-               fclose(tout);
+            {  fclose(tout);
+               tout = NULL;
+            }
 
             // calculate summary
             Vektor<1> resRe = pcaRe.Result();
@@ -1284,17 +1297,17 @@ int main(int argc, char* argv[])
 
             // write data
             if (writedata)
-            {  FILE* tout = fopen(datafile, "wt");
-               if (tout == NULL)
+            {  FILE* fout = fopen(datafile, "wt");
+               if (fout == NULL)
                   die(21, "Failed to create %s.", datafile);
 
                const float* Up = inbuffer1;
                const float* Ip = inbuffer2;
                for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
-                  fprintf(tout, "%12g %12g %12g %12g %12g %12g %12g\n",
+                  fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
                   // t         U    I    INT U  INT I  D U      D I
                      len/freq*harmonic, *Up, *Ip, Up[N], Ip[N], Up[2*N], Ip[2*N]);
-               fclose(tout);
+               fclose(fout);
             }
          }
       }
@@ -1305,6 +1318,12 @@ int main(int argc, char* argv[])
       {  // for gnuplot!
          puts(plotcmd);
          fflush(stdout);
+         /*#ifdef __OS2__
+         // Fix for curious bug in OS/2 preventing the fflush in the pipe from working reliable.
+         puts("\r\n");
+         fflush(stdout);
+         DosSleep(500);
+         #endif*/
       }
 
       // undo window function because of incremental mode
@@ -1339,7 +1358,7 @@ int main(int argc, char* argv[])
       puts("Zeromode calibration part one is now complete.\n"
            "Part 2 will start at the end of the contdown.\7");
       for (int loop = lpause; loop;)
-      {  printf("\r%u ", loop);
+      {  fprintf(stderr, "\r%u ", loop);
          if (fread(inbuffertmp, 2*sizeof *inbuffertmp * addch, N, in) != N)
             die(27, "failed to read data");
          --loop;
