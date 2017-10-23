@@ -7,14 +7,14 @@ extern bool termrq;
 // to notify other threads (if any).
 void die(int rc, const char* msg, ...);
 
-typedef void (*ArgFn)(const char* rem, void* param, int iparam);
+typedef void (*ArgFn)(const char* rem, void* param, long iparam);
 
 // Dispatch table for command line argument lookup
 extern const struct ArgMap
 {  char  arg[8];
    ArgFn func;
    void* param;
-   int   iparam;
+   long  iparam;
 } argmap[];
 // Number of entries in argmap[].
 // Must be set to sizeof argmap / sizeof *argmap once argmap is a complete type.

@@ -7,10 +7,11 @@
 #include <float.h>
 #include <limits.h>
 
-#include <rfftw.h>
+#include <fftw3.h>
 
 #include <complex>
 using namespace std;
+typedef double fftw_real;
 typedef complex<double> Complex;
 
 #include "parser.h"
@@ -43,7 +44,7 @@ static double      mfact; // Master gain factor
 
 void wavwriter(FILE* fo, size_t n_samp)
 {	// fake wav header
-	int wavhdr[11] =
+	unsigned wavhdr[11] =
 	// 48000
 	{	0x46464952, 0xffffffff, 0x45564157, 0x20746D66,
 		0x00000010, 0x00020001, 0x0000BB80, 0x0002ee00,
@@ -67,15 +68,15 @@ inline static double myrand()
 
 static void readN(const char* s, unsigned* r)
 {	bool ex;
-	if (ex = *s == '^')
+	if ((ex = *s == '^'))
 		++s;
 	readuint(s, r);
 	if (ex)
 		*r = 1 << *r;
 }
 
-static void quantize1(short* dst, const float* src, size_t count)
-{	const float* const spe = src + count;
+static void quantize1(short* dst, const fftw_real* src, size_t count)
+{	const fftw_real* const spe = src + count;
 	while (src != spe)
 	{	register short s = (short)floor(*src++ * mfact + myrand());
 		dst[0] = s;
@@ -84,8 +85,8 @@ static void quantize1(short* dst, const float* src, size_t count)
 	}
 }
 
-static void quantize2(short* dst, const float* src1, const float* src2, size_t count)
-{	const float* const spe = src1 + count;
+static void quantize2(short* dst, const fftw_real* src1, const fftw_real* src2, size_t count)
+{	const fftw_real* const spe = src1 + count;
 	while (src1 != spe)
 	{	dst[0] = (short)floor(*src1++ * mfact + myrand());
 		dst[1] = (short)floor(*src2++ * mfact + myrand());
@@ -94,25 +95,25 @@ static void quantize2(short* dst, const float* src1, const float* src2, size_t c
 }
 
 const ArgMap argmap[] = // must be sorted
-{	{"ar",   (ArgFn)&setint,     &resmode,     (int)"a"}
- ,	{"bn"  , (ArgFn)&readN,      &n_fft,       0}
- ,	{"exec", (ArgFn)&readstring, &execcmd,     0}
- ,	{"finc", (ArgFn)&readdouble, &f_inc,       0}
- ,	{"flog", (ArgFn)&readdouble, &f_log,       0}
- ,	{"fmax", (ArgFn)&readdouble, &f_max,       0}
- ,	{"fmin", (ArgFn)&readdouble, &f_min,       0}
- ,	{"fsamp",(ArgFn)&readuint,   &f_samp,      0}
- ,	{"gm",   (ArgFn)&readdouble, &mgain,       0}
- ,	{"harm", (ArgFn)&readuintdef,&n_harmonic,  3}
- ,	{"ln" ,  (ArgFn)&readuint,   &n_rep,       1}
- ,	{"loop", (ArgFn)&setuint,    &n_rep,       0}
- ,	{"mst",  (ArgFn)&setflag,    &stereo,      true}
- ,	{"msweep",(ArgFn)&setflag,   &sweep,       true}
- ,	{"scale",(ArgFn)&readdouble, &scalepow,    0}
- ,	{"sync", (ArgFn)&readintdef, &synclen,     2}
- ,	{"wd",   (ArgFn)&readstring, &F_data,      0}
- ,	{"wr",   (ArgFn)&readstring, &F_res,       0}
- ,	{"ww",   (ArgFn)&readstring, &F_wav,       0}
+{	{"ar",   (ArgFn)&setint,     &resmode,     (long)"a"}
+,	{"bn"  , (ArgFn)&readN,      &n_fft,       0}
+,	{"exec", (ArgFn)&readstring, &execcmd,     0}
+,	{"finc", (ArgFn)&readdouble, &f_inc,       0}
+,	{"flog", (ArgFn)&readdouble, &f_log,       0}
+,	{"fmax", (ArgFn)&readdouble, &f_max,       0}
+,	{"fmin", (ArgFn)&readdouble, &f_min,       0}
+,	{"fsamp",(ArgFn)&readuint,   &f_samp,      0}
+,	{"gm",   (ArgFn)&readdouble, &mgain,       0}
+,	{"harm", (ArgFn)&readuintdef,&n_harmonic,  3}
+,	{"ln" ,  (ArgFn)&readuint,   &n_rep,       1}
+,	{"loop", (ArgFn)&setuint,    &n_rep,       0}
+,	{"mst",  (ArgFn)&setflag,    &stereo,      true}
+,	{"msweep",(ArgFn)&setflag,   &sweep,       true}
+,	{"scale",(ArgFn)&readdouble, &scalepow,    0}
+,	{"sync", (ArgFn)&readintdef, &synclen,     2}
+,	{"wd",   (ArgFn)&readstring, &F_data,      0}
+,	{"wr",   (ArgFn)&readstring, &F_res,       0}
+,	{"ww",   (ArgFn)&readstring, &F_wav,       0}
 };
 const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
@@ -138,10 +139,10 @@ int main(int argc, char**argv)
 		die(34, "fmin and/or fmax out of range");
 	f_inc -= .5;
 	f_log += 1;
-	fprintf(stderr, "imin=%i imax=%i finc=%f flog=%f\n", i_min, i_max, f_inc, f_log);
+	fprintf(stderr, "imin=%zi imax=%zi finc=%f flog=%f\n", i_min, i_max, f_inc, f_log);
 
 	// generate coefficients
-	float* fftbuf = new float[(stereo+1)*(n_fft+1)];
+	fftw_real* fftbuf = fftw_alloc_real((stereo+1)*(n_fft+1));
 	int* harmonics = new int[n_fft+2];
 	if (fftbuf == NULL || harmonics == NULL)
 		die(39, "malloc(%lu) failed", n_fft);
@@ -184,8 +185,8 @@ int main(int argc, char**argv)
 	 next_f:;
 	}
 	// normalize
-	{	float* dp = fftbuf;
-		float* ep = dp + (stereo+1)*(n_fft+1);
+	{	fftw_real* dp = fftbuf;
+		fftw_real* ep = dp + (stereo+1)*(n_fft+1);
 		while (dp != ep)
 			*dp++ /= maxamp;
 	}
@@ -214,13 +215,13 @@ int main(int argc, char**argv)
 				if (wavF == NULL)
 					die(41, "Failed to open %s for writing", F_wav);
 			} else // stdout
-			{	_fsetmode(stdout, "b");
+			{	//_fsetmode(stdout, "b");
 				wavF = stdout;
 		}	}
 
 		if (sweep)
 		{	// Sweep mode
-			float* sampbuf = new float[n_fft];
+			fftw_real* sampbuf = new fftw_real[n_fft];
 
 			if (F_wav)
 			{	buf = new short[2*n_fft];
@@ -244,8 +245,8 @@ int main(int argc, char**argv)
 				{	FILE* of = fopen(F_res, resmode);
 					if (of == NULL)
 						die(41, "Failed to open %s for writing", F_res);
-					const float* spe = sampbuf + n_fft;
-					for (const float* sp = sampbuf; sp != spe; ++sp)
+					const fftw_real* spe = sampbuf + n_fft;
+					for (const fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g\n", *sp);
 					fclose(of);
 				}   
@@ -273,15 +274,15 @@ int main(int argc, char**argv)
 			if (!stereo)
 			{
 				// ifft
-				float* sampbuf = new float[n_fft];
-				rfftw_plan plan = rfftw_create_plan(n_fft, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
-				rfftw_one(plan, fftbuf, sampbuf);   // IFFT
-				rfftw_destroy_plan(plan);
+				fftw_real* sampbuf = fftw_alloc_real(n_fft);
+				fftw_plan plan = fftw_plan_r2r_1d(n_fft, fftbuf, sampbuf, FFTW_HC2R, FFTW_ESTIMATE);
+				fftw_execute(plan);   // IFFT
+				fftw_destroy_plan(plan);
 
 				// normalize
 				double fnorm = 0;
-				float* sp = sampbuf;
-				const float* const spe = sp + n_fft;
+				fftw_real* sp = sampbuf;
+				const fftw_real* const spe = sp + n_fft;
 				for (; sp != spe; ++sp)
 					if (fabs(*sp) > fnorm)
 						fnorm = fabs(*sp);
@@ -304,28 +305,28 @@ int main(int argc, char**argv)
 				{	buf = new short[2*n_fft];
 					quantize1(buf, sampbuf, n_fft);
 				}
-				delete[] sampbuf; // no longer needed
+				fftw_free(sampbuf); // no longer needed
 
 			} else // stereo
 			{
 				// split channels
-				float* const fftr = fftbuf + n_fft+1;
+				fftw_real* const fftr = fftbuf + n_fft+1;
 				for (size_t i = i_min; i <= i_max; ++i)
 				{	if (harmonics[i] < 0)
 						fftbuf[i] = fftbuf[n_fft-i] = 0;
 				}
 
 				// ifft
-				float* sampbuf = new float[2*n_fft];
-				rfftw_plan plan = rfftw_create_plan(n_fft, FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE);
-				rfftw_one(plan, fftbuf, sampbuf);   // IFFT
-				rfftw_one(plan, fftr, sampbuf+n_fft);
-				rfftw_destroy_plan(plan);
+				fftw_real* sampbuf = fftw_alloc_real(2*n_fft);
+				fftw_plan plan = fftw_plan_r2r_1d(n_fft, NULL, NULL, FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED);
+				fftw_execute_r2r(plan, fftbuf, sampbuf);   // IFFT
+				fftw_execute_r2r(plan, fftr, sampbuf+n_fft);
+				fftw_destroy_plan(plan);
 
 				// normalize
 				{	double fnorm = 0;
-					float* sp = sampbuf;
-					const float* const spe = sp + 2*n_fft;
+					fftw_real* sp = sampbuf;
+					const fftw_real* const spe = sp + 2*n_fft;
 					for (; sp != spe; ++sp)
 						if (fabs(*sp) > fnorm)
 							fnorm = fabs(*sp);
@@ -339,8 +340,8 @@ int main(int argc, char**argv)
 				{	FILE* of = fopen(F_res, resmode);
 					if (of == NULL)
 						die(41, "Failed to open %s for writing", F_res);
-					const float* const spe = sampbuf + n_fft;
-					for (float* sp = sampbuf; sp != spe; ++sp)
+					const fftw_real* const spe = sampbuf + n_fft;
+					for (fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g %12g %12g\n", sp[0]+sp[n_fft], sp[0], sp[n_fft]);
 					fclose(of);
 				}   
@@ -350,7 +351,7 @@ int main(int argc, char**argv)
 				{	buf = new short[2*n_fft];
 					quantize2(buf, sampbuf, sampbuf + n_fft, n_fft);
 				}
-				delete[] sampbuf; // no longer needed
+				fftw_free(sampbuf); // no longer needed
 			} // if (stereo)
 
 			if (F_wav)
@@ -374,6 +375,6 @@ int main(int argc, char**argv)
 
  end:
 	delete[] harmonics;
-	delete[] fftbuf;
+	fftw_free(fftbuf);
 }
 
