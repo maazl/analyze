@@ -1,3 +1,7 @@
+#include "pca.h"
+#include "parser.h"
+#include "utils.h"
+
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
@@ -13,8 +17,6 @@
 using namespace std;
 typedef double fftw_real;
 typedef complex<double> Complex;
-#include "pca.h"
-#include "parser.h"
 
 #define M_2PI (2.*M_PI)
 #define M_3PI (3.*M_PI)
@@ -117,13 +119,13 @@ static void vektormul(fftw_real* dst, fftw_real* src, size_t len)
 // config
 static fftw_real gainadj[2] = { 1, 1 }; // gain {l, r}
 static unsigned N = 8192;  // FFT length
-static double noiselvl = 1;     // ?
-static unsigned winfn = 0;     // window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
+static double noiselvl = 1; // ?
+static unsigned winfn = 0;  // window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
 static double freq = 48000; // sampling rate
-static double fmin = -1;    // minimum freuqncy for FFT analysis
-static double fmax = 1E99;  // minimum freuqncy for FFT analysis
-static double famin = 1;     // ignore frquencies below famin for calculation of screen output
-static double famax = 1E99;  // ignore frquencies above famax for calculation of screen output
+static double fmin = 0;     // minimum freuqncy for FFT analysis
+static double fmax = INFINITY; // minimum freuqncy for FFT analysis
+static double famin = 1;    // ignore frquencies below famin for calculation of screen output
+static double famax = 1E99; // ignore frquencies above famax for calculation of screen output
 static bool writeraw = false; // write raw data to file
 static bool writedata = false; // write analysis data to file
 static bool writewindow = false; // write window function data to file
@@ -506,7 +508,7 @@ static void readN(const char* s, unsigned* r)
 }
 
 static void dofft()
-{  // forwardtransformation
+{	// forwardtransformation
 	fftw_execute_r2r(P, inbuffer1, outbuffer1);
 
 	static const double minscale = 1E-15;
@@ -923,21 +925,19 @@ int main(int argc, char* argv[])
 	gainadj[1] /= 32767;
 	// allocate buffers
 	if (method & 4)
-	{  // reserve space for integrals and differentials too
+	{	// reserve space for integrals and differentials too
 		inbuffer1 = fftw_alloc_real(3 * N);
 		inbuffer2 = fftw_alloc_real(3 * N);
 		outbuffer1 = fftw_alloc_real(3 * N + 1);
 		outbuffer2 = fftw_alloc_real(3 * N + 1);
 	} else
-	{
-		inbuffer1 = fftw_alloc_real(N);
+	{	inbuffer1 = fftw_alloc_real(N);
 		inbuffer2 = fftw_alloc_real(N);
 		outbuffer1 = fftw_alloc_real(N + 1);
 		outbuffer2 = fftw_alloc_real(N + 1);
 	}
 	if (crosscorr && (method & 1))
-	{
-		ccbuffer1 = fftw_alloc_real(N);
+	{	ccbuffer1 = fftw_alloc_real(N);
 		ccbuffer2 = fftw_alloc_real(N);
 	}
 	harmonics = new int[N / 2 + 1];
@@ -948,15 +948,16 @@ int main(int argc, char* argv[])
 	zeroD = new Complex[N_MAX / 2 + 1][4];
 	// create plan
 	// fftw_real in[N], tout[N], power_spectrum[N/2+1];
-	P = fftw_plan_r2r_1d(N, NULL, NULL, FFTW_R2HC, FFTW_ESTIMATE);
-	PI = fftw_plan_r2r_1d(N, NULL, NULL, FFTW_HC2R, FFTW_ESTIMATE);
+	P = fftw_plan_r2r_1d(N, inbuffer1, outbuffer1, FFTW_R2HC, FFTW_ESTIMATE);
+	PI = fftw_plan_r2r_1d(N, inbuffer1, outbuffer1, FFTW_HC2R, FFTW_ESTIMATE);
+	// adjust fmax
+	if (fmax > freq/2)
+		fmax = freq/2;
 	// create harmonics table
-	{
-		memset(harmonics, 0, (N / 2 + 1) * sizeof *harmonics);
+	{	memset(harmonics, 0, (N / 2 + 1) * sizeof *harmonics);
 		int sign = 1;
 		for (unsigned i = (int)floor(fmin / freq * N + .5); i <= floor(fmax / freq * N + .5); ++i)
-		{
-			if (i)
+		{	if (i)
 			{
 				for (unsigned j = 1; j <= harmonic && i * j <= N / 2; ++j)
 					if (harmonics[i * j])
@@ -967,7 +968,7 @@ int main(int argc, char* argv[])
 			if (stereo)
 				sign = -sign;
 			i = (int)floor(i * f_log + f_inc);
-			next_f: ;
+		 next_f: ;
 		}
 		/*FILE* f = fopen("harm.dat", "w");
 		 for (unsigned i = 0; i <= N/2; ++i)
@@ -978,8 +979,7 @@ int main(int argc, char* argv[])
 	createwindow(window, winfn, N);
 	// write window data
 	if (writewindow)
-	{
-		FILE* fout = fopen(windowfile, "wt");
+	{	FILE* fout = fopen(windowfile, "wt");
 		if (fout == NULL)
 			die(21, "Failed to open %s for writing.", windowfile);
 		write1ch(fout, window, N);
@@ -1000,12 +1000,11 @@ int main(int argc, char* argv[])
 				die(20, "Failed to open input file.");
 		}
 		// discard first samples
-		fread(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
+		fread2(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
 	}
 
 	if (overwrt[0].file)
-	{
-		FILE* fin = fopen(overwrt[0].file, "r");
+	{	FILE* fin = fopen(overwrt[0].file, "r");
 		if (fin == NULL)
 			die(20, "Failed to open %s for reading.", overwrt[0].file);
 		ovrbuffer1 = fftw_alloc_real(N);
@@ -1013,8 +1012,7 @@ int main(int argc, char* argv[])
 		fclose(fin);
 	}
 	if (overwrt[1].file)
-	{
-		FILE* fin = fopen(overwrt[1].file, "r");
+	{	FILE* fin = fopen(overwrt[1].file, "r");
 		if (fin == NULL)
 			die(20, "Failed to open %s for reading.", overwrt[1].file);
 		ovrbuffer2 = fftw_alloc_real(N);
@@ -1022,14 +1020,13 @@ int main(int argc, char* argv[])
 		fclose(fin);
 	}
 
-	memset(inbuffer1, 0, 3 * N * sizeof *inbuffer1); // init with 0 because of incremental mode
-	memset(inbuffer2, 0, 3 * N * sizeof *inbuffer2);
+	memset(inbuffer1, 0, (method & 4 ? 3 : 1) * N * sizeof *inbuffer1); // init with 0 because of incremental mode
+	memset(inbuffer2, 0, (method & 4 ? 3 : 1) * N * sizeof *inbuffer2);
 	memset(wsums, 0, (N_MAX / 2 + 1) * sizeof *wsums);
 	memset(gainD, 0, (N_MAX / 2 + 1) * sizeof *gain);
-	memset(zeroD, 0, 4 * (N_MAX / 2 + 1) * sizeof *zeroD);
+	memset(zeroD, 0, 4 * (N_MAX / 2 + 1) * sizeof **zeroD);
 	// prepare gainmode
-	{
-		FILE* fz;
+	{	FILE* fz;
 		switch (gainmode)
 		{
 		case 1: // read
@@ -1062,13 +1059,11 @@ int main(int argc, char* argv[])
 	{
 		if (in)
 		{
-			if (fread(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in) != N)
-				die(27, "Failed to read data from input.");
+			fread2(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in);
 
 			// write raw data
 			if (writeraw)
-			{
-				FILE* fout = fopen(rawfile, "wt");
+			{	FILE* fout = fopen(rawfile, "wt");
 				if (fout == NULL)
 					die(21, "Failed to open %s for writing.", rawfile);
 				write2ch(fout, inbuffertmp, N * addch);
@@ -1177,8 +1172,8 @@ int main(int argc, char* argv[])
 				} while (i > 0);
 
 				Vektor<4> res = pca.Result() * rref;
-				fprintf(stderr, "\nPCA: %12g %12g %12g %12g %12g %12g\n", res[0], res[1], 2. / freq / res[2], res[3], 1. / 2 * freq * res[2] / M_2PI / res[0],
-				    freq * res[4] / 2);
+				fprintf(stderr, "\nPCA: %12g %12g %12g %12g %12g %12g\n",
+					res[0], res[1], 2. / freq / res[2], res[3], 1. / 2 * freq * res[2] / M_2PI / res[0], freq * res[4] / 2);
 			}
 			break;
 
@@ -1356,11 +1351,11 @@ int main(int argc, char* argv[])
 
 				// write summary
 				fprintf(stderr, "\nreal: R [Ohm]     \t%12g\n"
-//                              "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
-						    "imaginary: C [�F] \t%12g\n"
-//                              "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
-						    "imaginary: L [�H] \t%12g\n"
-//             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
+				//       "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
+				    "imaginary: C [�F] \t%12g\n"
+				//  "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
+				    "imaginary: L [�H] \t%12g\n"
+				//             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
 				, R0, C0 * 1E6, L0 * 1E6);
 				if (crosscorr)
 					fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
@@ -1498,8 +1493,7 @@ int main(int argc, char* argv[])
 		for (int loop = lpause; loop;)
 		{
 			fprintf(stderr, "\r%u ", loop);
-			if (fread(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in) != N)
-				die(27, "failed to read data");
+			fread2(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in);
 			--loop;
 		}
 		puts("\nNow at part 2.");

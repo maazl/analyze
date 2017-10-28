@@ -1,5 +1,6 @@
-#include <stdlib.h>
 #include "nrc.h"
+#include <stdlib.h>
+#include <string.h>
 
 template <int M, int N>
 class Matrix;

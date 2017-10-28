@@ -1,22 +1,10 @@
 #include "parser.h"
+#include "utils.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
-
-bool termrq = false;
-
-void die(int rc, const char* msg, ...)
-{
-	termrq = true;
-	va_list va;
-	va_start(va, msg);
-	vfprintf(stderr, msg, va);
-	va_end(va);
-	fputc('\n', stderr);
-	exit(rc);
-}
 
 static int searcharg(const char* arg, const char* elem)
 {

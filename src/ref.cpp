@@ -1,3 +1,6 @@
+#include "utils.h"
+#include "parser.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -8,32 +11,9 @@
 #include <limits.h>
 #include <ctype.h>
 
-void die(int rc, const char* msg, ...)
-{
-	va_list va;
-	va_start(va, msg);
-	vfprintf(stderr, msg, va);
-	va_end(va);
-	exit(rc);
-}
-
-void wavwriter(FILE* fo, size_t nsamp, size_t sfreq)
-{  // fake wav header
-	__uint32_t wavhdr[11] = { 0x46464952, 0xffffffff, 0x45564157, 0x20746D66, 0x00000010, 0x00020001, 0x0000BB80, 0x0002ee00, 0x00100004, 0x61746164, 0xffffffff };
-
-	wavhdr[6] = sfreq;
-	wavhdr[7] = sfreq * 4;
-
-	wavhdr[10] = nsamp * sizeof(short);
-	wavhdr[1] = wavhdr[10] + 44;
-
-	fwrite(wavhdr, sizeof wavhdr, 1, fo);
-}
 
 inline static double myrand()
-{
-	unsigned long l = (((rand() << 11) ^ rand()) << 11) ^ rand();
-	return (double)l / ULONG_MAX;
+{	return rand() / (double)RAND_MAX + rand() / ((double)RAND_MAX*RAND_MAX);
 }
 
 inline static double fsqr(double d)
@@ -109,7 +89,7 @@ int main(int argc, char**argv)
 	{
 	default:
 		die(45, "usage: %s nsamp[/harmonic] sampfreq shape [nrep [file]]]\n"
-				"shape is one of square, triangle, sine, saw-up, saw-down, pulse, parabolic.", argv[0]);
+				"shape is one of square, triangle, sine, saw-up, saw-down, pulse, parabolic.\n", argv[0]);
 	case 6:
 		dfile = argv[5];
 	case 5:
@@ -142,12 +122,11 @@ int main(int argc, char**argv)
 		of = fopen(dfile, "wb");
 		if (of == NULL)
 			die(41, "Failed to open %s for writing", dfile);
-		wavwriter(of, 2 * nsamp * nrep, sfreq);
+		wavheader(of, 2 * nsamp * nrep, sfreq);
 	} else // stdout
 	{
-		//_fsetmode(stdout, "b");
-		of = stdout;
-		wavwriter(of, 0x1fffffdc, sfreq);
+		of = binmode(stdout);
+		wavheader(of, 0x1fffffdc, sfreq);
 	}
 	do
 		fwrite(buf, 2 * nsamp * sizeof(short), 1, of);

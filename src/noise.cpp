@@ -1,3 +1,6 @@
+#include "parser.h"
+#include "utils.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -13,8 +16,6 @@
 using namespace std;
 typedef double fftw_real;
 typedef complex<double> Complex;
-
-#include "parser.h"
 
 #define M_2PI (2.*M_PI)
 #define M_180_PI (180./M_PI)
@@ -42,27 +43,8 @@ static const char* execcmd    = NULL;  // shell command to execute after analysi
 
 static double      mfact; // Master gain factor
 
-void wavwriter(FILE* fo, size_t n_samp)
-{	// fake wav header
-	unsigned wavhdr[11] =
-	// 48000
-	{	0x46464952, 0xffffffff, 0x45564157, 0x20746D66,
-		0x00000010, 0x00020001, 0x0000BB80, 0x0002ee00,
-		0x00100004, 0x61746164, 0xffffffff };
-
-	// patch data size
-	wavhdr[10] = n_samp * sizeof(short);
-	wavhdr[1] = wavhdr[10] + 44;
-	// patch sampling rate
-	wavhdr[6] = f_samp;
-	wavhdr[7] = f_samp << 2; // * 4 bytes per sample
-
-	fwrite(wavhdr, sizeof wavhdr, 1, fo);
-}
-
 inline static double myrand()
-{	unsigned long l = (((rand() << 11) ^ rand()) << 11) ^ rand();
-	return (double)l / ULONG_MAX;
+{	return rand() / (double)RAND_MAX + rand() / ((double)RAND_MAX*RAND_MAX);
 }
 
 
@@ -126,8 +108,8 @@ int main(int argc, char**argv)
 		parsearg(*++argv);
 
 	if (n_fft == 0)
-		die(48, "usage: noise bn<fft_size> fmin<min_freq> fmax<max_freq> [wd<data_file>] [wr<wave_file>]\n"
-				  "See documentation for more options.");
+		die(48, "usage: noise bn<fft_size> fmin<min_freq> fmax<max_freq> [wd<data_file>] [ww<wave_file>]\n"
+			"See documentation for more options.");
 
 	mfact = 32767. * pow(10., mgain/20.);
 
@@ -215,8 +197,7 @@ int main(int argc, char**argv)
 				if (wavF == NULL)
 					die(41, "Failed to open %s for writing", F_wav);
 			} else // stdout
-			{	//_fsetmode(stdout, "b");
-				wavF = stdout;
+			{	wavF = binmode(stdout);
 		}	}
 
 		if (sweep)
@@ -225,10 +206,7 @@ int main(int argc, char**argv)
 
 			if (F_wav)
 			{	buf = new short[2*n_fft];
-				if (n_rep)
-					wavwriter(wavF, 2*n_fft * n_rep * fcount);
-				else
-					wavwriter(wavF, 0x1fffffdc);
+				wavheader(wavF, n_rep ? 2*n_fft * n_rep * fcount : 0x1fffffdc, f_samp);
 			}
 
 			// for each frequency
@@ -344,7 +322,7 @@ int main(int argc, char**argv)
 					for (fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g %12g %12g\n", sp[0]+sp[n_fft], sp[0], sp[n_fft]);
 					fclose(of);
-				}   
+				}
 
 				// and quantize
 				if (F_wav)
@@ -355,10 +333,7 @@ int main(int argc, char**argv)
 			} // if (stereo)
 
 			if (F_wav)
-			{	if (n_rep)
-					wavwriter(wavF, 2*n_fft * n_rep);
-				else
-					wavwriter(wavF, 0x1fffffdc);
+			{	wavheader(wavF, n_rep ? 2*n_fft * n_rep : 0x1fffffdc, f_samp);
 				// Output loop
 				do fwrite(buf, 2*n_fft * sizeof(short), 1, wavF);
 				while (--n_rep);

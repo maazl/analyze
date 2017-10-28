@@ -1,12 +1,5 @@
 #include <stdlib.h>
 
-// Termination flag, set by die(...).
-extern bool termrq;
-
-// Terminate the application with an error message and set termrq
-// to notify other threads (if any).
-void die(int rc, const char* msg, ...);
-
 typedef void (*ArgFn)(const char* rem, void* param, long iparam);
 
 // Dispatch table for command line argument lookup

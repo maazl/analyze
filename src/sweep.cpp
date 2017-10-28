@@ -1,3 +1,7 @@
+#include "pca.h"
+#include "parser.h"
+#include "utils.h"
+
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
@@ -17,8 +21,6 @@
 using namespace std;
 typedef double fftw_real;
 typedef complex<double> Complex;
-#include "pca.h"
-#include "parser.h"
 
 #define M_2PI (2.*M_PI)
 #define M_3PI (3.*M_PI)
