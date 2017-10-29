@@ -6,12 +6,12 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
-
-#include <complex>
-using namespace std;
-typedef complex<double> Complex;
+#include <assert.h>
+#include <algorithm>
 
 #include "parser.h"
+#include "utils.h"
+#include "moment.h"
 
 #define M_2PI (2.*M_PI)
 #define M_3PI (3.*M_PI)
@@ -27,41 +27,24 @@ typedef complex<double> Complex;
 // data buffers
 static short inbuffertmp[2 * CA_MAX * N_MAX];
 static int sumbuffer[CA_MAX][65536];
-static long nsamp;
-
-void die(const char* msg, ...)
-{
-	va_list va;
-	va_start(va, msg);
-	vprintf(msg, va);
-	va_end(va);
-	putchar('\n');
-	exit(1);
-}
+static int64_t nsamp;
 
 // config
-static int N = 8192;
+static int N = 32768;
 static bool swapbytes = false;
-static bool writeraw = false;
-static bool writedata = false;
+static const char* rawfile = NULL; // file name for raw data
+static const char* datafile = NULL; // file name for histogram data
 static int discsamp = 0;
+static unsigned addloop = UINT_MAX;
 static int loops = 1;
-static int binsz = 1;
 static const char* infile = NULL;
 static const char* execcmd = NULL;
 static const char* plotcmd = NULL;
 
-static inline short fromraw(short v)
-{
-	//return _srotl(v, 8);
-	return (unsigned short)v >> 8 | v << 8;
-}
-
 static void asshort2(const short* src, size_t len)
 {
 	while (len--)
-	{
-		++sumbuffer[0][src[0] - SHRT_MIN];
+	{	++sumbuffer[0][src[0] - SHRT_MIN];
 		++sumbuffer[1][src[1] - SHRT_MIN];
 		src += 2;
 	}
@@ -70,118 +53,103 @@ static void asshort2(const short* src, size_t len)
 static void asshortx2(const short* src, size_t len)
 {
 	while (len--)
-	{
-		++sumbuffer[0][fromraw(src[0]) - SHRT_MIN];
-		++sumbuffer[1][fromraw(src[1]) - SHRT_MIN];
+	{	++sumbuffer[0][bswap(src[0]) - SHRT_MIN];
+		++sumbuffer[1][bswap(src[1]) - SHRT_MIN];
 		src += 2;
 	}
 }
 
-static inline double sqr(double v)
+static void analyze()
 {
-	return v * v;
-}
-
-static inline int64_t sqr(int64_t v)
-{
-	return v * v;
-}
-
-static inline double stddev(int64_t qsum, int64_t sum)
-{  //printf("qs=%f s=%lli n=%li\n", (double)qsum, sum, nsamp);
-	return sqrt((double)qsum / nsamp - sqr((double)sum / nsamp));
-}
-
-static void outdata()
-{
-	FILE* tout = fopen("data.dat", "wt");
-	if (tout == NULL)
-		die("Failed to create data.dat.");
+	// min/max analysis
+	int minmax[2][2] = { { INT_MAX, INT_MIN }, { INT_MAX, INT_MIN } };
+	int* sp = sumbuffer[0];
+	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s)
+		if (*sp++ != 0)
+		{	minmax[0][0] = s;
+			break;
+		}
+	sp = sumbuffer[0] + 65536;
+	for (int s = SHRT_MAX; s >= SHRT_MIN; --s)
+		if (*--sp != 0)
+		{	minmax[0][1] = s;
+			break;
+		}
+	sp = sumbuffer[1];
+	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s)
+		if (*sp++ != 0)
+		{	minmax[1][0] = s;
+			break;
+		}
+	sp = sumbuffer[1] + 65536;
+	for (int s = SHRT_MAX; s >= SHRT_MIN; --s)
+		if (*--sp != 0)
+		{	minmax[1][1] = s;
+			break;
+		}
+	// write raw status
+	fputs("\n\tsamples \tdB\n", stderr);
+	fprintf(stderr, "min:\t%i\t%i\t%.1f\t%.1f\n", minmax[0][0], minmax[1][0], todB(-minmax[0][0] / 32767.), todB(-minmax[1][0] / 32767.));
+	fprintf(stderr, "max:\t%i\t%i\t%.1f\t%.1f\n", minmax[0][1], minmax[1][1], todB(minmax[0][1] / 32767.), todB(minmax[1][1] / 32767.));
 
 	int* sp1 = sumbuffer[0];
 	int* sp2 = sumbuffer[1];
-	int64_t samp1 = 0;
-	int64_t samp2 = 0;
-	int64_t sum1 = 0;
-	int64_t sum2 = 0;
-	int64_t qsum1 = 0;
-	int64_t qsum2 = 0;
-	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s, ++sp1, ++sp2)
-	{  // write
-		fprintf(tout, "%7i %12g %12g %7i %7i\n",
-		// n  hl[n]                 hr[n]                 Nl[n] Nr[n]
-		    s, (double)*sp1 / nsamp, (double)*sp2 / nsamp, *sp1, *sp2);
-		samp1 += *sp1;
-		samp2 += *sp2;
-		int64_t v = (int64_t)*sp1 * s;
-		sum1 += v;
-		qsum1 += v * s;
-		v = (int64_t)*sp2 * s;
-		sum2 += v;
-		qsum2 += v * s;
+	Kurtosis stat1;
+	Kurtosis stat2;
+	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s)
+	{	// write
+		stat1.push(s, *sp1++);
+		stat2.push(s, *sp2++);
 	}
-	fclose(tout);
-	if (samp1 != nsamp || samp2 != nsamp)
-		die("Internal error: number of samples inconsistent. %li %li %li", samp1, samp2, nsamp);
+	assert(stat1.count() == nsamp && stat2.count() == nsamp);
 
-	fprintf(stderr, "avg:\t%.2f\t%.2f\nstd:\t%.2f\t%.2f\n", (double)sum1 / nsamp, (double)sum2 / nsamp, stddev(qsum1, sum1), stddev(qsum2, sum2));
+	fprintf(stderr, "mean\t%.2f\t%.2f\n", stat1.mean(), stat2.mean());
+	fprintf(stderr, "stddev\t%.1f\t%.1f\n", stat1.stddeviation(), stat2.stddeviation());
+	fprintf(stderr, "skew\t%.4f\t%.4f\n", stat1.skewness(), stat2.skewnessBC());
+	fprintf(stderr, "kurtos.\t%.4f\t%.4f\n", stat1.kurtosisExcessBC(), stat2.kurtosisExcessBC());
+	double crest1 = (minmax[0][1] - minmax[0][0]) / sqrt(stat1.sum2() / stat1.count()) / 2;
+	double crest2 = (minmax[1][1] - minmax[1][0]) / sqrt(stat2.sum2() / stat2.count()) / 2;
+	fprintf(stderr, "crest\t%.4f\t%.4f\t%.1f\t%.1f\n", crest1, crest2, todB(crest1), todB(crest2));
 }
 
-static void write1ch(FILE* out, const float* data, size_t len)
-{
-	while (len--)
-		fprintf(out, "%g\n", *data++);
+static void outdata()
+{	FILE* tout = fopen(datafile, "wt");
+	if (tout == NULL)
+		die(41, "Failed to create data.dat.");
+
+	int* sp1 = sumbuffer[0];
+	int* sp2 = sumbuffer[1];
+	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s, sp1++, sp2++)
+	{	// write
+		fprintf(tout, "%7i\t%12g\t%12g\t%7i\t%7i\n",
+		// n  hl[n]                 hr[n]                 Nl[n] Nr[n]
+		    s, (double)*sp1 / nsamp, (double)*sp2 / nsamp, *sp1, *sp2);
+	}
+	fclose(tout);
 }
 
 static void write2ch(FILE* out, const short* data, size_t len)
 {
 	while (len--)
 	{
-		fprintf(out, "%i\t%i\n", fromraw(data[0]), fromraw(data[1]));
+		fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
 		data += 2;
 	}
-}
-
-static void write2ch(FILE* out, const float* data, size_t len)
-{
-	while (len--)
-	{
-		fprintf(out, "%g\t%g\n", data[0], data[1]);
-		data += 2;
-	}
-}
-
-static void write2ch(FILE* out, const float* data1, const float* data2, size_t len)
-{
-	while (len--)
-		fprintf(out, "%g\t%g\n", *data1++, *data2++);
-}
-
-/*static char* abbrev(const char* s, const char* token)
- {  size_t l = strlen(s);
- return strnicmp(s, token, l) == 0 ? (char*)token + l : NULL;
- }*/
-
-static void readN(const char* s, int* r)
-{	bool ex;
-	if ((ex = *s == '^'))
-	++s;
-	readint(s, r);
-	if (ex)
-	N = 1 << N;
 }
 
 const ArgMap argmap[] = // must be sorted
-{	{ "bin",  (ArgFn)&readint, &binsz, 0}
+{	{ "al",   (ArgFn)&readuint, &addloop, 0 }
+,	{ "bn" ,  (ArgFn)&readN, &N, 0}
+,	{ "df",   (ArgFn)&readstring, &datafile, 0 }
 ,	{ "exec", (ArgFn)&readstring, &execcmd, 0}
 ,	{ "in" ,  (ArgFn)&readstring, &infile, 0}
 ,	{ "ln" ,  (ArgFn)&readint, &loops, 1}
 ,	{ "loop", (ArgFn)&setint, &loops, INT_MAX}
-,	{ "n" ,   (ArgFn)&readN, &N, 0}
 ,	{ "plot", (ArgFn)&readstring, &plotcmd, 0}
-,	{ "psa",  (ArgFn)&readintdef, &discsamp, 1}
-,	{ "wd" ,  (ArgFn)&setflag, &writedata, true}
-,	{ "wr" ,  (ArgFn)&setflag, &writeraw, true}
+,	{ "psa",  (ArgFn)&readuintdef, &discsamp, 8192 }
+,	{ "rf",   (ArgFn)&readstring, &rawfile, 0 }
+,	{ "wd" ,  (ArgFn)&setstring, &datafile, (long)"hist.dat" }
+,	{ "wr" ,  (ArgFn)&setflag, &rawfile, (long)"raw.dat" }
 ,	{ "xb" ,  (ArgFn)&setflag, &swapbytes, true}
 };
 const size_t argmap_size = sizeof argmap / sizeof *argmap;
@@ -192,37 +160,34 @@ int main(int argc, char* argv[])
 		parsearg(*++argv);
 
 	if (N > N_MAX)
-		die("Data Length too large.");
+		die(32, "Data Length too large.");
 
 	FILE* in;
 	if (infile == NULL)
-	{  // streaming
-		in = stdin;
-		//_fsetmode(in, "b");
+	{	// streaming
+		in = binmode(stdin);
 	} else
-	{
-		in = fopen(infile, "rb");
+	{	in = fopen(infile, "rb");
 		if (in == NULL)
-			die("Failed to open input file.");
+			die(20, "Failed to open input file.");
 	}
 
 	// discard first samples
-	fread(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
+	fread(inbuffertmp, sizeof *inbuffertmp, 2 * discsamp, in);
 
 	memset(sumbuffer, 0, sizeof sumbuffer);
 	nsamp = 0;
 
 	// operation loop
+	unsigned addloops = 0;
 	int loop = loops;
 	do
 	{
-		if (fread(inbuffertmp, 2 * sizeof *inbuffertmp, N, in) != N)
-			die("failed to read data");
+		fread2(inbuffertmp, 2 * sizeof *inbuffertmp, N, in);
 
 		// write raw data
-		if (writeraw)
-		{
-			FILE* tout = fopen("raw.dat", "wt");
+		if (rawfile)
+		{	FILE* tout = fopen(rawfile, "wt");
 			write2ch(tout, inbuffertmp, N);
 			fclose(tout);
 		}
@@ -233,59 +198,28 @@ int main(int argc, char* argv[])
 			asshort2(inbuffertmp, N);
 		nsamp += N;
 
-		// min/max analysis
-		int minmax[2][2] = { { INT_MAX, INT_MIN }, { INT_MAX, INT_MIN } };
-		int* sp1 = sumbuffer[0];
-		for (int s = SHRT_MIN; s <= SHRT_MAX; ++s)
-			if (*sp1++ != 0)
-			{
-				minmax[0][0] = s;
-				break;
-			}
-		sp1 = sumbuffer[0] + 65536;
-		for (int s = SHRT_MAX; s >= SHRT_MIN; --s)
-			if (*--sp1 != 0)
-			{
-				minmax[0][1] = s;
-				break;
-			}
-		int* sp2 = sumbuffer[1];
-		for (int s = SHRT_MIN; s <= SHRT_MAX; ++s)
-			if (*sp2++ != 0)
-			{
-				minmax[1][0] = s;
-				break;
-			}
-		sp2 = sumbuffer[0] + 65536;
-		for (int s = SHRT_MAX; s >= SHRT_MIN; --s)
-			if (*--sp2 != 0)
-			{
-				minmax[1][1] = s;
-				break;
-			}
-		// write raw status
-		fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0][0], minmax[1][0], minmax[0][1], minmax[1][1]);
-		// write raw data
-		/*if (writeraw)
-		 {  tout = fopen("raw.dat", "wt");
-		 write2ch(tout, inbuffer1, inbuffer2, N);
-		 fclose(tout);
-		 }*/
+		analyze();
 
-		if (writedata)
+		if (datafile)
 			outdata();
 
+		if (execcmd)
+			system(execcmd);
 		if (plotcmd)
-		{  // for gnuplot!
+		{	// for gnuplot!
 			puts(plotcmd);
 			fflush(stdout);
 		}
 
+		if (++addloops < addloop)
+			continue; // add more data
+		memset(sumbuffer, 0, sizeof sumbuffer);
+		nsamp = 0;
+		addloops = 0;
+
 	} while (--loop);
 	// close stdin to signal playrec
 	fclose(in);
-
-	outdata();
 
 	return 0;
 }

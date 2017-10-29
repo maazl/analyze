@@ -46,21 +46,6 @@ static float* const outbuffer = outprebuffer + 2 * SYNC_FIR;
 
 static FILE* resh = NULL;
 
-static inline double sqr(double v)
-{
-	return v * v;
-}
-
-static inline double todB(double f)
-{
-	return 20 * log10(f);
-}
-
-static inline double fromdB(double d)
-{
-	return pow(10, d / 20);
-}
-
 static const double minval = 1E-20;
 
 static void vectorscale(fftw_real* data, double factor, size_t len)
@@ -497,15 +482,6 @@ static void refplay()
 		// next frequency
 		fq *= fstep;
 	}
-}
-
-static void readN(const char* s, unsigned* r)
-{	bool ex;
-	if ((ex = *s == '^'))
-		++s;
-	readuint(s, r);
-	if (ex)
-		*r = 1 << *r;
 }
 
 const ArgMap argmap[] = // must be sorted

@@ -1,133 +1,126 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html><head>
-  
-  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
-  <title>Analysis software</title>
-
-  
-  
-  <link type="text/css" rel="stylesheet" href="mm.css">
-
-</head><body>
-<h1>Software to do 1-port or 2-port measurements</h1>
-
-<p class="abstract">This is a set of programs and scripts to do <strong>impedance
-measurements</strong> and <strong>transfer function measurements</strong>
-(network analyzer) with PC sound devices.</p>
-
-<a href="#software">&rarr;&nbsp;Components</a> <a href="#setup">&rarr;&nbsp;Setup</a>
-<a href="#download">&rarr;&nbsp;Download</a>
-<a href="#build">&rarr;&nbsp;Build</a> <a href="#contact">&rarr;&nbsp;Contact</a>
-<h2><a name="software"></a>Software components<br>
-</h2>
-
-<table border="1" cellpadding="3" cellspacing="0">
-
-  <tbody>
-    <tr>
-      <th>Function</th>
-      <th>Name</th>
-      <th>Type</th>
-      <th>Remarks</th>
-    </tr>
-    <tr>
-      <td calss="tl">Access to the sound device<br>
-      </td>
-      <td>-</td>
-      <td>platform dependent, <em>external tool required</em></td>
-      <td>You need a platform dependent way to record and play 16 bit
-two channel audio data via a pipe or provide an appropriate character
-device.<br>
-On Linux there are usually matching character devices. OS/2 has the
-application Playrec 0.20b21 to record into and play from a pipe. Win*:
-don't know.<br>
-      </td>
-    </tr>
-    <tr>
-      <td calss="tl">Generation of noise reference<br>
-      </td>
-      <td><a href="noise.html">noise</a></td>
-      <td>C++ application<br>
-      </td>
-      <td colspan="1" rowspan="2">Wide band measurements<br>
-      </td>
-    </tr>
-    <tr>
-      <td calss="tl">FFT analysis<br>
-      </td>
-      <td><a href="analyze.html">analyze</a></td>
-      <td>C++ application</td>
-    </tr>
-    <tr>
-      <td calss="tl">Generation of sine wave reference<br>
-      </td>
-      <td colspan="1" rowspan="2">@TODO<br>
-      </td>
-      <td colspan="1" rowspan="2">C++ application</td>
-      <td colspan="1" rowspan="2">Sweep measurements (frequency scan)<br>
-      </td>
-    </tr>
-    <tr>
-      <td calss="tl">Analysis of frequency scans<br>
-      </td>
-    </tr>
-    <tr>
-      <td calss="tl">Show the result<br>
-      </td>
-      <td><var>various<br>
-      </var></td>
-      <td>Gnuplot 3.x macros</td>
-      <td>In general you can use any graphics application to show the
-results. But only macros for Gnuplot are part of this package.<br>
-      </td>
-    </tr>
-    <tr>
-      <td calss="tl">Control</td>
-      <td>measure.cmd</td>
-      <td>REXX skript, <em>OS/2 only!</em></td>
-      <td>The REXX scripts are non-portable.</td>
-    </tr>
-  </tbody>
-</table>
-
-<h2><a name="download"></a>Download</h2>
-
-<p>The program is licensed under <a href="gpl.txt"><i>GNU
-GENERAL PUBLIC LICENSE</i></a>.</p>
-<p>Source code and scripts: <a href="../analyze-src.zip">repository
-snapshot</a></p>
-<p>OS/2 binaries: <a href="../analyze-os2.zip">bulid with gcc 3.3.5</a>
-(requires <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.3-csd3.zip">libc063.dll</a>)</p>
-
-<h2><a name="build"></a>Build the package<br>
-</h2>
-
-<h3>Preconditions</h3>
-
-<p>For FFT the library <strong><a href="http://www.fftw.org/">FFTW</a>,
-version 2.1.x</strong> is required. This must be available as shared or
-static library and the header files.<br>
-</p>
-
-<h3>Configuration</h3>
-
-<p>The Makefile is currently adjusted to OS/2 gcc version 3.3.5 and
-contains the <strong>path to rfftw</strong><span style="font-weight: bold;"></span>. You have to change that on other
-platforms. In general adjusting the paths and the compiler options
-should be sufficient. </p>
-
-<h3>Compile</h3>
-
-<p><strong><kbd>cd src</kbd><br>
-<kbd>make</kbd></strong></p>
-
-<p>If everything is fine the executables are built in the <tt>bin</tt>
-sub folder. Feel free to <a href="#contact">contact me</a> if you
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+    <title>Analysis software</title>
+    <link type="text/css" rel="stylesheet" href="mm.css">
+  </head>
+  <body>
+    <h1>Software to do 1-port or 2-port measurements</h1>
+    <p class="abstract">This is a set of programs and scripts to do <b>impedance
+        measurements</b> and <b>transfer function measurements</b>
+      (network analyzer) with PC sound devices.</p>
+    <a href="#software">&rarr;&nbsp;Components</a> <a href="#setup">&rarr;&nbsp;Setup</a>
+    <a href="#download">&rarr;&nbsp;Download</a>
+    <a href="#build">&rarr;&nbsp;Build</a> <a href="#contact">&rarr;&nbsp;Contact</a>
+    <h2><a name="software"></a>Software components
+    </h2>
+    <table border="1" cellpadding="3" cellspacing="0">
+      <tbody>
+        <tr>
+          <th>Function</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Remarks</th>
+        </tr>
+        <tr>
+          <td calss="tl">Access to the sound device<br>
+          </td>
+          <td><i>n/a</i></td>
+          <td>platform dependent, <em>external tool required</em></td>
+          <td>You need a platform dependent way to record and play 16 bit
+            two channel audio data via a pipe or provide an appropriate
+            character
+            device.<br>
+            On Linux <tt>arecord</tt> and <tt>aplay</tt> will fit your needs.
+            OS/2 has the
+            application <tt>Playrec</tt> 0.20b21. Win*:
+            don't know.<br>
+          </td>
+        </tr>
+        <tr>
+          <td calss="tl">Generation of noise reference<br>
+          </td>
+          <td><a href="noise.html">noise</a></td>
+          <td>C++ application<br>
+          </td>
+          <td colspan="1" rowspan="2">Wide band measurements<br>
+          </td>
+        </tr>
+        <tr>
+          <td calss="tl">FFT analysis<br>
+          </td>
+          <td><a href="analyze.html">analyze</a></td>
+          <td>C++ application</td>
+        </tr>
+        <tr>
+          <td calss="tl">Generation of sine wave reference<br>
+          </td>
+          <td colspan="1" rowspan="2">@TODO<br>
+          </td>
+          <td colspan="1" rowspan="2">C++ application</td>
+          <td colspan="1" rowspan="2">Sweep measurements (frequency scan)<br>
+          </td>
+        </tr>
+        <tr>
+          <td calss="tl">Analysis of frequency scans<br>
+          </td>
+        </tr>
+        <tr>
+          <td calss="tl">Show the result<br>
+          </td>
+          <td><var>sample/* </var></td>
+          <td>Gnuplot 3.x macros</td>
+          <td>In general you can use any graphics application to show the
+            results. But only macros for Gnuplot are part of this package.<br>
+          </td>
+        </tr>
+        <tr>
+          <td calss="tl">Control</td>
+          <td>measure.cmd</td>
+          <td>REXX skript, <em>OS/2 only!</em></td>
+          <td>The REXX scripts are non-portable.</td>
+        </tr>
+        <tr>
+          <td>Statistical analysis of sound data</td>
+          <td><a href="sampledist.html">sampledist</a></td>
+          <td>C++ application</td>
+          <td>General analysis of sound input. Might be use for diagnostics as
+            well as to identify compressed audio content.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2><a name="download"></a>Download</h2>
+    <p>The program is licensed under <a href="gpl.txt"><i>GNU
+          GENERAL PUBLIC LICENSE</i></a>.</p>
+    <p>Source code and scripts: <a href="../analyze-src.zip">repository
+        snapshot</a></p>
+    <p>OS/2 binaries: <a href="../analyze-os2.zip">bulid with gcc 3.3.5</a>
+      (requires <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.3-csd3.zip">libc063.dll</a>)</p>
+    <h2><a name="build"></a>Build the package
+    </h2>
+    <h3>Preconditions</h3>
+    <ul>
+      <li>A <b>C++11</b> compatible compiler like gcc.</li>
+      <li>The library <b><a href="http://www.fftw.org/">FFTW</a>,
+          version 3.x</b> is required. This must be available as shared or
+        static library and the header files.
+      </li>
+    </ul>
+    <h3>Configuration</h3>
+    <p>The <tt>Makefile</tt> is currently adjusted to Linux gcc. You have to
+      change that on other
+      platforms. In general adjusting the libraries and the compiler options
+      at the top should be sufficient.</p>
+    <h3>Compile</h3>
+    <pre style="margin-left: 40px;"><b><kbd>cd src</kbd><br><kbd>make</kbd></b></pre>If everything is fine the executables are built in the <tt>bin</tt> folder. Feel free to <a
+href="#contact">contact me</a> if you
 don't succeed.<br>
-</p>
+
 
 <h2><a name="contact"></a>Contact</h2>
 
-<p>Suggestions, help, complaints (but not too much:-): <img style="width: 131px; height: 14px;" alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" align="middle"></p>
+<p>Suggestions, help, complaints (but not too much:-): <img style="width: 131px; height: 14px; vertical-align: middle;"
+alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" align="middle"></p>
 
 </body></html>

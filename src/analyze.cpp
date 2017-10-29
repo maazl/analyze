@@ -47,21 +47,6 @@ static fftw_real* ccbuffer2 = NULL;  // Buffer for cross correlation of outbuffe
 static fftw_real window[N_MAX];      // Buffer for window function
 static int* harmonics = NULL;    // Buffer for harmonics dispatch table
 
-static inline double sqr(double v)
-{
-	return v * v;
-}
-
-static inline double todB(double f)
-{
-	return 20 * log10(f);
-}
-
-static inline double fromdB(double d)
-{
-	return pow(10, d / 20);
-}
-
 static double noiselvl_;
 
 static const double minval = 1E-20;
@@ -205,11 +190,6 @@ static void createwindow(fftw_real* dst, int type, size_t len)
 	vectorscale(dst, len / sum, len);
 }
 
-static inline short fromraw(short v)
-{  //return _srotl(v, 8);
-	return (short)((0x10001) * v >> 8);
-}
-
 static int minmax[4];
 
 static inline short storeminmax(short val, int* dst)
@@ -228,7 +208,7 @@ static void short2float(fftw_real* dst, const short* src, size_t len)
 		double d = 0;
 		int i = addch;
 		do
-			d += storeminmax(fromraw(*src++), minmax);
+			d += storeminmax(bswap(*src++), minmax);
 		while (--i);
 		*dst++ = d * gainadj[0];
 		--len;
@@ -244,8 +224,8 @@ static void short2float2(fftw_real* dst1, fftw_real* dst2, const short* src, siz
 		int i = addch;
 		do
 		{
-			d1 += storeminmax(fromraw(src[0]), minmax);
-			d2 += storeminmax(fromraw(src[1]), minmax + 2);
+			d1 += storeminmax(bswap(src[0]), minmax);
+			d2 += storeminmax(bswap(src[1]), minmax + 2);
 			src += 2;
 		} while (--i);
 		*dst1++ = d1 * gainadj[0];
@@ -263,8 +243,8 @@ static void short2float2add(fftw_real* dst1, fftw_real* dst2, const short* src, 
 		int i = addch;
 		do
 		{
-			d1 += storeminmax(fromraw(src[0]), minmax);
-			d2 += storeminmax(fromraw(src[1]), minmax + 2);
+			d1 += storeminmax(bswap(src[0]), minmax);
+			d2 += storeminmax(bswap(src[1]), minmax + 2);
 			src += 2;
 		} while (--i);
 		*dst1++ += d1 * gainadj[0];
@@ -283,8 +263,8 @@ static void short2float2window(fftw_real* dst1, fftw_real* dst2, const short* sr
 		int i = addch;
 		do
 		{
-			d1 += storeminmax(fromraw(src[0]), minmax);
-			d2 += storeminmax(fromraw(src[1]), minmax + 2);
+			d1 += storeminmax(bswap(src[0]), minmax);
+			d2 += storeminmax(bswap(src[1]), minmax + 2);
 			src += 2;
 		} while (--i);
 		*dst1++ = d1 * *win * gainadj[0];
@@ -302,8 +282,8 @@ static void short2floatD(fftw_real* dst1, fftw_real* dst2, const short* src, siz
 		int i = addch;
 		do
 		{
-			d1 += storeminmax(fromraw(src[0]), minmax);
-			d2 += storeminmax(fromraw(src[1]), minmax + 2);
+			d1 += storeminmax(bswap(src[0]), minmax);
+			d2 += storeminmax(bswap(src[1]), minmax + 2);
 			src += 2;
 		} while (--i);
 		*dst2++ = d1 * gainadj[0] - (*dst1++ = d2 * gainadj[1]);
@@ -320,8 +300,8 @@ static void short2floatDadd(fftw_real* dst1, fftw_real* dst2, const short* src, 
 		int i = addch;
 		do
 		{
-			d1 += storeminmax(fromraw(src[0]), minmax);
-			d2 += storeminmax(fromraw(src[1]), minmax + 2);
+			d1 += storeminmax(bswap(src[0]), minmax);
+			d2 += storeminmax(bswap(src[1]), minmax + 2);
 			src += 2;
 		} while (--i);
 		d2 *= gainadj[1];
@@ -341,8 +321,8 @@ static void short2floatDwindow(fftw_real* dst1, fftw_real* dst2, const short* sr
 		int i = addch;
 		do
 		{
-			d1 += storeminmax(fromraw(src[0]), minmax);
-			d2 += storeminmax(fromraw(src[1]), minmax + 2);
+			d1 += storeminmax(bswap(src[0]), minmax);
+			d2 += storeminmax(bswap(src[1]), minmax + 2);
 			src += 2;
 		} while (--i);
 		*dst2++ = d1 * *win * gainadj[0] - (*dst1++ = d2 * *win * gainadj[1]);
@@ -399,7 +379,7 @@ static void write2ch(FILE* out, const short* data, size_t len)
 {
 	while (len--)
 	{
-		fprintf(out, "%i\t%i\n", fromraw(data[0]), fromraw(data[1]));
+		fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
 		data += 2;
 	}
 }
@@ -496,16 +476,6 @@ static void readfloat_2(FILE* in, unsigned column, size_t count, fftw_real* dest
  {  size_t l = strlen(s);
  return strnicmp(s, token, l) == 0 ? (char*)token + l : NULL;
  }*/
-
-static void readN(const char* s, unsigned* r)
-{
-	bool ex;
-	if ((ex = *s == '^'))
-		++s;
-	readuint(s, r);
-	if (ex)
-		*r = 1 << *r;
-}
 
 static void dofft()
 {	// forwardtransformation
@@ -877,7 +847,7 @@ const ArgMap argmap[] = // must be sorted
 ,	{ "phcc", (ArgFn)&setflag, &crosscorr, true }
 ,	{ "phl",  (ArgFn)&readdouble, &linphase, 0 }
 ,	{ "plot", (ArgFn)&readstring, &plotcmd, 0 }
-,	{ "psa",  (ArgFn)&readuintdef, &discsamp, 1 }
+,	{ "psa",  (ArgFn)&readuintdef, &discsamp, 8192 }
 ,	{ "pte",  (ArgFn)&readuintdef, &disctrail, 1 }
 ,	{ "rf",   (ArgFn)&readstring, &rawfile, 0 }
 ,	{ "rref", (ArgFn)&readdouble, &rref, 0 }
@@ -1000,7 +970,7 @@ int main(int argc, char* argv[])
 				die(20, "Failed to open input file.");
 		}
 		// discard first samples
-		fread2(inbuffertmp, sizeof *inbuffertmp, discsamp, in);
+		fread2(inbuffertmp, sizeof *inbuffertmp, 2 * discsamp, in);
 	}
 
 	if (overwrt[0].file)
@@ -1529,7 +1499,7 @@ int main(int argc, char* argv[])
 	}
 
 	// close stdin to signal playrec
-	//fclose(in);
+	fclose(in);
 
 	return 0;
 }

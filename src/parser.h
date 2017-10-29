@@ -1,3 +1,6 @@
+#ifndef PARSER_H_
+#define PARSER_H_
+
 #include <stdlib.h>
 
 typedef void (*ArgFn)(const char* rem, void* param, long iparam);
@@ -35,23 +38,18 @@ void readuint(const char* s, unsigned int* r);
 // *param = &intparam
 // iparam = default value if argument is specified without a value.
 void readuintdef(const char* s, unsigned int* r, unsigned int d);
-// Read float parameter 
-// *param = &floatparam
-void readfloat(const char* s, float* r);
+
+void readN(const char* s, unsigned* r);
 // Read double parameter 
 // *param = &doubleparam
 void readdouble(const char* s, double* r);
 
 // Read string parameter
 // *param = &charpointer
-// This function returns a copy of the argument with strdup that should
-// be freed with free().
-void readstring(const char* s, const char** cpp);
+inline void readstring(const char* s, const char** cpp) { *cpp = s; }
 // Read string parameter with default value
 // *param = &charpointer
 // iparam = "default value"
-// This function returns a copy of the argument with strdup that should
-// be freed with free().
 void readstringdef(const char* s, const char** cpp, const char* def);
 
 // Set boolean parameter
@@ -67,9 +65,12 @@ void setflag(const char* s, bool* r);
 void setint(const char* s, int* r, int v);
 #define setuint setint
 
+void setstring(const char* s, const char** r, const char* v);
+
 // Set a costant bit in an integer parameter
 // *param = &intparam
 // ivalue = bit_number
 // This has no arguments. The n-th bit in *param ios set.
 void setbit(const char* s, unsigned int* r, unsigned int v);
 
+#endif // PARSER_H_

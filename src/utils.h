@@ -2,6 +2,8 @@
 #define UTILS_H_
 
 #include <stdio.h>
+#include <stdint.h>
+#include <math.h>
 
 // Termination flag, set by die(...).
 extern bool termrq;
@@ -34,5 +36,29 @@ void wavheader(FILE* fo, size_t nsamp, size_t sfreq);
  * @param stream source stream
  */
 void fread2(void* data, size_t size, size_t count, FILE* stream);
+
+static inline uint16_t bswap(uint16_t v)
+{	//return _srotl(v, 8);
+	return (uint16_t)v >> 8 | v << 8;
+}
+
+static inline double sqr(double v)
+{	return v * v;
+}
+static inline int64_t sqr(int64_t v)
+{	return v * v;
+}
+static inline double cb(double v)
+{	return v * v * v;
+}
+
+static inline double todB(double f)
+{	return 20 * log10(f);
+}
+
+static inline double fromdB(double d)
+{	return pow(10, d / 20);
+}
+
 
 #endif // UTILS_H_

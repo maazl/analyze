@@ -48,15 +48,6 @@ inline static double myrand()
 }
 
 
-static void readN(const char* s, unsigned* r)
-{	bool ex;
-	if ((ex = *s == '^'))
-		++s;
-	readuint(s, r);
-	if (ex)
-		*r = 1 << *r;
-}
-
 static void quantize1(short* dst, const fftw_real* src, size_t count)
 {	const fftw_real* const spe = src + count;
 	while (src != spe)
@@ -131,7 +122,7 @@ int main(int argc, char**argv)
 	memset(fftbuf, 0, (stereo+1)*(n_fft+1) * sizeof *fftbuf);   // all coefficients -> 0
 	memset(harmonics, 0, (n_fft/2+1) * sizeof *harmonics);
 	size_t fcount = 0; // number of used frequencies
-	float maxamp = 0;
+	fftw_real maxamp = 0;
 	int sign = 1;
 	for (size_t i = i_min; i <= i_max; ++i)
 	{	if (i)

@@ -32,10 +32,11 @@ h5 {
 }
 ol, ul {
   margin-left: 0px;
-  padding-left: 25px;
+  padding-left: 30px;
 }
 blockquote, dd {
-  margin-left: 25px;
+  margin-left: 30px;
+  margin-right: 0px;
   padding-left: 0px;
 }
 tr {
@@ -72,6 +73,12 @@ sub, sup {
 }
 body {
   background-color: #ffffff;
+}
+em {
+  color: blue;
+}
+strong {
+  color: red;
 }
 a:link {
   color: #000066;

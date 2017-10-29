@@ -3,7 +3,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <limits.h>
 
 static int searcharg(const char* arg, const char* elem)
@@ -76,24 +75,25 @@ void readuintdef(const char* s, unsigned int* r, unsigned int d)
 			die(42, "Unsigned integer value expected, found %s", s);
 	}
 }
-void readfloat(const char* s, float* r)
-{	unsigned l = UINT_MAX;
-	if (sscanf(s, "%f%n", r, &l) != 1 || l != strlen(s))
-		die(42, "Floating point value expected, found %s", s);
+
+void readN(const char* s, unsigned* r)
+{	bool ex;
+	if ((ex = *s == '^'))
+		++s;
+	readuint(s, r);
+	if (ex)
+		*r = 1 << *r;
 }
+
 void readdouble(const char* s, double* r)
 {	unsigned l = UINT_MAX;
 	if (sscanf(s, "%lf%n", r, &l) != 1 || l != strlen(s))
 		die(42, "Floating point value expected, found %s", s);
 }
 
-void readstring(const char* s, const char** cpp)
-{
-	*cpp = strdup(s);
-}
 void readstringdef(const char* s, const char** cpp, const char* def)
 {
-	*cpp = strdup(*s ? s : def);
+	*cpp = *s ? s : def;
 }
 
 void setflag(const char* s, bool* r)
@@ -107,6 +107,13 @@ void setflag(const char* s, bool* r)
 }
 
 void setint(const char* s, int* r, int v)
+{
+	if (*s)
+		die(42, "Option does not have parameters");
+	*r = v;
+}
+
+void setstring(const char* s, const char** r, const char* v)
 {
 	if (*s)
 		die(42, "Option does not have parameters");

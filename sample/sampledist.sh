@@ -1,0 +1,1 @@
+stdbuf -o1M arecord -f dat -t raw | ../bin/sampledist loop al1 bn65536 wd
