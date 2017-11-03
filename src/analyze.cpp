@@ -114,7 +114,9 @@ static double famax = 1E99; // ignore frquencies above famax for calculation of 
 static bool writeraw = false; // write raw data to file
 static bool writedata = false; // write analysis data to file
 static bool writewindow = false; // write window function data to file
-static unsigned method = 0;     // analysis method: 0 = none, 1 = PCA, 2 = FFT, 3 = PCA & FFT, 4 = XY
+static bool mpca = false;   // analysis method PCA
+static bool mfft = false;   // analysis method FFT
+static bool mxy = false;    // analysis method XY
 static unsigned purgech = 1;     // set the first FFT frequencies to 0
 static unsigned discsamp = 0;     // skip the first samples
 static bool disctrail = false; // comsume trailing samples after completion
@@ -421,7 +423,7 @@ static void writecomplex(FILE* out, const Complex* data, size_t len)
 static void write4complex(FILE* out, const Complex (*data)[4], size_t len)
 {
 	while (len--)
-	{  //Complex det = (*data)[0] * (*data)[3] - (*data)[1] * (*data)[2];
+	{	//Complex det = (*data)[0] * (*data)[3] - (*data)[1] * (*data)[2];
 		fprintf(out, "%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\n", (*data)[0].real(), (*data)[0].imag(),
 		    (*data)[1].real(), (*data)[1].imag(), (*data)[2].real(), (*data)[2].imag(), (*data)[3].real(), (*data)[3].imag(), abs((*data)[0]),
 		    arg((*data)[0]) * M_180_PI, abs((*data)[1]), arg((*data)[1]) * M_180_PI, abs((*data)[2]), arg((*data)[2]) * M_180_PI, abs((*data)[3]),
@@ -799,72 +801,71 @@ void FFTbin::PrintBin(FILE* dst) const
 	fprintf(dst, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%6i\n",
 	// f    |Hl|      phil               |Hr|      phir
 	   f(), Uabs(), Uarg() * M_180_PI, Iabs(), Iarg() * M_180_PI,
-	   // |Hl|/|Hr| phil-phir          re          im
+	// |Hl|/|Hr| phil-phir          re          im
 	   Zabs(), Zarg() * M_180_PI, Z().real(), Z().imag(),
-	   // weight delay harmonic
+	// weight delay harmonic
 	   W(), D(), h());
 }
 
-const ArgMap argmap[] = // must be sorted
-{	{ "ainc", (ArgFn)&setflag, &incremental, true }
-,	{ "al",   (ArgFn)&readuint, &addloop, 0 }
-,	{ "bin",  (ArgFn)&readuint, &binsz, 0 }
-,	{ "bn",   (ArgFn)&readN, &N, 0 }
-,	{ "ca",   (ArgFn)&readuintdef, &addch, 2 }
-,	{ "df",   (ArgFn)&readstring, &datafile, 0 }
-,	{ "exec", (ArgFn)&readstring, &execcmd, 0 }
-,	{ "famax",(ArgFn)&readdouble, &famax, 0 }
-,	{ "famin",(ArgFn)&readdouble, &famin, 0 }
-,	{ "fbin", (ArgFn)&readdouble, &fbinsc, 0 }
-,	{ "finc", (ArgFn)&readdouble, &f_inc, 0 }
-,	{ "flog", (ArgFn)&readdouble, &f_log, 0 }
-,	{ "fmax", (ArgFn)&readdouble, &fmax, 0 }
-,	{ "fmin", (ArgFn)&readdouble, &fmin, 0 }
-,	{ "fq",   (ArgFn)&readdouble, &freq, 0 }
-,	{ "g2f",  (ArgFn)&readstring, &gaindifffile, 0 }
-,	{ "gd",   (ArgFn)&setuint, &gainmode, 3 }
-,	{ "gf",   (ArgFn)&readstring, &gainfile, 0 }
-,	{ "gg",   (ArgFn)&setuint, &gainmode, 2 }
-,	{ "gr",   (ArgFn)&setuint, &gainmode, 1 }
-,	{ "h/f",  (ArgFn)&setuint, &weightfn, (long)get1_fweight }
-,	{ "harm", (ArgFn)&readuint, &harmonic, 0 }
-,	{ "hd",   (ArgFn)&setuint, &weightfn, (long)getweightD }
-,	{ "he",   (ArgFn)&setuint, &weightfn, (long)getconstweight }
-,	{ "in",   (ArgFn)&readstring, &infile, 0 }
-,	{ "ln",   (ArgFn)&readuint, &loops, 1 }
-,	{ "loop", (ArgFn)&setuint, &loops, INT_MAX }
-,	{ "lp",   (ArgFn)&readuint, &lpause, 0 }
-,	{ "lvl",  (ArgFn)&readdouble, &noiselvl, 0 }
-,	{ "mfft", (ArgFn)&setbit, &method, 1 }
-,	{ "mpca", (ArgFn)&setbit, &method, 2 }
-,	{ "mst",  (ArgFn)&setflag, &stereo, true }
-,	{ "mxy",  (ArgFn)&setbit, &method, 4 }
-,	{ "olc",  (ArgFn)&readuint, &overwrt[0].column, 0 }
-,	{ "olf",  (ArgFn)&readstring, &overwrt[0].file, 0 }
-,	{ "orc",  (ArgFn)&readuint, &overwrt[1].column, 0 }
-,	{ "orf",  (ArgFn)&readstring, &overwrt[1].file, 0 }
-,	{ "pdc",  (ArgFn)&readuintdef, &purgech, 1 }
-,	{ "phcc", (ArgFn)&setflag, &crosscorr, true }
-,	{ "phl",  (ArgFn)&readdouble, &linphase, 0 }
-,	{ "plot", (ArgFn)&readstring, &plotcmd, 0 }
-,	{ "psa",  (ArgFn)&readuintdef, &discsamp, 8192 }
-,	{ "pte",  (ArgFn)&readuintdef, &disctrail, 1 }
-,	{ "rf",   (ArgFn)&readstring, &rawfile, 0 }
-,	{ "rref", (ArgFn)&readdouble, &rref, 0 }
-,	{ "scm",  (ArgFn)&readuint, &scalemode, 0 }
-,	{ "wd",   (ArgFn)&setflag, &writedata, true }
-,	{ "wf",   (ArgFn)&readstring, &windowfile, 0 }
-,	{ "win",  (ArgFn)&readuintdef, &winfn, 2 }
-,	{ "wr",   (ArgFn)&setflag, &writeraw, true }
-,	{ "ww",   (ArgFn)&setflag, &writewindow, true }
-,	{ "z2f",  (ArgFn)&readstring, &zerodifffile, 0 }
-,	{ "zd",   (ArgFn)&setuint, &zeromode, 3 }
-,	{ "zf",   (ArgFn)&readstring, &zerofile, 0 }
-,	{ "zg",   (ArgFn)&setuint, &zeromode, 2 }
-,	{ "zn",   (ArgFn)&setuint, &normalize, 1 }
-,	{ "zr",   (ArgFn)&setuint, &zeromode, 1 }
+static const OptionDesc OptMap[] =
+{	MkOpt("ainc", "incremental mode", &incremental, true)
+,	MkOpt("al",   "average over multiple cycles of samples", &addloop)
+,	MkOpt("bin",  "average FFT channels", &binsz)
+,	MkOpt("bn",   "analysis block size", &N)
+,	MkOpt("ca",   "add samples to bins", &addch)
+,	MkOpt("df",   "name of the FFT data file", &datafile)
+,	MkOpt("exec", "execute shell command after data available", &execcmd)
+,	MkOpt("famax","upper frequency range for LCR analysis", &famax)
+,	MkOpt("famin","lower frequency range for LCR analysis", &famin)
+,	MkOpt("fbin", "average FFT channels with logarithmic bandwidth", &fbinsc)
+,	MkOpt("finc", "linear increment for used FFT channels", &f_inc)
+,	MkOpt("flog", "logarithmic increment for used FFT channels", &f_log)
+,	MkOpt("fmax", "upper frequency range for analysis", &fmax)
+,	MkOpt("fmin", "lower frequency range for analysis", &fmin)
+,	MkOpt("fq",   "sampling frequency", &freq)
+,	MkOpt("g2f",  "name of validation file of gain calibration", &gaindifffile)
+,	MkOpt("gd",   "verify gain calibration", &gainmode, 3U)
+,	MkOpt("gf",   "name of gain calibration file", &gainfile)
+,	MkOpt("gg",   "generate gain calibration file", &gainmode, 2U)
+,	MkOpt("gr",   "use gain calibration file", &gainmode, 1U)
+,	MkOpt("h/f",  "use 1/f weight", &weightfn, get1_fweight)
+,	MkOpt("harm", "take harmonics into account", &harmonic)
+,	MkOpt("hd",   "use weight function for differential input mode", &weightfn, getweightD)
+,	MkOpt("he",   "disable weight function", &weightfn, getconstweight)
+,	MkOpt("in",   "name of input file", &infile)
+,	MkOpt("ln",   "number of loops", &loops)
+,	MkOpt("loop", "infinite number of loops", &loops, UINT_MAX)
+,	MkOpt("lp",   "pause at matrix calibration", &lpause)
+,	MkOpt("lvl",  "noise level for automatic weight function", &noiselvl)
+,	MkOpt("mfft", "enable operation mode FFT", &mfft)
+,	MkOpt("mpca", "enable operation mode PCA", &mpca)
+,	MkOpt("mst",  "two channel mode", &stereo)
+,	MkOpt("mxy",  "enable operation mode XY (preliminary)", &mxy)
+,	MkOpt("olc",  "column to overwrite nominator", &overwrt[0].column)
+,	MkOpt("olf",  "file name to overwrite nominator", &overwrt[0].file)
+,	MkOpt("orc",  "column to overwrite denominator (reference)", &overwrt[1].column)
+,	MkOpt("orf",  "file name to overwrite denominator (reference)", &overwrt[1].file)
+,	MkOpt("pdc",  "purge first frequency channels", &purgech)
+,	MkOpt("phcc", "fit group delay", &crosscorr)
+,	MkOpt("phl",  "subtract constant group delay", &linphase)
+,	MkOpt("plot", "write command to stdout after data available", &plotcmd)
+,	MkOpt("psa",  "discard first samples", &discsamp)
+,	MkOpt("pte",  "read input data till the end", &disctrail)
+,	MkOpt("rf",   "name of raw data file", &rawfile)
+,	MkOpt("rref", "reference resistor", &rref)
+,	MkOpt("scm",  "input mode [0,2]", &scalemode, 0, 2)
+,	MkOpt("wd",   "(over)write FFT data file on the fly", &writedata)
+,	MkOpt("wf",   "name of window function file", &windowfile)
+,	MkOpt("win",  "select window function [0,5]", &winfn, 0, 5)
+,	MkOpt("wr",   "write raw data", &writeraw)
+,	MkOpt("ww",   "write window function", &writewindow)
+,	MkOpt("z2f",  "name of validation file of matrix calibration", &zerodifffile)
+,	MkOpt("zd",   "validate matrix calibration", &zeromode, 3U)
+,	MkOpt("zf",   "name of matrix calibration file", &zerofile)
+,	MkOpt("zg",   "generate matrix calibration file", &zeromode, 2U)
+,	MkOpt("zn",   "normalize amplitudes", &normalize)
+,	MkOpt("zr",   "use matrix calibration file", &zeromode, 1U)
 };
-const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
 int main(int argc, char* argv[])
 {
@@ -875,8 +876,10 @@ int main(int argc, char* argv[])
 	 }*/
 
 	// parse cmdl
-	while (--argc)
-		parsearg(*++argv);
+	{	Parser parser(OptMap);
+		while (--argc)
+			parser.HandleArg(*++argv);
+	}
 
 	if (N > N_MAX)
 		die(32, "FFT Length too large.");
@@ -884,6 +887,8 @@ int main(int argc, char* argv[])
 		die(32, "Input data length too large.");
 	if (overwrt[0].file && overwrt[1].file)
 		infile = NULL;
+	if (mxy & (mpca|mfft))
+		die(34, "Invalid combination of measurement modes, e.g. FFT and XY.");
 
 	// prepare some global vars
 	noiselvl_ = 1 / noiselvl;
@@ -894,7 +899,7 @@ int main(int argc, char* argv[])
 	gainadj[0] /= 32767;
 	gainadj[1] /= 32767;
 	// allocate buffers
-	if (method & 4)
+	if (mxy)
 	{	// reserve space for integrals and differentials too
 		inbuffer1 = fftw_alloc_real(3 * N);
 		inbuffer2 = fftw_alloc_real(3 * N);
@@ -906,7 +911,7 @@ int main(int argc, char* argv[])
 		outbuffer1 = fftw_alloc_real(N + 1);
 		outbuffer2 = fftw_alloc_real(N + 1);
 	}
-	if (crosscorr && (method & 1))
+	if (crosscorr && mpca)
 	{	ccbuffer1 = fftw_alloc_real(N);
 		ccbuffer2 = fftw_alloc_real(N);
 	}
@@ -990,8 +995,8 @@ int main(int argc, char* argv[])
 		fclose(fin);
 	}
 
-	memset(inbuffer1, 0, (method & 4 ? 3 : 1) * N * sizeof *inbuffer1); // init with 0 because of incremental mode
-	memset(inbuffer2, 0, (method & 4 ? 3 : 1) * N * sizeof *inbuffer2);
+	memset(inbuffer1, 0, (mxy ? 3 : 1) * N * sizeof *inbuffer1); // init with 0 because of incremental mode
+	memset(inbuffer2, 0, (mxy ? 3 : 1) * N * sizeof *inbuffer2);
 	memset(wsums, 0, (N_MAX / 2 + 1) * sizeof *wsums);
 	memset(gainD, 0, (N_MAX / 2 + 1) * sizeof *gain);
 	memset(zeroD, 0, 4 * (N_MAX / 2 + 1) * sizeof **zeroD);
@@ -1112,310 +1117,296 @@ int main(int argc, char* argv[])
 		 fclose(tout);
 		 }*/
 
-		switch (method)
+		if (mfft & mpca)
+		{	// FFT
+			dofft();
+
+			vectorscale(outbuffer1, sqrt(1. / N) / addch, N);
+			vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
+
+			// write data
+			FILE* tout = NULL;
+			if (writedata)
+			{
+				tout = fopen(datafile, "wt");
+				if (tout == NULL)
+					die(21, "Failed to create %s.", datafile);
+			}
+
+			PCA<2> pcaRe;
+			PCA<3> pcaIm;
+			double PCAdataRe[2];
+			double PCAdataIm[3];
+			// some values are const
+			PCAdataRe[1] = 1;
+			//PCAdataIm[1] = 1;
+
+			FFTbin calc(freq / N);
+
+			// 1st line
+			for (size_t len = 0; len <= N / 2; ++len)
+			{  // do calculations and aggregations
+				switch (calc.StoreBin(len))
+				{case FFTbin::AboveMax:
+					// write
+					if (tout && calc.h() > 1)
+						calc.PrintBin(tout);
+				 default:
+					//case FFTbin::BelowMin:
+					//case FFTbin::Aggregated:
+					//case FFTbin::Skip:
+					continue;
+				 case FFTbin::Ready:
+					// write
+					if (tout)
+						calc.PrintBin(tout);
+				}
+
+				if (calc.f() / calc.h() < famin && calc.f() / calc.h() >= famax)
+					continue;
+				// component analysis
+				PCAdataRe[0] = calc.Z().real();
+				//PCAdataRe[2] = 1/af;
+				//PCAdataRe[3] = f;
+				PCAdataIm[0] = calc.Z().imag(); // fit imaginary part in conductivity
+				PCAdataIm[1] = 1 / calc.f();
+				PCAdataIm[2] = calc.f();
+				//PCAdataIm[3] = 1/af;
+				//printf("Re: %12g %12g %12g %12g\n", PCAdataRe[0], PCAdataRe[1], PCAdataRe[2], weight);
+
+				// add values
+				pcaRe.Store(PCAdataRe, calc.W());
+				pcaIm.Store(PCAdataIm, calc.W());
+			}
+			if (tout)
+			{
+				fclose(tout);
+				tout = NULL;
+			}
+
+			// calculate summary
+			Vektor<1> resRe = pcaRe.Result();
+			Vektor<2> resIm = pcaIm.Result();
+
+			fprintf(stderr, "resRe: %12g %12g %12g\n", resRe[0], resRe[1], resRe[2]);
+			//printf("resRe: %12g %12g %12g %12g\n", resRe[0], resRe[1], resRe[2], resRe[3]);
+			fprintf(stderr, "resIm: %12g %12g %12g %12g\n", resIm[0], resIm[1], resIm[2], resIm[3]);
+
+			double R0 = rref * resRe[0];
+			//double R1_f = rref*resRe[1];
+			double C0 = -1 / M_2PI / resIm[0] / rref;
+			double L0 = resIm[1] / M_2PI * rref;
+			//double C1f = -resIm[0] / M_2PI / rref;
+
+			// write summary
+			fprintf(stderr, "\nreal: R [Ohm]     \t%12g\n"
+			//       "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
+			    "imaginary: C [�F] \t%12g\n"
+			//  "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
+			    "imaginary: L [�H] \t%12g\n"
+			//             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
+			, R0, C0 * 1E6, L0 * 1E6);
+			if (crosscorr)
+				fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
+		}
+		else if (mpca)
 		{
-		default:
-			die(34, "Invalid combination of measurement modes (%i), e.g. FFT and XY.", method);
-
-		case 2: // PCA analysis
+			PCA<5> pca;
+			double data[6];
+			fftw_real* U = inbuffer1 + 1;
+			fftw_real* I = inbuffer2 + 1;
+			data[2] = 1;   // offset
+			data[3] = 0;   // integral
+			data[4] = 0;   // linear
+			data[5] = 0;   // differential
+			unsigned i = N - 3;
+			do
 			{
-				PCA<5> pca;
-				double data[6];
-				fftw_real* U = inbuffer1 + 1;
-				fftw_real* I = inbuffer2 + 1;
-				data[2] = 1;   // offset
-				data[3] = 0;   // integral
-				data[4] = 0;   // linear
-				data[5] = 0;   // differential
-				unsigned i = N - 3;
-				do
-				{
-					data[0] = U[0] + U[1];
-					data[1] = I[0] + I[1];
-					data[3] += I[-1] + I[0];
-					data[5] = I[-1] + I[0] - I[1] - I[2];
-					pca.Store(*(double (*)[5])&data, (*weightfn)(data[0], data[1], i));
-					data[4]++;
-					U += 2;
-					I += 2;
-					i -= 2;
-				} while (i > 0);
+				data[0] = U[0] + U[1];
+				data[1] = I[0] + I[1];
+				data[3] += I[-1] + I[0];
+				data[5] = I[-1] + I[0] - I[1] - I[2];
+				pca.Store(*(double (*)[5])&data, (*weightfn)(data[0], data[1], i));
+				data[4]++;
+				U += 2;
+				I += 2;
+				i -= 2;
+			} while (i > 0);
 
-				Vektor<4> res = pca.Result() * rref;
-				fprintf(stderr, "\nPCA: %12g %12g %12g %12g %12g %12g\n",
-					res[0], res[1], 2. / freq / res[2], res[3], 1. / 2 * freq * res[2] / M_2PI / res[0], freq * res[4] / 2);
-			}
-			break;
+			Vektor<4> res = pca.Result() * rref;
+			fprintf(stderr, "\nPCA: %12g %12g %12g %12g %12g %12g\n",
+				res[0], res[1], 2. / freq / res[2], res[3], 1. / 2 * freq * res[2] / M_2PI / res[0], freq * res[4] / 2);
+		}
+		else if (mfft)
+		{
+			dofft();
 
-		case 1: // FFT
+			vectorscale(outbuffer1, sqrt(1. / N) / addch, N);
+			vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
+
+			// calc some sums
+			double wsum = 0;
+			int nsum = 0;
+			double Rsum = 0;
+			double R2sum = 0;
+			double L2sum = 0;
+			//double LCsum = 0; ==> -2 * wsum
+			double C2sum = 0;
+			double Lsum = 0;
+			double Csum = 0;
+			double d2sum = 0;
+			//double RWsum = 0;
+			// write data
+			FILE* tout = NULL;
+			if (writedata)
 			{
-				dofft();
-
-				vectorscale(outbuffer1, sqrt(1. / N) / addch, N);
-				vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
-
-				// calc some sums
-				double wsum = 0;
-				int nsum = 0;
-				double Rsum = 0;
-				double R2sum = 0;
-				double L2sum = 0;
-				//double LCsum = 0; ==> -2 * wsum
-				double C2sum = 0;
-				double Lsum = 0;
-				double Csum = 0;
-				double d2sum = 0;
-				//double RWsum = 0;
-				// write data
-				FILE* tout = NULL;
-				if (writedata)
-				{
-					tout = fopen(datafile, "wt");
-					if (tout == NULL)
-						die(21, "Failed to create %s.", datafile);
-				}
-
-				FFTbin calc(freq / N);
-
-				for (size_t len = 0; len <= N / 2; ++len)
-				{  // do calculations and aggregations
-					switch (calc.StoreBin(len))
-					{
-					case FFTbin::AboveMax:
-						// write
-						if (tout && abs(calc.h()) > 1)
-							calc.PrintBin(tout);
-					default:
-						//case FFTbin::BelowMin:
-						//case FFTbin::Aggregated:
-						//case FFTbin::Skip:
-						continue;
-					case FFTbin::Ready:
-						// write
-						if (tout)
-							calc.PrintBin(tout);
-					}
-
-					if (calc.f() / calc.h() < famin && calc.f() / calc.h() >= famax)
-						continue;
-					// average
-					++nsum;
-					wsum += calc.W();
-					// resistivity
-					Rsum += calc.W() * calc.Z().real();
-					R2sum += calc.W() * sqr(calc.Z().real());
-					// L & C
-					L2sum += calc.W() * sqr(calc.f());
-					// LCsum += weight; == wsum
-					C2sum += calc.W() / sqr(calc.f());
-					Lsum += calc.W() * calc.Z().imag() * calc.f();
-					Csum += calc.W() * calc.Z().imag() / calc.f();
-					d2sum = calc.W() * sqr(calc.Z().imag());
-				}
-				if (tout)
-				{
-					fclose(tout);
-					tout = NULL;
-				}
-
-				// calculate summary
-				double R = Rsum / wsum;
-				double RE = sqrt((R2sum / wsum - sqr(R)) / (nsum - 1));
-				double sLC = 1 / (sqr(wsum) - C2sum * L2sum);
-				double L = (C2sum * Lsum - Csum * wsum) * sLC;
-				double C = (Csum * L2sum - wsum * Lsum) * sLC;
-				double LE = sqrt((C2sum * d2sum - sqr(Csum) - (d2sum * sqr(wsum) - 2 * Csum * wsum * Lsum + C2sum * sqr(Lsum)) / L2sum) * sLC / (nsum - 2));
-				double CE = sqrt((L2sum * d2sum - sqr(Lsum) - (d2sum * sqr(wsum) - 2 * Csum * wsum * Lsum + L2sum * sqr(Csum)) / C2sum) * sLC / (nsum - 2));
-
-				// write summary
-				// fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
-				fprintf(stderr, "\nreal (R)     \t%12g � %g\n"
-						"imaginary (C)\t%12g � %g\n"
-						"imaginary (L)\t%12g � %g\n", rref * R, rref * RE, 1 / (rref * C * M_2PI), 1 / (CE * rref * M_2PI), rref * L / M_2PI, LE * rref / M_2PI);
-				if (crosscorr)
-					fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
+				tout = fopen(datafile, "wt");
+				if (tout == NULL)
+					die(21, "Failed to create %s.", datafile);
 			}
-			break;
 
-		case 3: // FFT and then PCA
-			{  // FFT
-				dofft();
+			FFTbin calc(freq / N);
 
-				vectorscale(outbuffer1, sqrt(1. / N) / addch, N);
-				vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
-
-				// write data
-				FILE* tout = NULL;
-				if (writedata)
-				{
-					tout = fopen(datafile, "wt");
-					if (tout == NULL)
-						die(21, "Failed to create %s.", datafile);
+			for (size_t len = 0; len <= N / 2; ++len)
+			{	// do calculations and aggregations
+				switch (calc.StoreBin(len))
+				{case FFTbin::AboveMax:
+					// write
+					if (tout && abs(calc.h()) > 1)
+						calc.PrintBin(tout);
+				 default:
+					//case FFTbin::BelowMin:
+					//case FFTbin::Aggregated:
+					//case FFTbin::Skip:
+					continue;
+				 case FFTbin::Ready:
+					// write
+					if (tout)
+						calc.PrintBin(tout);
 				}
 
-				PCA<2> pcaRe;
-				PCA<3> pcaIm;
-				double PCAdataRe[2];
-				double PCAdataIm[3];
-				// some values are const
-				PCAdataRe[1] = 1;
-				//PCAdataIm[1] = 1;
-
-				FFTbin calc(freq / N);
-
-				// 1st line
-				for (size_t len = 0; len <= N / 2; ++len)
-				{  // do calculations and aggregations
-					switch (calc.StoreBin(len))
-					{
-					case FFTbin::AboveMax:
-						// write
-						if (tout && calc.h() > 1)
-							calc.PrintBin(tout);
-					default:
-						//case FFTbin::BelowMin:
-						//case FFTbin::Aggregated:
-						//case FFTbin::Skip:
-						continue;
-					case FFTbin::Ready:
-						// write
-						if (tout)
-							calc.PrintBin(tout);
-					}
-
-					if (calc.f() / calc.h() < famin && calc.f() / calc.h() >= famax)
-						continue;
-					// component analysis
-					PCAdataRe[0] = calc.Z().real();
-					//PCAdataRe[2] = 1/af;
-					//PCAdataRe[3] = f;
-					PCAdataIm[0] = calc.Z().imag(); // fit imaginary part in conductivity
-					PCAdataIm[1] = 1 / calc.f();
-					PCAdataIm[2] = calc.f();
-					//PCAdataIm[3] = 1/af;
-					//printf("Re: %12g %12g %12g %12g\n", PCAdataRe[0], PCAdataRe[1], PCAdataRe[2], weight);
-
-					// add values
-					pcaRe.Store(PCAdataRe, calc.W());
-					pcaIm.Store(PCAdataIm, calc.W());
-				}
-				if (tout)
-				{
-					fclose(tout);
-					tout = NULL;
-				}
-
-				// calculate summary
-				Vektor<1> resRe = pcaRe.Result();
-				Vektor<2> resIm = pcaIm.Result();
-
-				fprintf(stderr, "resRe: %12g %12g %12g\n", resRe[0], resRe[1], resRe[2]);
-				//printf("resRe: %12g %12g %12g %12g\n", resRe[0], resRe[1], resRe[2], resRe[3]);
-				fprintf(stderr, "resIm: %12g %12g %12g %12g\n", resIm[0], resIm[1], resIm[2], resIm[3]);
-
-				double R0 = rref * resRe[0];
-				//double R1_f = rref*resRe[1];
-				double C0 = -1 / M_2PI / resIm[0] / rref;
-				double L0 = resIm[1] / M_2PI * rref;
-				//double C1f = -resIm[0] / M_2PI / rref;
-
-				// write summary
-				fprintf(stderr, "\nreal: R [Ohm]     \t%12g\n"
-				//       "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
-				    "imaginary: C [�F] \t%12g\n"
-				//  "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
-				    "imaginary: L [�H] \t%12g\n"
-				//             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
-				, R0, C0 * 1E6, L0 * 1E6);
-				if (crosscorr)
-					fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
+				if (calc.f() / calc.h() < famin && calc.f() / calc.h() >= famax)
+					continue;
+				// average
+				++nsum;
+				wsum += calc.W();
+				// resistivity
+				Rsum += calc.W() * calc.Z().real();
+				R2sum += calc.W() * sqr(calc.Z().real());
+				// L & C
+				L2sum += calc.W() * sqr(calc.f());
+				// LCsum += weight; == wsum
+				C2sum += calc.W() / sqr(calc.f());
+				Lsum += calc.W() * calc.Z().imag() * calc.f();
+				Csum += calc.W() * calc.Z().imag() / calc.f();
+				d2sum = calc.W() * sqr(calc.Z().imag());
 			}
-			break;
+			if (tout)
+			{
+				fclose(tout);
+				tout = NULL;
+			}
 
-		case 4: // XY mode
-			{  // we need to do an FFT here, at least for the calibration
-				dofft();
-				// normalize (including retransformation)
-				vectorscale(outbuffer1, sqrt(1. / N / N) / addch, N);
-				vectorscale(outbuffer2, sqrt(1. / N / N) / addch, N);
+			// calculate summary
+			double R = Rsum / wsum;
+			double RE = sqrt((R2sum / wsum - sqr(R)) / (nsum - 1));
+			double sLC = 1 / (sqr(wsum) - C2sum * L2sum);
+			double L = (C2sum * Lsum - Csum * wsum) * sLC;
+			double C = (Csum * L2sum - wsum * Lsum) * sLC;
+			double LE = sqrt((C2sum * d2sum - sqr(Csum) - (d2sum * sqr(wsum) - 2 * Csum * wsum * Lsum + C2sum * sqr(Lsum)) / L2sum) * sLC / (nsum - 2));
+			double CE = sqrt((L2sum * d2sum - sqr(Lsum) - (d2sum * sqr(wsum) - 2 * Csum * wsum * Lsum + L2sum * sqr(Csum)) / C2sum) * sLC / (nsum - 2));
 
-				const double inc = freq / N;
-				// U(f)
-				fftw_real* a1 = outbuffer1;
-				fftw_real* a2 = outbuffer2;
-				fftw_real* b1 = a1 + N;
-				fftw_real* b2 = a2 + N;
-				*b1 = 0; // well, somewhat easier this way
-				*b2 = 0;
-				for (int len = 0; a1 < b1; len += harmonic, a1 += harmonic, a2 += harmonic, b1 -= harmonic, b2 -= harmonic)
-				{  // calc
-					double f = len * inc;
-					Complex U(*a1, *b1);
-					Complex I(*a2, *b2);
-					// calibration
-					docal(len, f, U, I);
-					// store data
-					*a1 = U.real();
-					*b1 = U.imag();
-					*a2 = I.real();
-					*b2 = I.imag();
-					// The integrals and differentials are calculated in the frequency domain.
-					// This is at the expence of approximate a factor 2 computing time, since we have to do
-					// one forward and one backward transformation for the zero compensation anyway.
-					// The advantage is that we do not have to deal with the 1/2 time slot linear phse shift
-					// of the numeric integration/differentiation in the time domain.
-					Complex di(0, f); // differential operator
-					// store integrals
-					Complex C = U / di;
-					a1[N] = C.real();
-					b1[N] = C.imag();
-					C = I / di;
-					a2[N] = C.real();
-					b2[N] = C.imag();
-					// store differentials
-					C = U * di;
-					a1[2 * N] = C.real();
-					b1[2 * N] = C.imag();
-					C = I * di;
-					a2[2 * N] = C.real();
-					b2[2 * N] = C.imag();
-				}
-				// clear DC and nyquist frequencies of integral and diferential, since they do no allow 90� phase shift.
-				outbuffer1[N] = outbuffer2[N] = 0;
-				outbuffer1[2 * N] = outbuffer2[2 * N] = 0;
-				outbuffer1[N + N / 2] = outbuffer2[N + N / 2] = 0;
-				outbuffer1[2 * N + N / 2] = outbuffer2[2 * N + N / 2] = 0;
+			// write summary
+			// fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
+			fprintf(stderr, "\nreal (R)     \t%12g � %g\n"
+					"imaginary (C)\t%12g � %g\n"
+					"imaginary (L)\t%12g � %g\n", rref * R, rref * RE, 1 / (rref * C * M_2PI), 1 / (CE * rref * M_2PI), rref * L / M_2PI, LE * rref / M_2PI);
+			if (crosscorr)
+				fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
+		}
+		else if (mxy)
+		{	// we need to do an FFT here, at least for the calibration
+			dofft();
+			// normalize (including retransformation)
+			vectorscale(outbuffer1, sqrt(1. / N / N) / addch, N);
+			vectorscale(outbuffer2, sqrt(1. / N / N) / addch, N);
 
-				// now do the inverse transform to get the corrected data back.
-				fftw_execute_r2r(PI, outbuffer1, inbuffer1);
-				fftw_execute_r2r(PI, outbuffer1 + N, inbuffer1 + N);
-				fftw_execute_r2r(PI, outbuffer1 + 2 * N, inbuffer1 + 2 * N);
-				fftw_execute_r2r(PI, outbuffer2, inbuffer2);
-				fftw_execute_r2r(PI, outbuffer2 + N, inbuffer2 + N);
-				fftw_execute_r2r(PI, outbuffer2 + 2 * N, inbuffer2 + 2 * N);
+			const double inc = freq / N;
+			// U(f)
+			fftw_real* a1 = outbuffer1;
+			fftw_real* a2 = outbuffer2;
+			fftw_real* b1 = a1 + N;
+			fftw_real* b2 = a2 + N;
+			*b1 = 0; // well, somewhat easier this way
+			*b2 = 0;
+			for (int len = 0; a1 < b1; len += harmonic, a1 += harmonic, a2 += harmonic, b1 -= harmonic, b2 -= harmonic)
+			{  // calc
+				double f = len * inc;
+				Complex U(*a1, *b1);
+				Complex I(*a2, *b2);
+				// calibration
+				docal(len, f, U, I);
+				// store data
+				*a1 = U.real();
+				*b1 = U.imag();
+				*a2 = I.real();
+				*b2 = I.imag();
+				// The integrals and differentials are calculated in the frequency domain.
+				// This is at the expence of approximate a factor 2 computing time, since we have to do
+				// one forward and one backward transformation for the zero compensation anyway.
+				// The advantage is that we do not have to deal with the 1/2 time slot linear phse shift
+				// of the numeric integration/differentiation in the time domain.
+				Complex di(0, f); // differential operator
+				// store integrals
+				Complex C = U / di;
+				a1[N] = C.real();
+				b1[N] = C.imag();
+				C = I / di;
+				a2[N] = C.real();
+				b2[N] = C.imag();
+				// store differentials
+				C = U * di;
+				a1[2 * N] = C.real();
+				b1[2 * N] = C.imag();
+				C = I * di;
+				a2[2 * N] = C.real();
+				b2[2 * N] = C.imag();
+			}
+			// clear DC and nyquist frequencies of integral and diferential, since they do no allow 90� phase shift.
+			outbuffer1[N] = outbuffer2[N] = 0;
+			outbuffer1[2 * N] = outbuffer2[2 * N] = 0;
+			outbuffer1[N + N / 2] = outbuffer2[N + N / 2] = 0;
+			outbuffer1[2 * N + N / 2] = outbuffer2[2 * N + N / 2] = 0;
 
-				// write data
-				if (writedata)
-				{
-					FILE* fout = fopen(datafile, "wt");
-					if (fout == NULL)
-						die(21, "Failed to create %s.", datafile);
+			// now do the inverse transform to get the corrected data back.
+			fftw_execute_r2r(PI, outbuffer1, inbuffer1);
+			fftw_execute_r2r(PI, outbuffer1 + N, inbuffer1 + N);
+			fftw_execute_r2r(PI, outbuffer1 + 2 * N, inbuffer1 + 2 * N);
+			fftw_execute_r2r(PI, outbuffer2, inbuffer2);
+			fftw_execute_r2r(PI, outbuffer2 + N, inbuffer2 + N);
+			fftw_execute_r2r(PI, outbuffer2 + 2 * N, inbuffer2 + 2 * N);
 
-					const fftw_real* Up = inbuffer1;
-					const fftw_real* Ip = inbuffer2;
-					for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
-						fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
-						// t         U    I    INT U  INT I  D U      D I
-						    len / freq * harmonic, *Up, *Ip, Up[N], Ip[N], Up[2 * N], Ip[2 * N]);
-					fclose(fout);
-				}
+			// write data
+			if (writedata)
+			{
+				FILE* fout = fopen(datafile, "wt");
+				if (fout == NULL)
+					die(21, "Failed to create %s.", datafile);
+
+				const fftw_real* Up = inbuffer1;
+				const fftw_real* Ip = inbuffer2;
+				for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
+					fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
+					// t         U    I    INT U  INT I  D U      D I
+							len / freq * harmonic, *Up, *Ip, Up[N], Ip[N], Up[2 * N], Ip[2 * N]);
+				fclose(fout);
 			}
 		}
 
 		if (execcmd)
 			system(execcmd);
 		if (plotcmd)
-		{  // for gnuplot!
+		{	// for gnuplot!
 			puts(plotcmd);
 			fflush(stdout);
 			/*#ifdef __OS2__
@@ -1440,9 +1431,8 @@ int main(int argc, char* argv[])
 		fread(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in);
 
 	switch (gainmode)
-	{
-	case 2: // write
-	case 3:
+	{case 2: // write
+	 case 3:
 		double* wp = wsums + N / 2 + 1;
 		for (Complex* cp = gainD + N / 2 + 1; --cp >= gainD;)
 			*cp /= *--wp;  // scale 2 average
@@ -1454,9 +1444,8 @@ int main(int argc, char* argv[])
 		fclose(fz);
 	}
 	switch (zeromode)
-	{
-	case 2: // write
-	case 3:
+	{case 2: // write
+	 case 3:
 		zeromode += 2;
 		puts("Zeromode calibration part one is now complete.\n"
 				"Part 2 will start at the end of the contdown.\7");
@@ -1468,8 +1457,8 @@ int main(int argc, char* argv[])
 		}
 		puts("\nNow at part 2.");
 		goto restart_zero;
-	case 4: // part 2
-	case 5:
+	 case 4: // part 2
+	 case 5:
 		for (Complex (*cp)[4] = zeroD + N / 2 + 1; --cp >= zeroD;)
 		{  // scale to fit det *cp == 1
 			Complex det = 1. / sqrt((*cp)[0] * (*cp)[3] - (*cp)[1] * (*cp)[2]);
@@ -1491,15 +1480,12 @@ int main(int argc, char* argv[])
 	puts("completed.");
 	// read until EOF
 	if (disctrail)
-	{  //do
-	   //   puts("trail");
+	{	//do
+		//   puts("trail");
 		while (fread(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in) > 0)
 			;
 		//puts("fin");
 	}
-
-	// close stdin to signal playrec
-	fclose(in);
 
 	return 0;
 }

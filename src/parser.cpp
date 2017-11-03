@@ -10,10 +10,55 @@ static int searcharg(const char* arg, const char* elem)
 	return strncasecmp(arg, elem, strlen(elem));
 }
 
-void parsearg(const char* arg)
+/*void readint(const char* s, int* r)
+{	unsigned l = UINT_MAX;
+	if (sscanf(s, "%i%n", r, &l) != 1 || l != strlen(s))
+		die(42, "Integer value expected, found %s", s);
+}*/
+void OptionDesc::ParseArg(const char* value, unsigned* param) const
+{	bool ex = *value == '^';
+	if (ex)
+		++value;
+	unsigned l = UINT_MAX;
+	if (sscanf(value, "%u%n", param, &l) != 1 || l != strlen(value))
+		die(42, "Unsigned integer value expected for option %s, found '%s'.", Option, value);
+	if (ex)
+	{	if (*param >= sizeof(unsigned)*CHAR_BIT)
+			die(42, "Power of 2 constant ^%u exceeds the domain of unsigned integer (option %s).", *param, Option);
+		*param = 1 << *param;
+	}
+}
+void OptionDesc::ParseArg(const char* value, unsigned* param, unsigned min, unsigned max) const
+{	ParseArg(value, param);
+	if (*param < min || *param > max)
+		die(42, "Value %u of option %s is out of range [%u,%u].", *param, Option, min, max);
+}
+
+void OptionDesc::ParseArg(const char* s, double* r) const
+{	unsigned l = UINT_MAX;
+	if (sscanf(s, "%lf%n", r, &l) != 1 || l != strlen(s))
+		die(42, "Floating point value expected for option %s, found '%s'.", Option, s);
+}
+
+void OptionDesc::ParseArg(const char* s, bool* r) const
+{	if (*s == 0 || strcasecmp(s, "toggle") == 0)
+		*r = !*r;
+	else if (strcmp(s, "1") == 0 || strcasecmp(s, "true") == 0 || strcasecmp(s, "yes") == 0 || strcasecmp(s, "on") == 0)
+		*r = true;
+	else if (strcmp(s, "0") == 0 || strcasecmp(s, "false") == 0 || strcasecmp(s, "no") == 0 || strcasecmp(s, "off") == 0)
+		*r = false;
+	else
+		die(42, "Invalid boolean value '%s' for option %s.", s, Option);
+}
+
+void OptionDesc::ParseArg(const char* value, const char** param) const
+{	*param = strdup(value); // TODO: memory leak
+}
+
+void Parser::HandleArg(const char* arg)
 {
 	if (arg[0] == '@' || arg[0] == '<')
-	{  // indirect file
+	{	// indirect file
 		FILE* cf = fopen(arg + 1, "r");
 		if (cf == NULL)
 			die(37, "Failed to read command file %s.", arg + 1);
@@ -34,96 +79,20 @@ void parsearg(const char* arg)
 				++ap;
 			if (ap[0] == '#')
 				continue; // skip comments
-			parsearg(ap); // THIS WILL NOT WORK WITH STRING ARGS !
+			HandleArg(ap);
 		}
 		return;
 	}
-	ArgMap* ap = (ArgMap*)bsearch(arg, argmap, argmap_size, sizeof *argmap, (int (*)(const void*, const void*))&searcharg);
+	OptionDesc* ap = (OptionDesc*)bsearch(arg, ArgMap, ArgMapSize, sizeof *ArgMap, (int (*)(const void*, const void*))&searcharg);
 	if (ap == NULL)
 		die(44, "Illegal option %s.", arg);
-	arg += strlen(ap->arg);
+	arg += strlen(ap->Option);
 	if (*arg == '=')
 		++arg;
-	(*ap->func)(arg, ap->param, ap->iparam);
+	(ap->Handler)(*ap, arg);
 }
 
-void readint(const char* s, int* r)
-{	unsigned l = UINT_MAX;
-	if (sscanf(s, "%i%n", r, &l) != 1 || l != strlen(s))
-		die(42, "Integer value expected, found %s", s);
-}
-void readintdef(const char* s, int* r, int d)
-{	if (*s == 0)
-		*r = d;
-	else
-	{	unsigned l = UINT_MAX;
-		if (sscanf(s, "%i%n", r, &l) != 1 || l != strlen(s))
-			die(42, "Integer value expected, found %s", s);
-	}
-}
-void readuint(const char* s, unsigned int* r)
-{	unsigned l = UINT_MAX;
-	if (sscanf(s, "%u%n", r, &l) != 1 || l != strlen(s))
-		die(42, "Unsigned integer value expected, found %s", s);
-}
-void readuintdef(const char* s, unsigned int* r, unsigned int d)
-{	if (*s == 0)
-		*r = d;
-	else
-	{	unsigned l = UINT_MAX;
-		if (sscanf(s, "%u%n", r, &l) != 1 || l != strlen(s))
-			die(42, "Unsigned integer value expected, found %s", s);
-	}
-}
-
-void readN(const char* s, unsigned* r)
-{	bool ex;
-	if ((ex = *s == '^'))
-		++s;
-	readuint(s, r);
-	if (ex)
-		*r = 1 << *r;
-}
-
-void readdouble(const char* s, double* r)
-{	unsigned l = UINT_MAX;
-	if (sscanf(s, "%lf%n", r, &l) != 1 || l != strlen(s))
-		die(42, "Floating point value expected, found %s", s);
-}
-
-void readstringdef(const char* s, const char** cpp, const char* def)
+void Parser::PrintHelp() const
 {
-	*cpp = *s ? s : def;
-}
 
-void setflag(const char* s, bool* r)
-{
-	if (*s == 0 || strcmp(s, "1") == 0 || strcasecmp(s, "true") == 0)
-		*r = true;
-	else if (strcmp(s, "0") == 0 || strcasecmp(s, "false") == 0)
-		*r = false;
-	else
-		die(42, "Invalid boolean value %s", s);
 }
-
-void setint(const char* s, int* r, int v)
-{
-	if (*s)
-		die(42, "Option does not have parameters");
-	*r = v;
-}
-
-void setstring(const char* s, const char** r, const char* v)
-{
-	if (*s)
-		die(42, "Option does not have parameters");
-	*r = v;
-}
-
-void setbit(const char* s, unsigned int* r, unsigned int v)
-{
-	if (*s)
-		die(42, "Option does not have parameters");
-	*r |= v;
-}
-

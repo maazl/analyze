@@ -1,76 +1,51 @@
 #ifndef PARSER_H_
 #define PARSER_H_
 
+#include "utils.h"
+
 #include <stdlib.h>
+#include <functional>
+#include <fstream>
 
-typedef void (*ArgFn)(const char* rem, void* param, long iparam);
 
-// Dispatch table for command line argument lookup
-extern const struct ArgMap
-{  char  arg[8];
-   ArgFn func;
-   void* param;
-   long  iparam;
-} argmap[];
-// Number of entries in argmap[].
-// Must be set to sizeof argmap / sizeof *argmap once argmap is a complete type.
-extern const size_t argmap_size;
+class OptionDesc;
 
-// Parse the specified argument.
-// The argument may start with a prefix from the dispatch table
-// or have the format @filename in which case parsearg is called for each line
-// in the file recursively.
-void parsearg(const char* arg);
+class Parser
+{	const OptionDesc* const ArgMap;
+	const size_t ArgMapSize;
+ public:
+	template <size_t N>
+	Parser(const OptionDesc (&argmap)[N]) : ArgMap(argmap), ArgMapSize(N) {}
+	void HandleArg(const char* arg);
+	void PrintHelp() const;
+};
 
-// Helper functions for the Dispatch table ...
+struct OptionDesc
+{	typedef void (*HandlerFn)(const OptionDesc& opt, const char* val);
+	//typedef std::function<void(const char*)> HandlerFn;
+	const char Option[8];
+	const char* const Description;
+	const HandlerFn Handler;
+	/*template <typename ...ARGS>
+	OptionDesc(const char (&option)[8], const char* description, ARGS... args)
+		: Option(option), Description(description), Handler([args...](const char* val) { Parser::ParseArg(val, args...); }) {}*/
+	/*OptionDesc(const std::array<char,8> &option, const char* description, int& arg)
+		: Option(option), Description(description), Handler([arg](const char* val) { Parser::ParseArg(val, arg); }) {}*/
+	#define MkOpt(name, desc, args...) { name, desc, [](const OptionDesc& opt, const char* value) { opt.ParseArg(value, args); } }
+	void ParseArg(const char* value, unsigned* param) const;
+	void ParseArg(const char* value, unsigned* param, unsigned min, unsigned max) const;
+	void ParseArg(const char* value, bool* param) const;
+	void ParseArg(const char* value, double* param) const;
+	void ParseArg(const char* value, const char** param) const;
+	template <typename T>
+	void ParseArg(const char* value, T* param, const T constvalue) const;
+};
 
-// Read integer parameter
-// *param = &intparam
-void readint(const char* s, int* r);
-// Read integer parameter with default value
-// *param = &intparam
-// iparam = default value if argument is specified without a value.
-void readintdef(const char* s, int* r, int d);
-// Read integer parameter
-// *param = &intparam
-void readuint(const char* s, unsigned int* r);
-// Read integer parameter with default value
-// *param = &intparam
-// iparam = default value if argument is specified without a value.
-void readuintdef(const char* s, unsigned int* r, unsigned int d);
-
-void readN(const char* s, unsigned* r);
-// Read double parameter 
-// *param = &doubleparam
-void readdouble(const char* s, double* r);
-
-// Read string parameter
-// *param = &charpointer
-inline void readstring(const char* s, const char** cpp) { *cpp = s; }
-// Read string parameter with default value
-// *param = &charpointer
-// iparam = "default value"
-void readstringdef(const char* s, const char** cpp, const char* def);
-
-// Set boolean parameter
-// *param = &bool
-// This has no arguments. It unconditional sets the parameter to true.
-void setflag(const char* s, bool* r);
-
-// Set integer parameter to a constant value
-// *param = &intparam
-// iparam = constant
-// This has no arguments. The constant is unconditionally assigned to *param.
-// Be careful with enum types because their size may differ. 
-void setint(const char* s, int* r, int v);
-#define setuint setint
-
-void setstring(const char* s, const char** r, const char* v);
-
-// Set a costant bit in an integer parameter
-// *param = &intparam
-// ivalue = bit_number
-// This has no arguments. The n-th bit in *param ios set.
-void setbit(const char* s, unsigned int* r, unsigned int v);
+template <typename T>
+void OptionDesc::ParseArg(const char* value, T* param, const T constvalue) const
+{	if (*value)
+		die(42, "Option %s does not expect a parameter.", Option);
+	*param = constvalue;
+}
 
 #endif // PARSER_H_

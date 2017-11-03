@@ -45,7 +45,7 @@
 The
         file name could be a transient source like a fifo or a character device.</dd>
       <dt><a name="_bn"></a><tt><b>bn</b><var>samples</var></tt> - block length
-        - <tt>8192</tt> by default</dt>
+        - <tt>32768</tt> by default</dt>
       <dd>This is the number of samples read in one block. Each time this number
         of samples are received the result is analyzed and written to console or
         file. Less samples do not produce any output.</dd>
@@ -75,8 +75,6 @@ first
       <dt><a name="_wr"></a><tt><b>wd</b><var></var></tt> - write histogram data
         to <tt>hist.dat</tt> - shortcut for <tt>dfhist.dat</tt>.</dt>
       <dd>Writes the sample value distribution to <tt>hist.dat</tt>.</dd>
-      <dt><br>
-      </dt>
       <dt><kbd><a name="_rf"></a><b>rf</b><var>filename</var></kbd> - raw data
         file</dt>
       <dd>Write raw data to <var><tt>filename</tt></var>. These is the raw

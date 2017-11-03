@@ -67,19 +67,19 @@ static void vektormul(fftw_real* dst, fftw_real* src, size_t len)
 }
 
 // config
-static int N = 8192;
+static unsigned N = 8192;
 static double freq = 48000;
 static double f_min = 20;
 static double f_max = 20000;
 static double fstep = 1.05946309;
-static int discardsamp = 0;
-static int syncsamp = 50000;
-static int overlap = 1000;
+static unsigned discardsamp = 0;
+static unsigned syncsamp = 50000;
+static unsigned overlap = 1000;
 static double synclevel = 10000;
 static double syncphase = 1;
 static bool writeraw = false;
 static bool writedata = false;
-static int loops = 1;
+static unsigned loops = 1;
 static int mode = 3; // 1 = generate, 2 = analyze 3 = both
 static int zeromode = 0; // 0 = none, 1 = read, 2 = generate
 static int gainmode = 0; // 0 = none, 1 = read, 2 = generate, 3 = generatedelta
@@ -484,38 +484,40 @@ static void refplay()
 	}
 }
 
-const ArgMap argmap[] = // must be sorted
-{	{ "bn",   (ArgFn)&readN, &N, 0 }
-,	{ "exec", (ArgFn)&readstring, &execcmd, 0 }
-, { "flog", (ArgFn)&readdouble, &fstep, 0 }
-, { "fmax", (ArgFn)&readdouble, &f_max, 0 }
-, { "fmin", (ArgFn)&readdouble, &f_min, 0 }
-, { "fq",   (ArgFn)&readdouble, &freq, 0 }
-, { "gd",   (ArgFn)&setint, &gainmode, 3 }
-, { "gg",   (ArgFn)&setint, &gainmode, 2 }
-, { "gr",   (ArgFn)&setint, &gainmode, 1 }
-, { "in",   (ArgFn)&readstring, &infile, 0 }
-, { "ln",   (ArgFn)&readint, &loops, 1 }
-, { "loop", (ArgFn)&setint, &loops, INT_MAX }
-, { "ma",   (ArgFn)&setint, &mode, 2 }
-, { "mr",   (ArgFn)&setint, &mode, 1 }
-, { "psa",  (ArgFn)&readint, &discardsamp, 0 }
-, { "slvl", (ArgFn)&readdouble, &synclevel, 0 }
-, { "sov",  (ArgFn)&readint, &overlap, 0 }
-, { "sph",  (ArgFn)&readdouble, &syncphase, 0 }
-, { "sync", (ArgFn)&readint, &syncsamp, 0 }
-, { "v",    (ArgFn)&setflag, &verbose, true }
-, { "wd",   (ArgFn)&setflag, &writedata, true }
-, { "wr",   (ArgFn)&setflag, &writeraw, true }
-, { "zg",   (ArgFn)&setint, &zeromode, 2 }
-, { "zr",   (ArgFn)&setint, &zeromode, 1 }
+const OptionDesc OptionMap[] = // must be sorted
+{	MkOpt("bn",   "FFT lenght", &N)
+,	MkOpt("exec", "execute shell command", &execcmd)
+,	MkOpt("flog", "frequency increment factor", &fstep)
+,	MkOpt("fmax", "maximum frequency", &f_max)
+,	MkOpt("fmin", "minimum frequency", &f_min)
+,	MkOpt("fsamp","sampling rate", &freq)
+,	MkOpt("gd",   "verify gain calibration", &gainmode, 3)
+,	MkOpt("gg",   "generate gain calibration file", &gainmode, 2)
+,	MkOpt("gr",   "use gain calibration file", &gainmode, 1)
+,	MkOpt("in",   "input file, stdin by default", &infile)
+,	MkOpt("ln",   "number of loops", &loops)
+,	MkOpt("loop", "infinite mode", &loops, UINT_MAX)
+,	MkOpt("ma",   "analyze only", &mode, 2)
+,	MkOpt("mr",   "reference only", &mode, 1)
+,	MkOpt("psa",  "discard first samples", &discardsamp)
+,	MkOpt("slvl", "sync level", &synclevel)
+,	MkOpt("sov",  "overlap", &overlap)
+,	MkOpt("sph",  "sync phase", &syncphase)
+,	MkOpt("sync", "sync samples", &syncsamp)
+,	MkOpt("v",    "verbose", &verbose)
+,	MkOpt("wd",   "write data", &writedata)
+,	MkOpt("wr",   "write raw data", &writeraw)
+,	MkOpt("zg",   "generate matrix calibration file", &zeromode, 2)
+,	MkOpt("zr",   "use matrix calibration file", &zeromode, 1)
 };
-const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
 int main(int argc, char* argv[])
-{  // parse cmdl
-	while (--argc)
-		parsearg(*++argv);
+{
+	// parse cmdl
+	{	Parser parser(OptionMap);
+		while (--argc)
+			parser.HandleArg(*++argv);
+	}
 
 	syncsamp &= ~7; // must be multiple of 8
 

@@ -34,6 +34,10 @@
     </blockquote>
     <h2><a name="options"></a>Command line options </h2>
     <dl compact="compact">
+      <dt><a name="_ar"></a><tt>ar - </tt>append reference file<tt><br>
+        </tt></dt>
+      <dd>Append reference file (<a href="#_wr"><tt>wr</tt></a>) instead of
+        overwriting.</dd>
       <dt><a name="_bn"></a><tt><b>bn</b><var><b>samples</b> -</var></tt><strong><tt><var>
             </var></tt></strong>cycle length<strong><tt><var> </var></tt></strong></dt>
       <dd>This is the number of samples in one period of the signal. This should
@@ -56,6 +60,9 @@
       <dt><tt><a name="_fsamp"></a>fsamp<var>freq - </var></tt>sampling
         frequency<tt><var> </var></tt></dt>
       <dd><span style="font-family: monospace;">48000</span> Hz by default.</dd>
+      <dt><a name="_gm"></a><tt>gm - </tt>gain in dB</dt>
+      <dd>Apply gain to the Output. The value should be negative because it
+        refers to 0dB FSR.</dd>
       <dt><kbd><a name="_harm"></a>harm<var>n - </var></kbd>use harmonics<kbd><var>
           </var></kbd></dt>
       <dd>With this option the first <i><tt>n</tt></i> harmonics of any used
@@ -75,6 +82,8 @@
       <dt><kbd><a name="_mst"></a>mst - </kbd>two channel mode</dt>
       <dd>In two channel mode the used frequencies are alternately used for as
         channel 1 and channel 2.</dd>
+      <dt><tt><a name="_sweep"></a>msweep - </tt>sweep mode</dt>
+      <dd>Use sweep mode rather than a noise pattern.</dd>
       <dt><a name="_scale"></a><tt>scale<var>power - </var></tt>noise type</dt>
       <dd>Exponent of the <a href="noise.html#method">energy distribution</a>.
         <span style="font-family: monospace;">0</span> := white noise, <span style="font-family: monospace;">-1</span>

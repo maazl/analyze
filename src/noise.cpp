@@ -67,36 +67,37 @@ static void quantize2(short* dst, const fftw_real* src1, const fftw_real* src2, 
 	}
 }
 
-const ArgMap argmap[] = // must be sorted
-{	{"ar",   (ArgFn)&setint,     &resmode,     (long)"a"}
-,	{"bn"  , (ArgFn)&readN,      &n_fft,       0}
-,	{"exec", (ArgFn)&readstring, &execcmd,     0}
-,	{"finc", (ArgFn)&readdouble, &f_inc,       0}
-,	{"flog", (ArgFn)&readdouble, &f_log,       0}
-,	{"fmax", (ArgFn)&readdouble, &f_max,       0}
-,	{"fmin", (ArgFn)&readdouble, &f_min,       0}
-,	{"fsamp",(ArgFn)&readuint,   &f_samp,      0}
-,	{"gm",   (ArgFn)&readdouble, &mgain,       0}
-,	{"harm", (ArgFn)&readuintdef,&n_harmonic,  3}
-,	{"ln" ,  (ArgFn)&readuint,   &n_rep,       1}
-,	{"loop", (ArgFn)&setuint,    &n_rep,       0}
-,	{"mst",  (ArgFn)&setflag,    &stereo,      true}
-,	{"msweep",(ArgFn)&setflag,   &sweep,       true}
-,	{"scale",(ArgFn)&readdouble, &scalepow,    0}
-,	{"sync", (ArgFn)&readintdef, &synclen,     2}
-,	{"wd",   (ArgFn)&readstring, &F_data,      0}
-,	{"wr",   (ArgFn)&readstring, &F_res,       0}
-,	{"ww",   (ArgFn)&readstring, &F_wav,       0}
+const OptionDesc OptionMap[] = // must be sorted
+{	MkOpt("ar",   "append reference file (instead of overwriting)", &resmode, "a")
+,	MkOpt("bn",   "number of samples in one period", &n_fft)
+,	MkOpt("exec", "execute shell command after a frequency completed", &execcmd)
+,	MkOpt("finc", "linear increment for used frequencies", &f_inc)
+,	MkOpt("flog", "logarithmic increment for used frequencies", &f_log)
+,	MkOpt("fmax", "maximum frequency", &f_max)
+,	MkOpt("fmin", "minimum frequency", &f_min)
+,	MkOpt("fsamp","sampling frequency, 48k by default", &f_samp)
+,	MkOpt("gm",   "gain in dB", &mgain)
+,	MkOpt("harm", "use harmonics", &n_harmonic)
+,	MkOpt("ln" ,  "number of cycles", &n_rep)
+,	MkOpt("loop", "infinite output", &n_rep, 0U)
+,	MkOpt("mst",  "two channel mode", &stereo)
+,	MkOpt("msweep","sweep mode", &sweep)
+,	MkOpt("scale","noise type", &scalepow)
+//,	MkOpt("sync", "length of sync pattern", &synclen)
+,	MkOpt("wd",   "write design data", &F_data)
+,	MkOpt("wr",   "write reference signal", &F_res)
+,	MkOpt("ww",   "write PCM data", &F_wav)
 };
-const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
 
 int main(int argc, char**argv)
 {	srand(clock());
 
 	// parse cmdl
-	while (--argc)
-		parsearg(*++argv);
+	{	Parser parser(OptionMap);
+		while (--argc)
+			parser.HandleArg(*++argv);
+	}
 
 	if (n_fft == 0)
 		die(48, "usage: noise bn<fft_size> fmin<min_freq> fmax<max_freq> [wd<data_file>] [ww<wave_file>]\n"
@@ -218,7 +219,7 @@ int main(int argc, char**argv)
 					for (const fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g\n", *sp);
 					fclose(of);
-				}   
+				}
 
 				if (execcmd)
 					system(execcmd);

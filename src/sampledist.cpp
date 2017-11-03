@@ -30,13 +30,13 @@ static int sumbuffer[CA_MAX][65536];
 static int64_t nsamp;
 
 // config
-static int N = 32768;
+static unsigned N = 32768;
 static bool swapbytes = false;
 static const char* rawfile = NULL; // file name for raw data
 static const char* datafile = NULL; // file name for histogram data
-static int discsamp = 0;
+static unsigned discsamp = 0;
 static unsigned addloop = UINT_MAX;
-static int loops = 1;
+static unsigned loops = 1;
 static const char* infile = NULL;
 static const char* execcmd = NULL;
 static const char* plotcmd = NULL;
@@ -137,27 +137,29 @@ static void write2ch(FILE* out, const short* data, size_t len)
 	}
 }
 
-const ArgMap argmap[] = // must be sorted
-{	{ "al",   (ArgFn)&readuint, &addloop, 0 }
-,	{ "bn" ,  (ArgFn)&readN, &N, 0}
-,	{ "df",   (ArgFn)&readstring, &datafile, 0 }
-,	{ "exec", (ArgFn)&readstring, &execcmd, 0}
-,	{ "in" ,  (ArgFn)&readstring, &infile, 0}
-,	{ "ln" ,  (ArgFn)&readint, &loops, 1}
-,	{ "loop", (ArgFn)&setint, &loops, INT_MAX}
-,	{ "plot", (ArgFn)&readstring, &plotcmd, 0}
-,	{ "psa",  (ArgFn)&readuintdef, &discsamp, 8192 }
-,	{ "rf",   (ArgFn)&readstring, &rawfile, 0 }
-,	{ "wd" ,  (ArgFn)&setstring, &datafile, (long)"hist.dat" }
-,	{ "wr" ,  (ArgFn)&setflag, &rawfile, (long)"raw.dat" }
-,	{ "xb" ,  (ArgFn)&setflag, &swapbytes, true}
+const OptionDesc OptionMap[] = // must be sorted
+{	MkOpt("al",   "add blocks, infinite by default", &addloop)
+,	MkOpt("bn",   "block length, 32768 by default", &N)
+,	MkOpt("df",   "write histogram data to file", &datafile)
+,	MkOpt("exec", "execute shell command after block completed", &execcmd)
+,	MkOpt("in",   "name of input file, default stdin", &infile)
+,	MkOpt("ln",   "number of cycles, 1 by default", &loops)
+,	MkOpt("loop", "infinite input", &loops, UINT_MAX)
+,	MkOpt("plot", "pipe command after block completed", &plotcmd)
+,	MkOpt("psa",  "discard first samples", &discsamp)
+,	MkOpt("rf",   "write raw data file (diagnostics)", &rawfile)
+,	MkOpt("wd",   "write histogram data to hist.dat", &datafile, "hist.dat")
+,	MkOpt("wr",   "write raw data to raw.dat", &rawfile, "raw.dat")
+,	MkOpt("xb" ,  "swap bytes", &swapbytes)
 };
-const size_t argmap_size = sizeof argmap / sizeof *argmap;
 
 int main(int argc, char* argv[])
-{  // parse cmdl
-	while (--argc)
-		parsearg(*++argv);
+{
+	// parse cmdl
+	{	Parser parser(OptionMap);
+		while (--argc)
+			parser.HandleArg(*++argv);
+	}
 
 	if (N > N_MAX)
 		die(32, "Data Length too large.");
@@ -180,7 +182,7 @@ int main(int argc, char* argv[])
 
 	// operation loop
 	unsigned addloops = 0;
-	int loop = loops;
+	unsigned loop = loops;
 	do
 	{
 		fread2(inbuffertmp, 2 * sizeof *inbuffertmp, N, in);
