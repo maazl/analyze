@@ -421,6 +421,12 @@ imFrequenzraum. Dadurch sind faktisch 2Vorw&#8222;rts-Transformationenund 6 R&#1
           <td><a href="#fft_options">FFT parameters</a></td>
         </tr>
         <tr>
+          <td><a href="#_xb"><span style="font-family: monospace;">xb</span></a></td>
+          <td>swap bytes of PCM data (change endianess)</td>
+          <td>off</td>
+          <td><a href="#input_options">input data</a></td>
+        </tr>
+        <tr>
           <td><a href="#_z2f"><tt>z2f</tt></a></td>
           <td>name of validation file of <a href="#matrix-cal">matrix
               calibration</a></td>
@@ -480,6 +486,9 @@ The
           data without any processing so far, except for option <tt><a href="#_psa"><tt>psa</tt></a></tt>.
           It is intended for diagnostics only. <a href="#raw_dat">&rarr; file
             format</a></dd>
+        <dt><span style="font-family: monospace;"><a name="_xb"></a>xb - </span>swap
+          bytes of PCM data</dt>
+        <dd>Change endianess of input data.</dd>
         <dt><kbd><a name="_psa"></a>psa<var>num - </var></kbd>discard first <kbd><var>num</var></kbd>
           samples<kbd><var> </var></kbd></dt>
         <dd>Use this to discard spikes at the starting or to reach a steady

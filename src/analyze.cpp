@@ -124,6 +124,7 @@ static unsigned addch = 1;     // binsize in raw samples
 static unsigned addloop = 1;     // add raw data before analysis # times
 static bool incremental = false; // incremental mode (add all raw data)
 static double rref = 1;     // value of the reference resistor in impedance measurements
+static bool swapbytes = false;// swap bytes on PCM input
 static unsigned scalemode = 1;     // l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l
 static bool stereo = false; // Stereo aggregate mode (Toggle harmonics)
 static unsigned loops = 1;     // number of analysis loops
@@ -203,35 +204,34 @@ static inline short storeminmax(short val, int* dst)
 	return val;
 }
 
-static void short2float(fftw_real* dst, const short* src, size_t len)
-{
-	while (len)
-	{
-		double d = 0;
-		int i = addch;
+struct Ch2
+{	double Ch1;
+	double Ch2;
+};
+Ch2 read2float(const short*& src)
+{	Ch2 ret = { 0, 0 };
+	int i = addch;
+	if (swapbytes)
 		do
-			d += storeminmax(bswap(*src++), minmax);
-		while (--i);
-		*dst++ = d * gainadj[0];
-		--len;
-	}
+		{	ret.Ch1 += storeminmax(bswap(src[0]), minmax);
+			ret.Ch2 += storeminmax(bswap(src[1]), minmax + 2);
+			src += 2;
+		} while (--i);
+	else
+		do
+		{	ret.Ch1 += storeminmax(src[0], minmax);
+			ret.Ch2 += storeminmax(src[1], minmax + 2);
+			src += 2;
+		} while (--i);
+	return ret;
 }
 
 static void short2float2(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {
 	while (len)
-	{
-		double d1 = 0;
-		double d2 = 0;
-		int i = addch;
-		do
-		{
-			d1 += storeminmax(bswap(src[0]), minmax);
-			d2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
-		} while (--i);
-		*dst1++ = d1 * gainadj[0];
-		*dst2++ = d2 * gainadj[1];
+	{	auto d = read2float(src);
+		*dst1++ = d.Ch1 * gainadj[0];
+		*dst2++ = d.Ch2 * gainadj[1];
 		--len;
 	}
 }
@@ -239,18 +239,9 @@ static void short2float2(fftw_real* dst1, fftw_real* dst2, const short* src, siz
 static void short2float2add(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {
 	while (len)
-	{
-		double d1 = 0;
-		double d2 = 0;
-		int i = addch;
-		do
-		{
-			d1 += storeminmax(bswap(src[0]), minmax);
-			d2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
-		} while (--i);
-		*dst1++ += d1 * gainadj[0];
-		*dst2++ += d2 * gainadj[1];
+	{	auto d = read2float(src);
+		*dst1++ += d.Ch1 * gainadj[0];
+		*dst2++ += d.Ch2 * gainadj[1];
 		--len;
 	}
 }
@@ -259,18 +250,9 @@ static void short2float2window(fftw_real* dst1, fftw_real* dst2, const short* sr
 {
 	const fftw_real* win = window;
 	while (len)
-	{
-		double d1 = 0;
-		double d2 = 0;
-		int i = addch;
-		do
-		{
-			d1 += storeminmax(bswap(src[0]), minmax);
-			d2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
-		} while (--i);
-		*dst1++ = d1 * *win * gainadj[0];
-		*dst2++ = d2 * *win++ * gainadj[1];
+	{	auto d = read2float(src);
+		*dst1++ = d.Ch1 * *win * gainadj[0];
+		*dst2++ = d.Ch2 * *win++ * gainadj[1];
 		--len;
 	}
 }
@@ -278,17 +260,8 @@ static void short2float2window(fftw_real* dst1, fftw_real* dst2, const short* sr
 static void short2floatD(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {
 	while (len)
-	{
-		double d1 = 0;
-		double d2 = 0;
-		int i = addch;
-		do
-		{
-			d1 += storeminmax(bswap(src[0]), minmax);
-			d2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
-		} while (--i);
-		*dst2++ = d1 * gainadj[0] - (*dst1++ = d2 * gainadj[1]);
+	{	auto d = read2float(src);
+		*dst2++ = d.Ch1 * gainadj[0] - (*dst1++ = d.Ch2 * gainadj[1]);
 		--len;
 	}
 }
@@ -296,19 +269,10 @@ static void short2floatD(fftw_real* dst1, fftw_real* dst2, const short* src, siz
 static void short2floatDadd(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
 {
 	while (len)
-	{
-		double d1 = 0;
-		double d2 = 0;
-		int i = addch;
-		do
-		{
-			d1 += storeminmax(bswap(src[0]), minmax);
-			d2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
-		} while (--i);
-		d2 *= gainadj[1];
-		*dst1++ += d2;
-		*dst2++ += d1 * gainadj[0] - d2;
+	{	auto d = read2float(src);
+		d.Ch2 *= gainadj[1];
+		*dst1++ += d.Ch2;
+		*dst2++ += d.Ch1 * gainadj[0] - d.Ch2;
 		--len;
 	}
 }
@@ -317,17 +281,8 @@ static void short2floatDwindow(fftw_real* dst1, fftw_real* dst2, const short* sr
 {
 	const fftw_real* win = window;
 	while (len)
-	{
-		double d1 = 0;
-		double d2 = 0;
-		int i = addch;
-		do
-		{
-			d1 += storeminmax(bswap(src[0]), minmax);
-			d2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
-		} while (--i);
-		*dst2++ = d1 * *win * gainadj[0] - (*dst1++ = d2 * *win * gainadj[1]);
+	{	auto d = read2float(src);
+		*dst2++ = d.Ch1 * *win * gainadj[0] - (*dst1++ = d.Ch2 * *win * gainadj[1]);
 		++win;
 		--len;
 	}
@@ -347,22 +302,6 @@ static void applywindowI(fftw_real* dst, size_t len)
 		*dst++ /= *win++;
 }
 
-static inline double abs(double d1, double d2)
-{
-	return sqrt(sqr(d1) + sqr(d2));
-}
-
-static void complex2polar(fftw_real* data, size_t len)
-{
-	fftw_real *data2 = data + len;
-	while (++data < --data2)
-	{
-		register double phi = atan2(*data2, *data);
-		*data = abs(*data, *data2);
-		*data2 = phi;
-	}
-}
-
 static void init()
 {
 	minmax[0] = INT_MAX;
@@ -379,11 +318,18 @@ static void write1ch(FILE* out, const fftw_real* data, size_t len)
 
 static void write2ch(FILE* out, const short* data, size_t len)
 {
-	while (len--)
-	{
-		fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
-		data += 2;
-	}
+	if (swapbytes)
+		while (len--)
+		{
+			fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
+			data += 2;
+		}
+	else
+		while (len--)
+		{
+			fprintf(out, "%i\t%i\n", data[0], data[1]);
+			data += 2;
+		}
 }
 
 static void write2ch(FILE* out, const fftw_real* data, size_t len)
@@ -473,11 +419,6 @@ static void readfloat_2(FILE* in, unsigned column, size_t count, fftw_real* dest
 		dest += inc;
 	}
 }
-
-/*static char* abbrev(const char* s, const char* token)
- {  size_t l = strlen(s);
- return strnicmp(s, token, l) == 0 ? (char*)token + l : NULL;
- }*/
 
 static void dofft()
 {	// forwardtransformation
@@ -859,6 +800,7 @@ static const OptionDesc OptMap[] =
 ,	MkOpt("win",  "select window function [0,5]", &winfn, 0, 5)
 ,	MkOpt("wr",   "write raw data", &writeraw)
 ,	MkOpt("ww",   "write window function", &writewindow)
+,	MkOpt("xb" ,  "swap bytes", &swapbytes)
 ,	MkOpt("z2f",  "name of validation file of matrix calibration", &zerodifffile)
 ,	MkOpt("zd",   "validate matrix calibration", &zeromode, 3U)
 ,	MkOpt("zf",   "name of matrix calibration file", &zerofile)
