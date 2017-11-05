@@ -416,7 +416,7 @@ static void readfloat_2(FILE* in, unsigned column, size_t count, fftw_real* dest
 		while (--col)
 			fscanf(in, "%*s");
 		if (fscanf(in, "%lg%*[^\n]", dest) != 1)
-			die(27, "Failed to raed column %u from data file.", column);
+			die(27, "Failed to read column %u from data file.", column);
 		dest += inc;
 	}
 }
@@ -698,7 +698,7 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 
 void FFTbin::PrintHdr(FILE* dst)
 {
-	fputs("f\t|U|\targ U\t|I|\targ I\t|Z|\targ Z\tZ real\tZ imag\tweight\tdelay\tharmon.\n", dst);
+	fputs("#f\t|U|\targ U\t|I|\targ I\t|Z|\targ Z\tZ real\tZ imag\tweight\tdelay\tharmon.\n", dst);
 }
 
 void FFTbin::PrintBin(FILE* dst) const
@@ -860,45 +860,24 @@ int main(int argc, char* argv[])
 	createwindow(window, winfn, N);
 	// write window data
 	if (writewindow)
-	{	FILE* fout = fopen(windowfile, "wt");
-		if (fout == NULL)
-			die(21, "Failed to open %s for writing.", windowfile);
-		write1ch(fout, window, N);
-		fclose(fout);
-	}
+		write1ch(FILEguard(windowfile, "wt"), window, N);
 
-	FILE* in = NULL;
+	FILEguard in = NULL;
 	if (infile)
-	{
-		if (strcmp(infile, "-") == 0)
-		{  // streaming
-			in = stdin;
-			//_fsetmode(in, "b");
-		} else
-		{
-			in = fopen(infile, "rb");
-			if (in == NULL)
-				die(20, "Failed to open input file.");
-		}
+	{	in = strcmp(infile, "-") == 0
+			? binmode(stdin) // streaming
+			: checkedopen(infile, "rb");
 		// discard first samples
 		fread2(inbuffertmp, sizeof *inbuffertmp, 2 * discsamp, in);
 	}
 
 	if (overwrt[0].file)
-	{	FILE* fin = fopen(overwrt[0].file, "r");
-		if (fin == NULL)
-			die(20, "Failed to open %s for reading.", overwrt[0].file);
-		ovrbuffer1 = fftw_alloc_real(N);
-		readfloat_2(fin, overwrt[0].column, N, ovrbuffer1);
-		fclose(fin);
+	{	ovrbuffer1 = fftw_alloc_real(N);
+		readfloat_2(FILEguard(overwrt[0].file, "r"), overwrt[0].column, N, ovrbuffer1);
 	}
 	if (overwrt[1].file)
-	{	FILE* fin = fopen(overwrt[1].file, "r");
-		if (fin == NULL)
-			die(20, "Failed to open %s for reading.", overwrt[1].file);
-		ovrbuffer2 = fftw_alloc_real(N);
-		readfloat_2(fin, overwrt[0].column, N, ovrbuffer2);
-		fclose(fin);
+	{	ovrbuffer2 = fftw_alloc_real(N);
+		readfloat_2(FILEguard(overwrt[1].file, "r"), overwrt[0].column, N, ovrbuffer2);
 	}
 
 	memset(inbuffer1, 0, (mxy ? 3 : 1) * N * sizeof *inbuffer1); // init with 0 because of incremental mode
@@ -907,30 +886,18 @@ int main(int argc, char* argv[])
 	memset(gainD, 0, (N_MAX / 2 + 1) * sizeof *gain);
 	memset(zeroD, 0, 4 * (N_MAX / 2 + 1) * sizeof **zeroD);
 	// prepare gainmode
-	{	FILE* fz;
-		switch (gainmode)
-		{
-		case 1: // read
-		case 3:
-			fz = fopen(gainfile, "r");
-			if (fz == NULL)
-				die(20, "Failed to open %s for reading.", gainfile);
-			readcomplex(fz, gain, N / 2 + 1);
-			fclose(fz);
-		}
+	switch (gainmode)
+	{case 1: // read
+	 case 3:
+		readcomplex(FILEguard(gainfile, "r"), gain, N / 2 + 1);
 	}
-	restart_zero:
+
+ restart_zero:
 	// prepare zeromode
 	switch (zeromode)
-	{
-	case 1: // read
-	case 3:
-		FILE* fz;
-		fz = fopen(zerofile, "r");
-		if (fz == NULL)
-			die(20, "Failed to open %s for reading.", zerofile);
-		read4complex(fz, zero, N / 2);
-		fclose(fz);
+	{case 1: // read
+	 case 3:
+		read4complex(FILEguard(zerofile, "r"), zero, N / 2);
 	}
 
 	// operation loop
@@ -944,12 +911,7 @@ int main(int argc, char* argv[])
 
 			// write raw data
 			if (writeraw)
-			{	FILE* fout = fopen(rawfile, "wt");
-				if (fout == NULL)
-					die(21, "Failed to open %s for writing.", rawfile);
-				write2ch(fout, inbuffertmp, N * addch);
-				fclose(fout);
-			}
+				write2ch(FILEguard(rawfile, "wt"), inbuffertmp, N * addch);
 
 			// reset min/max
 			init();
@@ -1031,12 +993,9 @@ int main(int argc, char* argv[])
 			vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
 
 			// write data
-			FILE* tout = NULL;
+			FILEguard tout = NULL;
 			if (writedata)
-			{
-				tout = fopen(datafile, "wt");
-				if (tout == NULL)
-					die(21, "Failed to create %s.", datafile);
+			{	tout = checkedopen(datafile, "wt");
 				FFTbin::PrintHdr(tout);
 			}
 
@@ -1084,11 +1043,6 @@ int main(int argc, char* argv[])
 				// add values
 				pcaRe.Store(PCAdataRe, calc.W());
 				pcaIm.Store(PCAdataIm, calc.W());
-			}
-			if (tout)
-			{
-				fclose(tout);
-				tout = NULL;
 			}
 
 			// calculate summary
@@ -1164,12 +1118,9 @@ int main(int argc, char* argv[])
 			double d2sum = 0;
 			//double RWsum = 0;
 			// write data
-			FILE* tout = NULL;
+			FILEguard tout = NULL;
 			if (writedata)
-			{
-				tout = fopen(datafile, "wt");
-				if (tout == NULL)
-					die(21, "Failed to create %s.", datafile);
+			{	tout = checkedopen(datafile, "wt");
 				FFTbin::PrintHdr(tout);
 			}
 
@@ -1208,11 +1159,6 @@ int main(int argc, char* argv[])
 				Lsum += calc.W() * calc.Z().imag() * calc.f();
 				Csum += calc.W() * calc.Z().imag() / calc.f();
 				d2sum = calc.W() * sqr(calc.Z().imag());
-			}
-			if (tout)
-			{
-				fclose(tout);
-				tout = NULL;
 			}
 
 			// calculate summary
@@ -1296,17 +1242,13 @@ int main(int argc, char* argv[])
 
 			// write data
 			if (writedata)
-			{
-				FILE* fout = fopen(datafile, "wt");
-				if (fout == NULL)
-					die(21, "Failed to create %s.", datafile);
+			{	FILEguard fout(datafile, "wt");
 				const fftw_real* Up = inbuffer1;
 				const fftw_real* Ip = inbuffer2;
 				fputs("#t\tU\tI\t∫ U\t∫ I\tΔ U\t ΔI\n", fout);
 				for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
 					fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
-							len / freq * harmonic, *Up, *Ip, Up[N], Ip[N], Up[2 * N], Ip[2 * N]);
-				fclose(fout);
+						len / freq * harmonic, *Up, *Ip, Up[N], Ip[N], Up[2 * N], Ip[2 * N]);
 			}
 		}
 
@@ -1343,13 +1285,9 @@ int main(int argc, char* argv[])
 		double* wp = wsums + N / 2 + 1;
 		for (Complex* cp = gainD + N / 2 + 1; --cp >= gainD;)
 			*cp /= *--wp;  // scale 2 average
-		FILE* fz;
-		fz = fopen(gainmode == 3 ? gaindifffile : gainfile, "wb");
-		if (fz == NULL)
-			die(21, "Failed to open %s.", gainmode == 3 ? gaindifffile : gainfile);
+		FILEguard fz(gainmode == 3 ? gaindifffile : gainfile, "wb");
 		fputs("#f\treal\timag\tabs\targ\n", fz);
 		writecomplex(fz, gainD, N / 2 + 1);
-		fclose(fz);
 	}
 	switch (zeromode)
 	{case 2: // write
@@ -1377,13 +1315,9 @@ int main(int argc, char* argv[])
 			(*cp)[2] *= det;
 			(*cp)[3] *= det;
 		}
-		FILE* fz;
-		fz = fopen(zeromode == 5 ? zerodifffile : zerofile, "wb");
-		if (fz == NULL)
-			die(21, "Failed to open %s.", zeromode == 5 ? zerodifffile : zerofile);
+		FILEguard fz(zeromode == 5 ? zerodifffile : zerofile, "wb");
 		fputs("#f\tU->U re\tU->U im\tU->I re\tU->I im\tI->U re\tI->U im\tI->I re\tI->I im\n", fz);
 		write4complex(fz, zeroD, N / 2);
-		fclose(fz);
 	}
 
 	puts("completed.");

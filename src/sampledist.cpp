@@ -113,27 +113,20 @@ static void analyze()
 }
 
 static void outdata()
-{	FILE* tout = fopen(datafile, "wt");
-	if (tout == NULL)
-		die(41, "Failed to create data.dat.");
-
+{	FILEguard tout(datafile, "wt");
 	int* sp1 = sumbuffer[0];
 	int* sp2 = sumbuffer[1];
 	fputs("#n\thl\thr\tNl\tNr\n", tout);
 	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s, sp1++, sp2++)
-	{	// write
 		fprintf(tout, "%7i\t%12g\t%12g\t%7i\t%7i\n",
 		// n  hl[n]                 hr[n]                 Nl[n] Nr[n]
-		    s, (double)*sp1 / nsamp, (double)*sp2 / nsamp, *sp1, *sp2);
-	}
-	fclose(tout);
+		   s, (double)*sp1 / nsamp, (double)*sp2 / nsamp, *sp1, *sp2);
 }
 
 static void write2ch(FILE* out, const short* data, size_t len)
 {
 	while (len--)
-	{
-		fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
+	{	fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
 		data += 2;
 	}
 }
@@ -165,15 +158,9 @@ int main(int argc, char* argv[])
 	if (N > N_MAX)
 		die(32, "Data Length too large.");
 
-	FILE* in;
-	if (infile == NULL)
-	{	// streaming
-		in = binmode(stdin);
-	} else
-	{	in = fopen(infile, "rb");
-		if (in == NULL)
-			die(20, "Failed to open input file.");
-	}
+	FILEguard in = infile == NULL
+		? binmode(stdin)
+		: checkedopen(infile, "rb");
 
 	// discard first samples
 	fread(inbuffertmp, sizeof *inbuffertmp, 2 * discsamp, in);
@@ -190,10 +177,7 @@ int main(int argc, char* argv[])
 
 		// write raw data
 		if (rawfile)
-		{	FILE* tout = fopen(rawfile, "wt");
-			write2ch(tout, inbuffertmp, N);
-			fclose(tout);
-		}
+			write2ch(FILEguard(rawfile, "wt"), inbuffertmp, N);
 
 		if (swapbytes)
 			asshortx2(inbuffertmp, N);
@@ -221,8 +205,6 @@ int main(int argc, char* argv[])
 		addloops = 0;
 
 	} while (--loop);
-	// close stdin to signal playrec
-	fclose(in);
 
 	return 0;
 }

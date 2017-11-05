@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
 
 
@@ -21,6 +22,17 @@ void die(int rc, const char* msg, ...)
 FILE* binmode(FILE* stream)
 {	// TODO: Windows & Co ...
 	return stream;
+}
+
+FILE* checkedopen(const char* file, const char* mode)
+{	FILE* ret = fopen(file, mode);
+	if (ret == NULL)
+	{	if (strchr(mode, 'w'))
+			die(21, "Failed to open file '%s' for writing.", file);
+		else
+			die(20, "Failed to open file '%s' for reading.", file);
+	}
+	return ret;
 }
 
 void wavheader(FILE* fo, size_t nsamp, size_t sfreq)

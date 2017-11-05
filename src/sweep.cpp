@@ -304,19 +304,9 @@ static void analyze(int fi)
 
 static void doanalysis()
 {
-	FILE* in;
-	if (infile == NULL)
-	{  // streaming
-		in = stdin;
-		//_fsetmode(in, "b");
-	} else
-	{
-		in = fopen(infile, "rb");
-		if (in == NULL)
-			die(21, "Failed to open input file.");
-	}
-
-	//_fsetmode(stdout, "b"); // debug
+	FILEguard in = infile == NULL
+		? binmode(stdin)
+		: checkedopen(infile, "rb");
 
 	// skip initial samples
 	freadexact(inbuffer, 2 * sizeof(short), discardsamp, in);
@@ -359,14 +349,13 @@ static void doanalysis()
 		// discard first samples
 		freadexact(inbuffer, 2 * sizeof(short), N, in);
 		// write raw data #1
-		FILE* fr = NULL;
+		FILEguard fr = NULL;
 		if (writeraw)
-		{
-			char buf[30];
+		{	char buf[30];
 			sprintf(buf, "raw_%3f", findex * freq / N);
 			buf[8] = 0;
 			strcat(buf, ".dat");
-			fr = fopen(buf, "w");
+			fr = checkedopen(buf, "w");
 			write2ch(fr, inbuffer, N);
 		}
 		// show
@@ -377,7 +366,6 @@ static void doanalysis()
 		if (writeraw)
 		{
 			write2ch(fr, inbuffer, N);
-			fclose(fr);
 			fr = NULL;
 		}
 		// show

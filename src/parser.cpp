@@ -59,12 +59,9 @@ void Parser::HandleArg(const char* arg)
 {
 	if (arg[0] == '@' || arg[0] == '<')
 	{	// indirect file
-		FILE* cf = fopen(arg + 1, "r");
-		if (cf == NULL)
-			die(37, "Failed to read command file %s.", arg + 1);
+		FILEguard cf(arg + 1, "r");
 		while (!feof(cf))
-		{
-			char buffer[1024];
+		{	char buffer[1024];
 			fgets(buffer, sizeof buffer, cf);
 			size_t l = strlen(buffer);
 			if (l >= sizeof buffer - 1 && buffer[sizeof buffer - 2] != '\n')

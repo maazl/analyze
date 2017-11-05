@@ -167,31 +167,25 @@ int main(int argc, char**argv)
 
 	// write design result
 	if (F_data)
-	{	FILE* of = fopen(F_data, "w");
-		if (of == NULL)
-			die(41, "Failed to open %s for writing", F_data);
+	{	FILEguard of(F_data, "w");
 		fputs("#f\t|A|\targ A\tA re\tA im\tharmon.\n", of);
 		for (size_t i = 0; i <= n_fft/2; ++i)
 		{	Complex ci(fftbuf[i], i && i != n_fft/2 ? fftbuf[n_fft-i] : 0);
 			//          freq  |A|  arg A ai  bi   harm
 			fprintf(of, "%12g %12g %12g %12g %12g %8i\n",
 				i*f_bin, abs(ci), arg(ci)*M_180_PI, ci.real(), ci.imag(), harmonics[i]); 
-		}   
-		fclose(of);
+		}
 	}
 
 	if (F_wav || F_res)
-	{	FILE* wavF = NULL;
+	{	FILEguard wavF = NULL;
 		short* buf = NULL; // Buffer for raw sample data
 
 		if (F_wav)
-		{	if (strcmp(F_wav, "-") != 0)
-			{	wavF = fopen(F_wav, "wb");
-				if (wavF == NULL)
-					die(41, "Failed to open %s for writing", F_wav);
-			} else // stdout
-			{	wavF = binmode(stdout);
-		}	}
+		{	wavF = strcmp(F_wav, "-") != 0
+				? checkedopen(F_wav, "wb")
+				: binmode(stdout);
+		}
 
 		if (sweep)
 		{	// Sweep mode
@@ -213,13 +207,10 @@ int main(int argc, char**argv)
 
 				// write result
 				if (F_res)
-				{	FILE* of = fopen(F_res, resmode);
-					if (of == NULL)
-						die(41, "Failed to open %s for writing", F_res);
+				{	FILEguard of(F_res, resmode);
 					const fftw_real* spe = sampbuf + n_fft;
 					for (const fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g\n", *sp);
-					fclose(of);
 				}
 
 				if (execcmd)
@@ -263,13 +254,10 @@ int main(int argc, char**argv)
 
 				// write result
 				if (F_res)
-				{	FILE* of = fopen(F_res, resmode);
-					if (of == NULL)
-						die(41, "Failed to open %s for writing", F_res);
+				{	FILEguard of(F_res, resmode);
 					for (sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g\n", *sp);
-					fclose(of);
-				}   
+				}
 
 				// and quantize
 				if (F_wav)
@@ -308,14 +296,11 @@ int main(int argc, char**argv)
 
 				// write result
 				if (F_res)
-				{	FILE* of = fopen(F_res, resmode);
-					if (of == NULL)
-						die(41, "Failed to open %s for writing", F_res);
+				{	FILEguard of(F_res, resmode);
 					const fftw_real* const spe = sampbuf + n_fft;
 					fputs("#l+r\tl\tr\n", of);
 					for (fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g %12g %12g\n", sp[0]+sp[n_fft], sp[0], sp[n_fft]);
-					fclose(of);
 				}
 
 				// and quantize
@@ -337,9 +322,6 @@ int main(int argc, char**argv)
 		} // if (sweep)
 
 		delete[] buf;
-
-		if (F_wav)
-			fclose(wavF);
 	} // if (F_wav || F_res)
 
  end:

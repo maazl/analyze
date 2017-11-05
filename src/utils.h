@@ -22,6 +22,27 @@ void die(int rc, const char* msg, ...);
  */
 FILE* binmode(FILE* stream);
 
+/// Checked file open. Like fopen but throws on error.
+/// @param file Name of the file
+/// @param mode Open mode
+/// @return File pointer, never NULL.
+/// @exception Message Failed to open: error message
+FILE* checkedopen(const char* file, const char* mode);
+
+/// RAII version of FILE*
+class FILEguard
+{	FILE* File;
+ public:
+	FILEguard(FILE* file) : File(file) {}
+	FILEguard(const FILEguard&) = delete;
+	FILEguard(FILEguard&& r) : File(r.File) { r.File = NULL; }
+	FILEguard(const char* file, const char* mode) : File(checkedopen(file, mode)) {}
+	~FILEguard() { if (File) fclose(File); }
+	FILEguard& operator=(const FILEguard&) = delete;
+	FILEguard& operator=(FILE* file) { this->~FILEguard(); File = file; return *this; }
+	operator FILE*() { return File; }
+};
+
 /** Write RIFF WAV header.
  * @param fo output stream
  * @param nsamp number of samples to write

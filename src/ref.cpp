@@ -116,16 +116,12 @@ int main(int argc, char**argv)
 	}
 
 	// write
-	FILE* of;
+	FILEguard of = NULL;
 	if (dfile)
-	{
-		of = fopen(dfile, "wb");
-		if (of == NULL)
-			die(41, "Failed to open %s for writing", dfile);
+	{	of = checkedopen(dfile, "wb");
 		wavheader(of, 2 * nsamp * nrep, sfreq);
 	} else // stdout
-	{
-		of = binmode(stdout);
+	{	of = binmode(stdout);
 		wavheader(of, 0x1fffffdc, sfreq);
 	}
 	do
