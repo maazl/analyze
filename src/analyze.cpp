@@ -549,7 +549,7 @@ static void docal(int bin, double f, Complex& U, Complex& I)
 //   returns unwrapped phase
 static double unwrap(double lph, double phase)
 {
-	return phase - M_2PI * floor((phase - lph) / M_2PI + .5);
+	return !isfinite(lph) ? phase : phase - M_2PI * floor((phase - lph) / M_2PI + .5);
 }
 
 class FFTbin
