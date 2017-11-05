@@ -119,6 +119,7 @@ static void outdata()
 
 	int* sp1 = sumbuffer[0];
 	int* sp2 = sumbuffer[1];
+	fputs("#n\thl\thr\tNl\tNr\n", tout);
 	for (int s = SHRT_MIN; s <= SHRT_MAX; ++s, sp1++, sp2++)
 	{	// write
 		fprintf(tout, "%7i\t%12g\t%12g\t%7i\t%7i\n",

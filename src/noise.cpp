@@ -170,6 +170,7 @@ int main(int argc, char**argv)
 	{	FILE* of = fopen(F_data, "w");
 		if (of == NULL)
 			die(41, "Failed to open %s for writing", F_data);
+		fputs("#f\t|A|\targ A\tA re\tA im\tharmon.\n", of);
 		for (size_t i = 0; i <= n_fft/2; ++i)
 		{	Complex ci(fftbuf[i], i && i != n_fft/2 ? fftbuf[n_fft-i] : 0);
 			//          freq  |A|  arg A ai  bi   harm
@@ -311,6 +312,7 @@ int main(int argc, char**argv)
 					if (of == NULL)
 						die(41, "Failed to open %s for writing", F_res);
 					const fftw_real* const spe = sampbuf + n_fft;
+					fputs("#l+r\tl\tr\n", of);
 					for (fftw_real* sp = sampbuf; sp != spe; ++sp)
 						fprintf(of, "%12g %12g %12g\n", sp[0]+sp[n_fft], sp[0], sp[n_fft]);
 					fclose(of);

@@ -332,7 +332,7 @@ static void write2ch(FILE* out, const short* data, size_t len)
 		}
 }
 
-static void write2ch(FILE* out, const fftw_real* data, size_t len)
+/*static void write2ch(FILE* out, const fftw_real* data, size_t len)
 {
 	while (len--)
 	{
@@ -355,7 +355,7 @@ static void writepolar(FILE* out, const fftw_real* data, size_t len, double inc)
 	len = 1;
 	while (data < --data2)
 		fprintf(out, "%g\t%g\t%g\n", len++ * inc, *data++, *data2);
-}
+}*/
 
 static void writecomplex(FILE* out, const Complex* data, size_t len)
 {
@@ -370,10 +370,11 @@ static void write4complex(FILE* out, const Complex (*data)[4], size_t len)
 {
 	while (len--)
 	{	//Complex det = (*data)[0] * (*data)[3] - (*data)[1] * (*data)[2];
-		fprintf(out, "%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\n", (*data)[0].real(), (*data)[0].imag(),
-		    (*data)[1].real(), (*data)[1].imag(), (*data)[2].real(), (*data)[2].imag(), (*data)[3].real(), (*data)[3].imag(), abs((*data)[0]),
-		    arg((*data)[0]) * M_180_PI, abs((*data)[1]), arg((*data)[1]) * M_180_PI, abs((*data)[2]), arg((*data)[2]) * M_180_PI, abs((*data)[3]),
-		    arg((*data)[3]) * M_180_PI);
+		fprintf(out, "%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\n",
+			(*data)[0].real(), (*data)[0].imag(), (*data)[1].real(), (*data)[1].imag(),
+			(*data)[2].real(), (*data)[2].imag(), (*data)[3].real(), (*data)[3].imag(),
+			abs((*data)[0]), arg((*data)[0]) * M_180_PI, abs((*data)[1]), arg((*data)[1]) * M_180_PI,
+			abs((*data)[2]), arg((*data)[2]) * M_180_PI, abs((*data)[3]), arg((*data)[3]) * M_180_PI);
 		//, det.real(), det.imag());
 		++data;
 	}
@@ -382,7 +383,7 @@ static void write4complex(FILE* out, const Complex (*data)[4], size_t len)
 static void readcomplex(FILE* in, Complex* data, size_t len)
 {
 	while (len--)
-	{
+	{	fscanf(in, "#%*[^\n]"); // skip comments
 		double a, b;
 		if (fscanf(in, "%lg%lg%*[^\n]", &a, &b) != 2)
 			die(27, "Failed to read complex data (%i).", errno);
@@ -394,7 +395,7 @@ static void readcomplex(FILE* in, Complex* data, size_t len)
 static void read4complex(FILE* in, Complex (*data)[4], size_t len)
 {
 	while (len--)
-	{
+	{	fscanf(in, "#%*[^\n]"); // skip comments
 		double a, b, c, d, e, f, g, h;
 		if (fscanf(in, "%lg%lg%lg%lg%lg%lg%lg%lg%*[^\n]", &a, &b, &c, &d, &e, &f, &g, &h) != 8)
 			die(27, "Failed to read complex data (%i).", errno);
@@ -410,7 +411,7 @@ static void read4complex(FILE* in, Complex (*data)[4], size_t len)
 static void readfloat_2(FILE* in, unsigned column, size_t count, fftw_real* dest, size_t inc = 1)
 {
 	while (count--)
-	{
+	{	fscanf(in, "#%*[^\n]"); // skip comments
 		unsigned col = column;
 		while (--col)
 			fscanf(in, "%*s");
@@ -557,8 +558,7 @@ class FFTbin
 {
 public:
 	enum StoreRet
-	{
-		BelowMin,  // frequency less than fmin
+	{	BelowMin,  // frequency less than fmin
 		AboveMax,  // frequency above fmax
 		Ready,     // calculated values available
 		Aggregated,     // bin used for aggregation only
@@ -566,8 +566,7 @@ public:
 	};
 private:
 	struct aggentry
-	{
-		double f;
+	{	double f;
 		double Uabs; // Magnitude of nomiator
 		double Uarg; // Phase of nominator
 		double Iabs; // Magnitude of denominator
@@ -578,11 +577,11 @@ private:
 		double W;    // weight sum
 		// internals
 		double lf;   // last frequency (for numerical derivative)
-		double lUarg;   // last phase of nomiator
-		double lIarg;   // last phase of denomiator
-		double lZarg;   // last phase of quotient
-		double fnext;   // next frequency for bin size
-		unsigned binc; // number of bins accumulated
+		double lUarg;// last phase of nomiator
+		double lIarg;// last phase of denomiator
+		double lZarg;// last phase of quotient
+		double fnext;// next frequency for bin size
+		unsigned binc;// number of bins accumulated
 	};
 private:
 	const double finc;
@@ -593,68 +592,27 @@ private:
 	Complex Zcache;
 
 public:
-	FFTbin(double finc)
-			: finc(finc)
-	{
-		memset(agg, 0, sizeof agg);
+	FFTbin(double finc) : finc(finc)
+	{	memset(agg, 0, sizeof agg);
 	}
 	StoreRet StoreBin(unsigned bin);
 
+	static void PrintHdr(FILE* dst);
 	void PrintBin(FILE* dst) const;
 
-	double f() const
-	{
-		return curagg->f;
-	} // frequency
-	Complex U() const
-	{
-		return polar(curagg->Uabs, curagg->Uarg);
-	} // voltage, nominator or wanted signal
-	double Uabs() const
-	{
-		return curagg->Uabs;
-	} // voltage magnitude
-	double Uarg() const
-	{
-		return curagg->Uarg;
-	} // voltage phase
-	Complex I() const
-	{
-		return polar(curagg->Iabs, curagg->Iarg);
-	} // current, denominator or reference signal
-	double Iabs() const
-	{
-		return curagg->Iabs;
-	} // current magnitude
-	double Iarg() const
-	{
-		return curagg->Iarg;
-	} // current phase
-	Complex Z() const
-	{
-		return Zcache;
-	} // impedance, quotient or relative signal
-	double Zabs() const
-	{
-		return curagg->Zabs;
-	} // impedance magnitude
-	double Zarg() const
-	{
-		return curagg->Zarg;
-	} // impedance phase
-	double D() const
-	{
-		return curagg->D / M_2PI;
-	} // group delay
-	double W() const
-	{
-		return curagg->W;
-	} // weight
-	int h() const
-	{
-		return ch;
-	}        // harmonic
-private:
+	double f() const    { return curagg->f; }    ///< frequency
+	Complex U() const   { return polar(curagg->Uabs, curagg->Uarg); } ///< voltage, nominator or wanted signal
+	double Uabs() const { return curagg->Uabs; } ///< voltage magnitude
+	double Uarg() const { return curagg->Uarg; } ///< voltage phase
+	Complex I() const   { return polar(curagg->Iabs, curagg->Iarg); } ///< current, denominator or reference signal
+	double Iabs() const { return curagg->Iabs; } ///< current magnitude
+	double Iarg() const { return curagg->Iarg; } ///< current phase
+	Complex Z() const   { return Zcache; }       ///< impedance, quotient or relative signal
+	double Zabs() const { return curagg->Zabs; } ///< impedance magnitude
+	double Zarg() const { return curagg->Zarg; } ///< impedance phase
+	double D() const    { return curagg->D / M_2PI; } ///< group delay
+	double W() const    { return curagg->W; }    ///< weight
+	int h() const       { return ch; }           ///< harmonic
 };
 
 FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
@@ -736,6 +694,11 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 	 if (curagg->f > fmax)
 	 return AboveMax;*/
 	return Ready;
+}
+
+void FFTbin::PrintHdr(FILE* dst)
+{
+	fputs("f\t|U|\targ U\t|I|\targ I\t|Z|\targ Z\tZ real\tZ imag\tweight\tdelay\tharmon.\n", dst);
 }
 
 void FFTbin::PrintBin(FILE* dst) const
@@ -1074,6 +1037,7 @@ int main(int argc, char* argv[])
 				tout = fopen(datafile, "wt");
 				if (tout == NULL)
 					die(21, "Failed to create %s.", datafile);
+				FFTbin::PrintHdr(tout);
 			}
 
 			PCA<2> pcaRe;
@@ -1206,6 +1170,7 @@ int main(int argc, char* argv[])
 				tout = fopen(datafile, "wt");
 				if (tout == NULL)
 					die(21, "Failed to create %s.", datafile);
+				FFTbin::PrintHdr(tout);
 			}
 
 			FFTbin calc(freq / N);
@@ -1335,12 +1300,11 @@ int main(int argc, char* argv[])
 				FILE* fout = fopen(datafile, "wt");
 				if (fout == NULL)
 					die(21, "Failed to create %s.", datafile);
-
 				const fftw_real* Up = inbuffer1;
 				const fftw_real* Ip = inbuffer2;
+				fputs("#t\tU\tI\t∫ U\t∫ I\tΔ U\t ΔI\n", fout);
 				for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
 					fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
-					// t         U    I    INT U  INT I  D U      D I
 							len / freq * harmonic, *Up, *Ip, Up[N], Ip[N], Up[2 * N], Ip[2 * N]);
 				fclose(fout);
 			}
@@ -1383,6 +1347,7 @@ int main(int argc, char* argv[])
 		fz = fopen(gainmode == 3 ? gaindifffile : gainfile, "wb");
 		if (fz == NULL)
 			die(21, "Failed to open %s.", gainmode == 3 ? gaindifffile : gainfile);
+		fputs("#f\treal\timag\tabs\targ\n", fz);
 		writecomplex(fz, gainD, N / 2 + 1);
 		fclose(fz);
 	}
@@ -1416,6 +1381,7 @@ int main(int argc, char* argv[])
 		fz = fopen(zeromode == 5 ? zerodifffile : zerofile, "wb");
 		if (fz == NULL)
 			die(21, "Failed to open %s.", zeromode == 5 ? zerodifffile : zerofile);
+		fputs("#f\tU->U re\tU->U im\tU->I re\tU->I im\tI->U re\tI->U im\tI->I re\tI->I im\n", fz);
 		write4complex(fz, zeroD, N / 2);
 		fclose(fz);
 	}
