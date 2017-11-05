@@ -423,6 +423,7 @@ static void readfloat_2(FILE* in, unsigned column, size_t count, fftw_real* dest
 static void dofft()
 {	// forwardtransformation
 	fftw_execute_r2r(P, inbuffer1, outbuffer1);
+	fftw_execute_r2r(P, inbuffer2, outbuffer2);
 
 	static const double minscale = 1E-15;
 	if (purgech)
