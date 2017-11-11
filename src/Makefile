@@ -3,7 +3,7 @@ BINPATH = ../bin/
 CC = gcc
 CFLAGS = -std=c++11 -W -Wall -Wcast-qual -Wpointer-arith -Wcast-align -Wno-unused-result -fstrict-aliasing
 #CFLAGS += -O6 -fomit-frame-pointer -malign-double
-CFLAGS += -g
+CFLAGS += -g -rdynamic
 LDFLAGS = -lstdc++ -lm -lpthread
 LDFLAGS += -s
 LDFLAGSFFTW = -lfftw3
