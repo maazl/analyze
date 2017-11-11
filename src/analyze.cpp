@@ -7,7 +7,6 @@
 #include <float.h>
 #include <string.h>
 #include <limits.h>
-//#include <386/builtin.h>
 #include <stdarg.h>
 #include <errno.h>
 
@@ -34,18 +33,16 @@ typedef complex<double> Complex;
 #define fmin fmin__
 #define fmax fmax__
 
+
 // data buffers
-static short inbuffertmp[2 * CA_MAX * N_MAX]; // Buffer for raw input
-static fftw_real* inbuffer1 = NULL;  // Buffer for nominator input
-static fftw_real* inbuffer2 = NULL;  // Buffer for denominator input
-static fftw_real* ovrbuffer1 = NULL; // Buffer for overridden nominator
-static fftw_real* ovrbuffer2 = NULL; // Buffer for overridden denominator
-static fftw_real* outbuffer1 = NULL; // Buffer for FFT(inbuffer1)
-static fftw_real* outbuffer2 = NULL; // Buffer for FFT(inbuffer2)
-static fftw_real* ccbuffer1 = NULL;  // Buffer for cross correlation temporary data
-static fftw_real* ccbuffer2 = NULL;  // Buffer for cross correlation of outbuffer
-static fftw_real window[N_MAX];      // Buffer for window function
-static int* harmonics = NULL;    // Buffer for harmonics dispatch table
+static scoped_array<int16_t> inbuffertmp;      // Buffer for raw input
+static scoped_fftw_arr<fftw_real> inbuffer[2]; // Buffer for nominator and denominator input
+static scoped_fftw_arr<fftw_real> ovrbuffer[2];// Buffer for overridden nominator/denominator
+static scoped_fftw_arr<fftw_real> outbuffer[2];// Buffer for FFT(inbuffer[])
+static scoped_fftw_arr<fftw_real> ccbuffer1;   // Buffer for cross correlation temporary data
+static scoped_fftw_arr<fftw_real> ccbuffer2;   // Buffer for cross correlation of outbuffer
+static scoped_array<fftw_real> window;         // Buffer for window function
+static scoped_array<int> harmonics;            // Buffer for harmonics dispatch table
 
 static double noiselvl_;
 
@@ -83,271 +80,270 @@ static double get1_fweight(double, double, double f)
 	return noiselvl_ / f;
 }
 
-static void vectorscale(fftw_real* data, double factor, size_t len)
-{
+static void vectorscale(const scoped_array<fftw_real>& data, double factor)
+{	size_t len = data.size();
+	fftw_real* dp = data.begin();
 	while (len--)
-		*data++ *= factor;
+		*dp++ *= factor;
 }
 
-static void vectoradd(fftw_real* dst, fftw_real* src, size_t len)
-{
+static void vectoradd(const scoped_array<fftw_real>& dst, const scoped_array<fftw_real>& src)
+{	size_t len = dst.size();
+	assert(len == src.size());
+	fftw_real* dp = dst.begin();
+	const fftw_real* sp = src.begin();
 	while (len--)
-		*dst++ += *src++;
+		*dp++ += *sp++;
 }
 
-static void vektormul(fftw_real* dst, fftw_real* src, size_t len)
-{
+static void vectormul(const scoped_array<fftw_real>& dst, const scoped_array<fftw_real>& src)
+{	size_t len = dst.size();
+	assert(len == src.size());
+	fftw_real* dp = dst.begin();
+	const fftw_real* sp = src.begin();
 	while (len--)
-		*dst++ *= *src++;
+		*dp++ *= *sp++;
+}
+
+static void vectordiv(const scoped_array<fftw_real>& dst, const scoped_array<fftw_real>& src)
+{	size_t len = dst.size();
+	assert(len == src.size());
+	fftw_real* dp = dst.begin();
+	const fftw_real* sp = src.begin();
+	while (len--)
+		*dp++ /= *sp++;
 }
 
 // config
 static fftw_real gainadj[2] = { 1, 1 }; // gain {l, r}
-static unsigned N = 8192;  // FFT length
-static double noiselvl = 1; // ?
-static unsigned winfn = 0;  // window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
-static double freq = 48000; // sampling rate
-static double fmin = 0;     // minimum freuqncy for FFT analysis
-static double fmax = INFINITY; // minimum freuqncy for FFT analysis
-static double famin = 1;    // ignore frquencies below famin for calculation of screen output
-static double famax = 1E99; // ignore frquencies above famax for calculation of screen output
+static unsigned N = 8192;     // FFT length
+static double noiselvl = 1;   // ?
+static unsigned winfn = 0;    // window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
+static double freq = 48000;   // sampling rate
+static double fmin = 0;       // minimum freuqncy for FFT analysis
+static double fmax = INFINITY;// minimum freuqncy for FFT analysis
+static double famin = 1;      // ignore frquencies below famin for calculation of screen output
+static double famax = 1E99;   // ignore frquencies above famax for calculation of screen output
 static bool writeraw = false; // write raw data to file
-static bool writedata = false; // write analysis data to file
-static bool writewindow = false; // write window function data to file
-static bool mpca = false;   // analysis method PCA
-static bool mfft = false;   // analysis method FFT
-static bool mxy = false;    // analysis method XY
-static unsigned purgech = 1;     // set the first FFT frequencies to 0
-static unsigned discsamp = 0;     // skip the first samples
-static bool disctrail = false; // comsume trailing samples after completion
-static unsigned addch = 1;     // binsize in raw samples
-static unsigned addloop = 1;     // add raw data before analysis # times
-static bool incremental = false; // incremental mode (add all raw data)
-static double rref = 1;     // value of the reference resistor in impedance measurements
+static bool writesrc = false; // write input data to file
+static bool writedata = false;// write analysis data to file
+static bool writewindow = false;// write window function data to file
+static bool mpca = false;     // analysis method PCA
+static bool mfft = false;     // analysis method FFT
+static bool mxy = false;      // analysis method XY
+static unsigned purgech = 1;  // set the first FFT frequencies to 0
+static unsigned discsamp = 0; // skip the first samples
+static bool disctrail = false;// comsume trailing samples after completion
+static unsigned addch = 1;    // binsize in raw samples
+static unsigned addloop = 1;  // add raw data before analysis # times
+static bool incremental = false;// incremental mode (add all raw data)
+static double rref = 1;       // value of the reference resistor in impedance measurements
 static bool swapbytes = false;// swap bytes on PCM input
-static unsigned scalemode = 1;     // l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l
-static bool stereo = false; // Stereo aggregate mode (Toggle harmonics)
-static unsigned loops = 1;     // number of analysis loops
-static unsigned lpause = 10;    // number of loops between zero calibration parts
-static unsigned zeromode = 0;     // zero calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
-static unsigned gainmode = 0;     // gain calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta
-static double linphase = 0;     // linear phase correction [s]
-static bool normalize = false; // normalize L+R to 1. for impedance measurements
-static unsigned binsz = 1;     // binsize in FFT channels
+static unsigned scalemode = 1;// l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l
+static bool stereo = false;   // Stereo aggregate mode (Toggle harmonics)
+static unsigned loops = 1;    // number of analysis loops
+static unsigned lpause = 10;  // number of loops between zero calibration parts
+static unsigned zeromode = 0; // zero calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta, 4 = generate part 2, 5 = generatedelta part 2
+static unsigned gainmode = 0; // gain calibration mode: 0 = none, 1 = read, 2 = generate, 3 = generatedelta
+static double linphase = 0;   // linear phase correction [s]
+static bool normalize = false;// normalize L+R to 1. for impedance measurements
+static unsigned binsz = 1;    // binsize in FFT channels
 static double fbinsc = 0;     // logarithmic binsize: fmin/fmax = 1 + fbinsc
-static double f_inc = 1;     // Absolute increment for harmonic table calculation
-static double f_log = 0;     // Relative increment for harmonic table calculation
-static unsigned harmonic = 0;     // analyze up to # harmonics
-static bool crosscorr = false; // Calculate and remove time delay by cross correlation
+static double f_inc = 1;      // Absolute increment for harmonic table calculation
+static double f_log = 0;      // Relative increment for harmonic table calculation
+static unsigned harmonic = 0; // analyze up to # harmonics
+static bool crosscorr = false;// Calculate and remove time delay by cross correlation
 static const char* datafile = "data.dat"; // filename for analysis data
 static const char* zerofile = "zero.dat"; // file name for zero calibration data
 static const char* zerodifffile = "zeroD.dat"; // file name for differential zero calibration data
 static const char* gainfile = "gain.dat"; // file name for gain calibration data
 static const char* gaindifffile = "gainD.dat"; // file name for differential gain calibration data
 static const char* rawfile = "raw.dat";  // file name for raw data
-static const char* windowfile = "window.dat";  // file name for window data
-static struct ovrwrt                   // overwrite channel with ...
-{
-	const char* file;                    // ... file
-	unsigned column;                  // ... column in file
-} overwrt[2] = { { NULL, 1 }
-,	{ NULL, 1 } };
-static const char* infile = "-";   // input file name
-static const char* execcmd = NULL;  // shell command to execute after analysis
-static const char* plotcmd = NULL;  // string to write to stdout after analysis
-static double (*weightfn)(double, double, double) = getweight;  // weight function
+static const char* srcfile = "source.dat";// file name for input data
+static const char* windowfile = "window.dat"; // file name for window data
+static struct ovrwrt          // overwrite channel with ...
+{	const char* file;           // ... file
+	unsigned column;            // ... column in file
+} overwrt[2] =
+{	{ NULL, 1 }
+,	{ NULL, 1 }
+};
+static const char* infile = "-";  // input file name
+static const char* execcmd = NULL;// shell command to execute after analysis
+static const char* plotcmd = NULL;// string to write to stdout after analysis
+static double (*weightfn)(double, double, double) = getweight;// weight function
 // internal vars
 static fftw_plan P;    // FFT plan for forward transformation
 static fftw_plan PI;   // FFT plan for inverse transformation
 
-static void createwindow(fftw_real* dst, int type, size_t len)
-{
-	++len;
+static void createwindow(const scoped_array<fftw_real>& dst, int type)
+{	size_t len = dst.size() + 1;
 	double sum = 0;
-	fftw_real* win = dst;
+	fftw_real* win = dst.begin();
 	for (size_t i = 1; i < len; i++)
-	{
-		double w;
+	{	double w;
 		switch (type)
-		{
-		default: // rectangle
+		{default: // rectangle
 			w = 1;
 			break;
-		case 1: // Bartlett
+		 case 1: // Bartlett
 			w = abs(i - len / 2.);
 			break;
-		case 2: // Hanning
+		 case 2: // Hanning
 			w = .5 - .5 * cos(2 * M_PI * i / len);
 			break;
-		case 3: // Hamming
+		 case 3: // Hamming
 			w = .54 - .46 * cos(2 * M_PI * i / len);
 			break;
-		case 4: // Blackman
+		 case 4: // Blackman
 			w = .42 - .5 * cos(2 * M_PI * i / len) + .08 * cos(4 * M_PI * i / len);
 			break;
-		case 5: // Blackman-Harris
+		 case 5: // Blackman-Harris
 			w = .35875 - .48829 * cos(2 * M_PI * i / len) + .14128 * cos(4 * M_PI * i / len) - .01168 * cos(6 * M_PI * i / len);
 		}
 		sum += *win++ = w;
 	}
-	vectorscale(dst, len / sum, len);
+	vectorscale(dst, len / sum);
 }
 
-static int minmax[4];
-
-static inline short storeminmax(short val, int* dst)
-{
-	if (val < dst[0])
-		dst[0] = val;
-	if (val > dst[1])
-		dst[1] = val;
-	return val;
-}
-
-struct Ch2
-{	double Ch1;
-	double Ch2;
+struct limits
+{	int Min;
+	int Max;
+	void reset() { Min = INT_MAX; Max = INT_MIN; }
+	int store(int val)
+	{	if (val < Min)
+			Min = val;
+		if (val > Max)
+			Max = val;
+		return val;
+	}
 };
-Ch2 read2float(const short*& src)
-{	Ch2 ret = { 0, 0 };
-	int i = addch;
+static limits minmax[2];
+
+class reader16
+{	size_t Len;
+	const int16_t* Sp;
+	fftw_real* Dp[2];
+	double Ch[2];
+	void read2float();
+ public:
+	reader16(const scoped_array<fftw_real>& dst1, const scoped_array<fftw_real>& dst2, const scoped_array<int16_t>& src);
+	reader16(const reader16&) = delete;
+	const reader16& operator=(const reader16&) = delete;
+	void short2float2();
+	void short2float2add();
+	void short2float2window();
+	void short2floatD();
+	void short2floatDadd();
+	void short2floatDwindow();
+};
+
+reader16::reader16(const scoped_array<fftw_real>& dst1, const scoped_array<fftw_real>& dst2, const scoped_array<int16_t>& src)
+:	Len(dst1.size())
+,	Sp(src.get())
+,	Dp{dst1.get(), dst2.get()}
+{	assert(2 * addch * Len == src.size() && Len == dst2.size());
+}
+
+void reader16::read2float()
+{	Ch[0] = Ch[1] = 0;
+	unsigned i = addch;
 	if (swapbytes)
 		do
-		{	ret.Ch1 += storeminmax(bswap(src[0]), minmax);
-			ret.Ch2 += storeminmax(bswap(src[1]), minmax + 2);
-			src += 2;
+		{	Ch[0] += minmax[0].store(bswap(Sp[0]));
+			Ch[1] += minmax[1].store(bswap(Sp[1]));
+			Sp += 2;
 		} while (--i);
 	else
 		do
-		{	ret.Ch1 += storeminmax(src[0], minmax);
-			ret.Ch2 += storeminmax(src[1], minmax + 2);
-			src += 2;
+		{	Ch[0] += minmax[0].store(Sp[0]);
+			Ch[1] += minmax[1].store(Sp[1]);
+			Sp += 2;
 		} while (--i);
-	return ret;
 }
 
-static void short2float2(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	while (len)
-	{	auto d = read2float(src);
-		*dst1++ = d.Ch1 * gainadj[0];
-		*dst2++ = d.Ch2 * gainadj[1];
-		--len;
+void reader16::short2float2()
+{	while (Len--)
+	{	read2float();
+		*Dp[0]++ = Ch[0] * gainadj[0];
+		*Dp[1]++ = Ch[1] * gainadj[1];
 	}
 }
 
-static void short2float2add(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	while (len)
-	{	auto d = read2float(src);
-		*dst1++ += d.Ch1 * gainadj[0];
-		*dst2++ += d.Ch2 * gainadj[1];
-		--len;
+void reader16::short2float2add()
+{	while (Len--)
+	{	read2float();
+		*Dp[0]++ += Ch[0] * gainadj[0];
+		*Dp[1]++ += Ch[1] * gainadj[1];
 	}
 }
 
-static void short2float2window(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	const fftw_real* win = window;
-	while (len)
-	{	auto d = read2float(src);
-		*dst1++ = d.Ch1 * *win * gainadj[0];
-		*dst2++ = d.Ch2 * *win++ * gainadj[1];
-		--len;
+void reader16::short2float2window()
+{	const fftw_real* win = window.get();
+	while (Len--)
+	{	read2float();
+		*Dp[0]++ = Ch[0] * *win * gainadj[0];
+		*Dp[1]++ = Ch[1] * *win++ * gainadj[1];
 	}
 }
 
-static void short2floatD(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	while (len)
-	{	auto d = read2float(src);
-		*dst2++ = d.Ch1 * gainadj[0] - (*dst1++ = d.Ch2 * gainadj[1]);
-		--len;
+void reader16::short2floatD()
+{	while (Len--)
+	{	read2float();
+		*Dp[1]++ = Ch[0] * gainadj[0] - (*Dp[0]++ = Ch[1] * gainadj[1]);
 	}
 }
 
-static void short2floatDadd(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	while (len)
-	{	auto d = read2float(src);
-		d.Ch2 *= gainadj[1];
-		*dst1++ += d.Ch2;
-		*dst2++ += d.Ch1 * gainadj[0] - d.Ch2;
-		--len;
+void reader16::short2floatDadd()
+{	while (Len--)
+	{	read2float();
+		Ch[1] *= gainadj[1];
+		*Dp[0]++ += Ch[1];
+		*Dp[1]++ += Ch[0] * gainadj[0] - Ch[1];
 	}
 }
 
-static void short2floatDwindow(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	const fftw_real* win = window;
-	while (len)
-	{	auto d = read2float(src);
-		*dst2++ = d.Ch1 * *win * gainadj[0] - (*dst1++ = d.Ch2 * *win * gainadj[1]);
+void reader16::short2floatDwindow()
+{	const fftw_real* win = window.get();
+	while (Len--)
+	{	read2float();
+		*Dp[1]++ = Ch[0] * *win * gainadj[0] - (*Dp[0]++ = Ch[1] * *win * gainadj[1]);
 		++win;
-		--len;
 	}
 }
 
-static void applywindow(fftw_real* dst, size_t len)
-{
-	const fftw_real* win = window;
-	while (len)
-		*dst++ *= *win++;
-}
 
-static void applywindowI(fftw_real* dst, size_t len)
-{
-	const fftw_real* win = window;
-	while (len)
-		*dst++ /= *win++;
-}
-
-static void init()
-{
-	minmax[0] = INT_MAX;
-	minmax[1] = INT_MIN;
-	minmax[2] = INT_MAX;
-	minmax[3] = INT_MIN;
-}
-
-static void write1ch(FILE* out, const fftw_real* data, size_t len)
-{
+static void write1ch(FILE* out, const scoped_array<fftw_real>& data)
+{	size_t len = data.size();
+	const fftw_real* sp = data.get();
 	while (len--)
-		fprintf(out, "%g\n", *data++);
+		fprintf(out, "%g\n", *sp++);
 }
 
-static void write2ch(FILE* out, const short* data, size_t len)
-{
+static void write2ch(FILE* out, const scoped_array<int16_t>& data)
+{	size_t len = data.size() >> 1;
+	const int16_t* sp = data.get();
 	if (swapbytes)
 		while (len--)
-		{
-			fprintf(out, "%i\t%i\n", bswap(data[0]), bswap(data[1]));
-			data += 2;
+		{	fprintf(out, "%i\t%i\n", bswap(sp[0]), bswap(sp[1]));
+			sp += 2;
 		}
 	else
 		while (len--)
-		{
-			fprintf(out, "%i\t%i\n", data[0], data[1]);
-			data += 2;
+		{	fprintf(out, "%i\t%i\n", sp[0], sp[1]);
+			sp += 2;
 		}
 }
-
-/*static void write2ch(FILE* out, const fftw_real* data, size_t len)
-{
+static void write2ch(FILE* out, const scoped_array<fftw_real>& data1, const scoped_array<fftw_real>& data2)
+{	size_t len = data1.size();
+	assert (len == data2.size());
+	const fftw_real* sp1 = data1.get();
+	const fftw_real* sp2 = data2.get();
 	while (len--)
-	{
-		fprintf(out, "%g\t%g\n", data[0], data[1]);
-		data += 2;
-	}
+		fprintf(out, "%g\t%g\n", *sp1++, *sp2++);
 }
 
-static void write2ch(FILE* out, const fftw_real* data1, const fftw_real* data2, size_t len)
-{
-	while (len--)
-		fprintf(out, "%g\t%g\n", *data1++, *data2++);
-}
-
-static void writepolar(FILE* out, const fftw_real* data, size_t len, double inc)
+/*static void writepolar(FILE* out, const fftw_real* data, size_t len, double inc)
 {
 	const fftw_real* data2 = data + len;
 	// 1st line
@@ -357,109 +353,107 @@ static void writepolar(FILE* out, const fftw_real* data, size_t len, double inc)
 		fprintf(out, "%g\t%g\t%g\n", len++ * inc, *data++, *data2);
 }*/
 
-static void writecomplex(FILE* out, const Complex* data, size_t len)
-{
+static void writecomplex(FILE* out, const scoped_array<Complex>& data)
+{	size_t len = data.size();
+	const Complex* sp = data.get();
 	while (len--)
-	{
-		fprintf(out, "%14g\t%14g\t%14g\t%14g\n", data->real(), data->imag(), abs(*data), arg(*data) * M_180_PI);
-		++data;
+	{	fprintf(out, "%14g\t%14g\t%14g\t%14g\n", sp->real(), sp->imag(), abs(*sp), arg(*sp) * M_180_PI);
+		++sp;
 	}
 }
 
-static void write4complex(FILE* out, const Complex (*data)[4], size_t len)
-{
+static void write4complex(FILE* out, const scoped_array<array<Complex,4>>& data)
+{	size_t len = data.size();
+	const array<Complex,4>* sp = data.get();
 	while (len--)
 	{	//Complex det = (*data)[0] * (*data)[3] - (*data)[1] * (*data)[2];
 		fprintf(out, "%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\t%14g\n",
-			(*data)[0].real(), (*data)[0].imag(), (*data)[1].real(), (*data)[1].imag(),
-			(*data)[2].real(), (*data)[2].imag(), (*data)[3].real(), (*data)[3].imag(),
-			abs((*data)[0]), arg((*data)[0]) * M_180_PI, abs((*data)[1]), arg((*data)[1]) * M_180_PI,
-			abs((*data)[2]), arg((*data)[2]) * M_180_PI, abs((*data)[3]), arg((*data)[3]) * M_180_PI);
+			(*sp)[0].real(), (*sp)[0].imag(), (*sp)[1].real(), (*sp)[1].imag(),
+			(*sp)[2].real(), (*sp)[2].imag(), (*sp)[3].real(), (*sp)[3].imag(),
+			abs((*sp)[0]), arg((*sp)[0]) * M_180_PI, abs((*sp)[1]), arg((*sp)[1]) * M_180_PI,
+			abs((*sp)[2]), arg((*sp)[2]) * M_180_PI, abs((*sp)[3]), arg((*sp)[3]) * M_180_PI);
 		//, det.real(), det.imag());
-		++data;
+		++sp;
 	}
 }
 
-static void readcomplex(FILE* in, Complex* data, size_t len)
-{
+static void readcomplex(FILE* in, const scoped_array<Complex>& data)
+{	size_t len = data.size();
+	Complex* dp = data.get();
 	while (len--)
 	{	fscanf(in, "#%*[^\n]"); // skip comments
 		double a, b;
 		if (fscanf(in, "%lg%lg%*[^\n]", &a, &b) != 2)
-			die(27, "Failed to read complex data (%i).", errno);
+			die(27, "Failed to read complex data: %s", strerror(errno));
 		//(stderr, "%g\t%g\n", a,b);
-		*data++ = Complex(a, b);
+		*dp++ = Complex(a, b);
 	}
 }
 
-static void read4complex(FILE* in, Complex (*data)[4], size_t len)
-{
+static void read4complex(FILE* in, const scoped_array<array<Complex,4>>& data)
+{	size_t len = data.size();
+	array<Complex,4>* dp = data.get();
 	while (len--)
 	{	fscanf(in, "#%*[^\n]"); // skip comments
 		double a, b, c, d, e, f, g, h;
 		if (fscanf(in, "%lg%lg%lg%lg%lg%lg%lg%lg%*[^\n]", &a, &b, &c, &d, &e, &f, &g, &h) != 8)
-			die(27, "Failed to read complex data (%i).", errno);
+			die(27, "Failed to read four complex values: %s", strerror(errno));
 		//(stderr, "%g\t%g\n", a,b);
-		(*data)[0] = Complex(a, b);
-		(*data)[1] = Complex(c, d);
-		(*data)[2] = Complex(e, f);
-		(*data)[3] = Complex(g, h);
-		++data;
+		(*dp)[0] = Complex(a, b);
+		(*dp)[1] = Complex(c, d);
+		(*dp)[2] = Complex(e, f);
+		(*dp)[3] = Complex(g, h);
+		++dp;
 	}
 }
 
-static void readfloat_2(FILE* in, unsigned column, size_t count, fftw_real* dest, size_t inc = 1)
-{
+static void readfloat_2(FILE* in, unsigned column, const scoped_array<fftw_real>& dest)
+{	size_t count = dest.size();
+	fftw_real* dp = dest.get();
 	while (count--)
 	{	fscanf(in, "#%*[^\n]"); // skip comments
 		unsigned col = column;
 		while (--col)
 			fscanf(in, "%*s");
-		if (fscanf(in, "%lg%*[^\n]", dest) != 1)
+		if (fscanf(in, "%lg%*[^\n]", dp) != 1)
 			die(27, "Failed to read column %u from data file.", column);
-		dest += inc;
+		++dp;
 	}
 }
 
 static void dofft()
 {	// forwardtransformation
-	fftw_execute_r2r(P, inbuffer1, outbuffer1);
-	fftw_execute_r2r(P, inbuffer2, outbuffer2);
+	fftw_execute_r2r(P, inbuffer[0].get(), outbuffer[0].get());
+	fftw_execute_r2r(P, inbuffer[1].get(), outbuffer[1].get());
 
 	static const double minscale = 1E-15;
 	if (purgech)
-	{  // purge DC (meaningless without DC-coupling)
-		outbuffer1[0] *= minscale;
-		outbuffer2[0] *= minscale;
-		for (int i = purgech; --i;)
-		{
-			outbuffer1[i] *= minscale;
-			outbuffer2[i] *= minscale;
-			outbuffer1[N - i] *= minscale;
-			outbuffer2[N - i] *= minscale;
-		}
+	{	// purge DC (meaningless without DC-coupling)
+		vectorscale(outbuffer[0].slice(0, purgech + 1), minscale);
+		vectorscale(outbuffer[0].slice(N - purgech, purgech), minscale);
+		vectorscale(outbuffer[1].slice(0, purgech + 1), minscale);
+		vectorscale(outbuffer[1].slice(N - purgech, purgech), minscale);
 	}
 	// append constant zero to FFT result to simplify analysis
-	outbuffer1[N] = 0;
-	outbuffer2[N] = 0;
+	outbuffer[0][N] = 0;
+	outbuffer[1][N] = 0;
 
 	// Calculate cross correlation to compensate for constant group delay.
 	if (crosscorr)
 	{  // calculate outbuffer1[] * conjugate(outbuffer2[])
 	   // f(0)
-		ccbuffer1[0] = outbuffer1[0] * outbuffer2[0];
+		ccbuffer1[0] = outbuffer[0][0] * outbuffer[1][0];
 		// f(1..N/2-1)
 		for (unsigned i = 1; i < N / 2; ++i)
-		{
-			Complex c = Complex(outbuffer1[i], outbuffer1[N - i]) * Complex(outbuffer2[i], -outbuffer2[N - i]);
+		{	Complex c = Complex(outbuffer[0][i], outbuffer[0][N - i]) * Complex(outbuffer[1][i], -outbuffer[1][N - i]);
 			ccbuffer1[i] = c.real();
 			ccbuffer1[N - i] = c.imag();
 		}
 		// f(N/2)
-		ccbuffer1[N / 2] = outbuffer1[N / 2] * outbuffer2[N / 2];
+		ccbuffer1[N / 2] = outbuffer[0][N / 2] * outbuffer[1][N / 2];
 
 		// do the cross correlation
-		fftw_execute_r2r(PI, ccbuffer1, ccbuffer2);
+		fftw_execute_r2r(PI, ccbuffer1.get(), ccbuffer2.get());
 		/*FILE* F = fopen("cc.dat", "w");
 		 write1ch(F, ccbuffer2, N);
 		 fclose(F);*/
@@ -487,11 +481,11 @@ static void dofft()
 	}
 }
 
-static double* wsums;
-static Complex* gain;
-static Complex* gainD;
-static Complex (*zero)[4];
-static Complex (*zeroD)[4];
+static scoped_array<double> wsums;
+static scoped_array<Complex> gain;
+static scoped_array<Complex> gainD;
+static scoped_array<array<Complex,4>> zero;
+static scoped_array<array<Complex,4>> zeroD;
 
 // Calibration
 static void docal(int bin, double f, Complex& U, Complex& I)
@@ -521,7 +515,7 @@ static void docal(int bin, double f, Complex& U, Complex& I)
 	}
 	if (zeromode & 1)
 	{
-		Complex* cp = zero[bin];
+		array<Complex,4>& cp = zero[bin];
 		Complex t = U; // multiply (U,I) by (*cp)^(-1). The matrix inversion is easy because det(*cp) == 1.
 		//Complex det = cp[0]*cp[3] - cp[1]*cp[2];
 		U = (U * cp[3] - I * cp[1]);
@@ -626,8 +620,8 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 	curagg = agg + ch + HA_MAX;
 	unsigned base = bin;        //ch != 0 ? bin/abs(ch) : bin;
 	// retrieve coefficients
-	Complex U(outbuffer1[bin], bin && bin != N / 2 ? outbuffer1[N - bin] : 0);
-	Complex I(outbuffer2[base], bin && bin != N / 2 ? outbuffer2[N - base] : 0);
+	Complex U(outbuffer[0][bin], bin && bin != N / 2 ? outbuffer[0][N - bin] : 0);
+	Complex I(outbuffer[1][base], bin && bin != N / 2 ? outbuffer[1][N - base] : 0);
 	// calibration
 	docal(bin, f, U, I);
 	// phase correction
@@ -759,10 +753,12 @@ static const OptionDesc OptMap[] =
 ,	MkOpt("rf",   "name of raw data file", &rawfile)
 ,	MkOpt("rref", "reference resistor", &rref)
 ,	MkOpt("scm",  "input mode [0,2]", &scalemode, 0, 2)
+,	MkOpt("sf",   "raw source data file name", &srcfile)
 ,	MkOpt("wd",   "(over)write FFT data file on the fly", &writedata)
 ,	MkOpt("wf",   "name of window function file", &windowfile)
 ,	MkOpt("win",  "select window function [0,5]", &winfn, 0, 5)
 ,	MkOpt("wr",   "write raw data", &writeraw)
+,	MkOpt("ws",   "write source data file", &writesrc)
 ,	MkOpt("ww",   "write window function", &writewindow)
 ,	MkOpt("xb" ,  "swap bytes", &swapbytes)
 ,	MkOpt("z2f",  "name of validation file of matrix calibration", &zerodifffile)
@@ -805,37 +801,39 @@ int main(int argc, char* argv[])
 	gainadj[0] /= 32767;
 	gainadj[1] /= 32767;
 	// allocate buffers
+	inbuffertmp.reset(2 * N * addch);
+	window.reset(N);
 	if (mxy)
 	{	// reserve space for integrals and differentials too
-		inbuffer1 = fftw_alloc_real(3 * N);
-		inbuffer2 = fftw_alloc_real(3 * N);
-		outbuffer1 = fftw_alloc_real(3 * N + 1);
-		outbuffer2 = fftw_alloc_real(3 * N + 1);
+		inbuffer[0].reset(3 * N);
+		inbuffer[1].reset(3 * N);
+		outbuffer[0].reset(3 * N + 1);
+		outbuffer[1].reset(3 * N + 1);
 	} else
-	{	inbuffer1 = fftw_alloc_real(N);
-		inbuffer2 = fftw_alloc_real(N);
-		outbuffer1 = fftw_alloc_real(N + 1);
-		outbuffer2 = fftw_alloc_real(N + 1);
+	{	inbuffer[0].reset(N);
+		inbuffer[1].reset(N);
+		outbuffer[0].reset(N + 1);
+		outbuffer[1].reset(N + 1);
 	}
 	if (crosscorr && mpca)
-	{	ccbuffer1 = fftw_alloc_real(N);
-		ccbuffer2 = fftw_alloc_real(N);
+	{	ccbuffer1.reset(N);
+		ccbuffer2.reset(N);
 	}
-	harmonics = new int[N / 2 + 1];
-	wsums = new double[N_MAX / 2 + 1];
-	gain = new Complex[N_MAX / 2 + 1];
-	gainD = new Complex[N_MAX / 2 + 1];
-	zero = new Complex[N_MAX / 2 + 1][4];
-	zeroD = new Complex[N_MAX / 2 + 1][4];
+	harmonics.reset(N / 2 + 1);
+	wsums.reset(N / 2 + 1);
+	gain.reset(N / 2 + 1);
+	gainD.reset(N / 2 + 1);
+	zero.reset(N / 2 + 1);
+	zeroD.reset(N / 2 + 1);
 	// create plan
 	// fftw_real in[N], tout[N], power_spectrum[N/2+1];
-	P = fftw_plan_r2r_1d(N, inbuffer1, outbuffer1, FFTW_R2HC, FFTW_ESTIMATE);
-	PI = fftw_plan_r2r_1d(N, inbuffer1, outbuffer1, FFTW_HC2R, FFTW_ESTIMATE);
+	P = fftw_plan_r2r_1d(N, inbuffer[0].get(), outbuffer[0].get(), FFTW_R2HC, FFTW_ESTIMATE);
+	PI = fftw_plan_r2r_1d(N, inbuffer[0].get(), outbuffer[0].get(), FFTW_HC2R, FFTW_ESTIMATE);
 	// adjust fmax
 	if (fmax > freq/2)
 		fmax = freq/2;
 	// create harmonics table
-	{	memset(harmonics, 0, (N / 2 + 1) * sizeof *harmonics);
+	{	harmonics.clear();
 		int sign = 1;
 		for (unsigned i = (int)floor(fmin / freq * N + .5); i <= floor(fmax / freq * N + .5); ++i)
 		{	if (i)
@@ -857,10 +855,10 @@ int main(int argc, char* argv[])
 		 fclose(f);*/
 	}
 
-	createwindow(window, winfn, N);
+	createwindow(window, winfn);
 	// write window data
 	if (writewindow)
-		write1ch(FILEguard(windowfile, "wt"), window, N);
+		write1ch(FILEguard(windowfile, "wt"), window);
 
 	FILEguard in = NULL;
 	if (infile)
@@ -868,28 +866,37 @@ int main(int argc, char* argv[])
 			? binmode(stdin) // streaming
 			: checkedopen(infile, "rb");
 		// discard first samples
-		fread2(inbuffertmp, sizeof *inbuffertmp, 2 * discsamp, in);
+		while (discsamp > inbuffertmp.size())
+		{	fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0], inbuffertmp.size(), in);
+			discsamp -= inbuffertmp.size();
+		}
+		fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0], discsamp, in);
 	}
 
 	if (overwrt[0].file)
-	{	ovrbuffer1 = fftw_alloc_real(N);
-		readfloat_2(FILEguard(overwrt[0].file, "r"), overwrt[0].column, N, ovrbuffer1);
+	{	ovrbuffer[0].reset(N);
+		readfloat_2(FILEguard(overwrt[0].file, "r"), overwrt[0].column, ovrbuffer[0]);
 	}
 	if (overwrt[1].file)
-	{	ovrbuffer2 = fftw_alloc_real(N);
-		readfloat_2(FILEguard(overwrt[1].file, "r"), overwrt[0].column, N, ovrbuffer2);
+	{	ovrbuffer[1].reset(N);
+		readfloat_2(FILEguard(overwrt[1].file, "r"), overwrt[0].column, ovrbuffer[1]);
 	}
 
-	memset(inbuffer1, 0, (mxy ? 3 : 1) * N * sizeof *inbuffer1); // init with 0 because of incremental mode
-	memset(inbuffer2, 0, (mxy ? 3 : 1) * N * sizeof *inbuffer2);
-	memset(wsums, 0, (N_MAX / 2 + 1) * sizeof *wsums);
-	memset(gainD, 0, (N_MAX / 2 + 1) * sizeof *gain);
-	memset(zeroD, 0, 4 * (N_MAX / 2 + 1) * sizeof **zeroD);
+	const scoped_array<fftw_real> input[2] =
+	{	scoped_array<fftw_real>(inbuffer[0].slice(0, N))
+	,	scoped_array<fftw_real>(inbuffer[1].slice(0, N))
+	};
+
+	input[0].clear(); // init with 0 because of incremental mode
+	input[1].clear();
+	wsums.clear();
+	gainD.clear();
+	zeroD.clear();
 	// prepare gainmode
 	switch (gainmode)
 	{case 1: // read
 	 case 3:
-		readcomplex(FILEguard(gainfile, "r"), gain, N / 2 + 1);
+		readcomplex(FILEguard(gainfile, "r"), gain);
 	}
 
  restart_zero:
@@ -897,7 +904,7 @@ int main(int argc, char* argv[])
 	switch (zeromode)
 	{case 1: // read
 	 case 3:
-		read4complex(FILEguard(zerofile, "r"), zero, N / 2);
+		read4complex(FILEguard(zerofile, "r"), zero);
 	}
 
 	// operation loop
@@ -907,74 +914,58 @@ int main(int argc, char* argv[])
 	{
 		if (in)
 		{
-			fread2(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in);
+			fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0] * addch, N, in);
 
 			// write raw data
 			if (writeraw)
-				write2ch(FILEguard(rawfile, "wt"), inbuffertmp, N * addch);
+				write2ch(FILEguard(rawfile, "wt"), inbuffertmp);
 
 			// reset min/max
-			init();
+			minmax[0].reset();
+			minmax[1].reset();
 
-			switch (scalemode)
-			{
-			case 1:
-				if (incremental || addloops)
-					short2float2add(inbuffer1, inbuffer2, inbuffertmp, N);
+			reader16 rdr(input[scalemode >= 3], input[scalemode < 3], inbuffertmp);
+			if (scalemode & 1)
+			{	if (incremental || addloops)
+					rdr.short2float2add();
 				else if (winfn && addloop == 1)
-					short2float2window(inbuffer1, inbuffer2, inbuffertmp, N);
+					rdr.short2float2window();
 				else
-					short2float2(inbuffer1, inbuffer2, inbuffertmp, N);
-				break;
-			case 2:
-				if (incremental || addloops)
-					short2floatDadd(inbuffer1, inbuffer2, inbuffertmp, N);
+					rdr.short2float2();
+			} else
+			{	if (incremental || addloops)
+					rdr.short2floatDadd();
 				else if (winfn && addloop == 1)
-					short2floatDwindow(inbuffer1, inbuffer2, inbuffertmp, N);
+					rdr.short2floatDwindow();
 				else
-					short2floatD(inbuffer1, inbuffer2, inbuffertmp, N);
-				break;
-			case 3:
-				if (incremental || addloops)
-					short2float2add(inbuffer2, inbuffer1, inbuffertmp, N);
-				else if (winfn && addloop == 1)
-					short2float2window(inbuffer2, inbuffer1, inbuffertmp, N);
-				else
-					short2float2(inbuffer2, inbuffer1, inbuffertmp, N);
-				break;
-			default:
-				die(32, "Invalid scalmode");
+					rdr.short2floatD();
 			}
 			// write raw status
-			fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0], minmax[2], minmax[1], minmax[3]);
+			fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0].Min, minmax[1].Min, minmax[0].Max, minmax[1].Max);
 		}
 
 		if (incremental || addloops)
-		{
-			if (ovrbuffer1)
-				vectoradd(inbuffer1, ovrbuffer1, N);
-			if (ovrbuffer2)
-				vectoradd(inbuffer2, ovrbuffer2, N);
+		{	if (ovrbuffer[0])
+				vectoradd(input[0], ovrbuffer[0]);
+			if (ovrbuffer[1])
+				vectoradd(input[1], ovrbuffer[1]);
 		} else
-		{
-			if (ovrbuffer1)
-				memcpy(inbuffer1, ovrbuffer1, N * sizeof *inbuffer1);
-			if (ovrbuffer2)
-				memcpy(inbuffer2, ovrbuffer2, N * sizeof *inbuffer2);
+		{	if (ovrbuffer[0])
+				input[0].copyfrom(ovrbuffer[0]);
+			if (ovrbuffer[1])
+				input[1].copyfrom(ovrbuffer[1]);
 		}
 
-		/*{  FILE* f = fopen("ov.dat", "w");
-		 for (size_t i = 0; i < N; ++i)
-		 fprintf(f, "%12g %12g\n", inbuffer1[i], inbuffer2[i]);
-		 fclose(f);
-		 }*/
+		// write source data
+		if (writesrc)
+			write2ch(FILEguard(srcfile, "wt"), inbuffer[0], inbuffer[1]);
 
 		if (++addloops < addloop)
 			continue; // add more data
 		if (winfn && (incremental || addloops))
-		{  // optimization: apply window function later
-			applywindow(inbuffer1, N);
-			applywindow(inbuffer2, N);
+		{	// optimization: apply window function later
+			vectormul(input[0], window);
+			vectormul(input[1], window);
 		}
 		addloops = 0;
 
@@ -989,8 +980,8 @@ int main(int argc, char* argv[])
 		{	// FFT
 			dofft();
 
-			vectorscale(outbuffer1, sqrt(1. / N) / addch, N);
-			vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
+			vectorscale(outbuffer[0], sqrt(1. / N) / addch);
+			vectorscale(outbuffer[1], sqrt(1. / N) / addch);
 
 			// write data
 			FILEguard tout = NULL;
@@ -1074,8 +1065,8 @@ int main(int argc, char* argv[])
 		{
 			PCA<5> pca;
 			double data[6];
-			fftw_real* U = inbuffer1 + 1;
-			fftw_real* I = inbuffer2 + 1;
+			fftw_real* U = inbuffer[0].get() + 1;
+			fftw_real* I = inbuffer[2].get() + 1;
 			data[2] = 1;   // offset
 			data[3] = 0;   // integral
 			data[4] = 0;   // linear
@@ -1102,8 +1093,8 @@ int main(int argc, char* argv[])
 		{
 			dofft();
 
-			vectorscale(outbuffer1, sqrt(1. / N) / addch, N);
-			vectorscale(outbuffer2, sqrt(1. / N) / addch, N);
+			vectorscale(outbuffer[0].slice(0, N), sqrt(1. / N) / addch);
+			vectorscale(outbuffer[1].slice(0, N), sqrt(1. / N) / addch);
 
 			// calc some sums
 			double wsum = 0;
@@ -1182,13 +1173,13 @@ int main(int argc, char* argv[])
 		{	// we need to do an FFT here, at least for the calibration
 			dofft();
 			// normalize (including retransformation)
-			vectorscale(outbuffer1, sqrt(1. / N / N) / addch, N);
-			vectorscale(outbuffer2, sqrt(1. / N / N) / addch, N);
+			vectorscale(outbuffer[0].slice(0, N), sqrt(1. / N / N) / addch);
+			vectorscale(outbuffer[1].slice(0, N), sqrt(1. / N / N) / addch);
 
 			const double inc = freq / N;
 			// U(f)
-			fftw_real* a1 = outbuffer1;
-			fftw_real* a2 = outbuffer2;
+			fftw_real* a1 = outbuffer[0].get();
+			fftw_real* a2 = outbuffer[1].get();
 			fftw_real* b1 = a1 + N;
 			fftw_real* b2 = a2 + N;
 			*b1 = 0; // well, somewhat easier this way
@@ -1226,25 +1217,25 @@ int main(int argc, char* argv[])
 				a2[2 * N] = C.real();
 				b2[2 * N] = C.imag();
 			}
-			// clear DC and nyquist frequencies of integral and diferential, since they do no allow 90� phase shift.
-			outbuffer1[N] = outbuffer2[N] = 0;
-			outbuffer1[2 * N] = outbuffer2[2 * N] = 0;
-			outbuffer1[N + N / 2] = outbuffer2[N + N / 2] = 0;
-			outbuffer1[2 * N + N / 2] = outbuffer2[2 * N + N / 2] = 0;
+			// clear DC and Nyquist frequencies of integral and differential, since they do not allow 90° phase shift.
+			outbuffer[0][N] = outbuffer[1][N] = 0;
+			outbuffer[0][2 * N] = outbuffer[1][2 * N] = 0;
+			outbuffer[0][N + N / 2] = outbuffer[1][N + N / 2] = 0;
+			outbuffer[0][2 * N + N / 2] = outbuffer[1][2 * N + N / 2] = 0;
 
 			// now do the inverse transform to get the corrected data back.
-			fftw_execute_r2r(PI, outbuffer1, inbuffer1);
-			fftw_execute_r2r(PI, outbuffer1 + N, inbuffer1 + N);
-			fftw_execute_r2r(PI, outbuffer1 + 2 * N, inbuffer1 + 2 * N);
-			fftw_execute_r2r(PI, outbuffer2, inbuffer2);
-			fftw_execute_r2r(PI, outbuffer2 + N, inbuffer2 + N);
-			fftw_execute_r2r(PI, outbuffer2 + 2 * N, inbuffer2 + 2 * N);
+			fftw_execute_r2r(PI, outbuffer[0].get(), inbuffer[0].get());
+			fftw_execute_r2r(PI, outbuffer[0].get() + N, inbuffer[0].get() + N);
+			fftw_execute_r2r(PI, outbuffer[0].get() + 2 * N, inbuffer[0].get() + 2 * N);
+			fftw_execute_r2r(PI, outbuffer[1].get(), inbuffer[1].get());
+			fftw_execute_r2r(PI, outbuffer[1].get() + N, inbuffer[1].get() + N);
+			fftw_execute_r2r(PI, outbuffer[1].get() + 2 * N, inbuffer[1].get() + 2 * N);
 
 			// write data
 			if (writedata)
 			{	FILEguard fout(datafile, "wt");
-				const fftw_real* Up = inbuffer1;
-				const fftw_real* Ip = inbuffer2;
+				const fftw_real* Up = inbuffer[0].get();
+				const fftw_real* Ip = inbuffer[1].get();
 				fputs("#t\tU\tI\t∫ U\t∫ I\tΔ U\t ΔI\n", fout);
 				for (unsigned len = 0; len < N; ++len, ++Up, ++Ip)
 					fprintf(fout, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\n",
@@ -1269,25 +1260,24 @@ int main(int argc, char* argv[])
 		// undo window function because of incremental mode
 		// TODO: this causes a loss of precision!
 		if (winfn && incremental)
-		{
-			applywindowI(inbuffer1, N);
-			applywindowI(inbuffer2, N);
+		{	vectordiv(input[0], window);
+			vectordiv(input[1], window);
 		}
 
 	} while (--loop);
 
 	if (disctrail)
-		fread(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in);
+		fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0] * addch, N, in);
 
 	switch (gainmode)
 	{case 2: // write
 	 case 3:
-		double* wp = wsums + N / 2 + 1;
-		for (Complex* cp = gainD + N / 2 + 1; --cp >= gainD;)
+		double* wp = wsums.end();
+		for (Complex* cp = gainD.end(); --cp >= gainD.begin();)
 			*cp /= *--wp;  // scale 2 average
 		FILEguard fz(gainmode == 3 ? gaindifffile : gainfile, "wb");
 		fputs("#f\treal\timag\tabs\targ\n", fz);
-		writecomplex(fz, gainD, N / 2 + 1);
+		writecomplex(fz, gainD);
 	}
 	switch (zeromode)
 	{case 2: // write
@@ -1296,17 +1286,16 @@ int main(int argc, char* argv[])
 		puts("Zeromode calibration part one is now complete.\n"
 				"Part 2 will start at the end of the contdown.\7");
 		for (int loop = lpause; loop;)
-		{
-			fprintf(stderr, "\r%u ", loop);
-			fread2(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in);
+		{	fprintf(stderr, "\r%u ", loop);
+			fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0] * addch, N, in);
 			--loop;
 		}
 		puts("\nNow at part 2.");
 		goto restart_zero;
 	 case 4: // part 2
 	 case 5:
-		for (Complex (*cp)[4] = zeroD + N / 2 + 1; --cp >= zeroD;)
-		{  // scale to fit det *cp == 1
+		for (array<Complex,4>* cp = zeroD.end(); --cp >= zeroD.begin();)
+		{	// scale to fit det *cp == 1
 			Complex det = 1. / sqrt((*cp)[0] * (*cp)[3] - (*cp)[1] * (*cp)[2]);
 			if ((((*cp)[0] + (*cp)[3]) * det).real() < 0)
 				det = -det;
@@ -1317,18 +1306,13 @@ int main(int argc, char* argv[])
 		}
 		FILEguard fz(zeromode == 5 ? zerodifffile : zerofile, "wb");
 		fputs("#f\tU->U re\tU->U im\tU->I re\tU->I im\tI->U re\tI->U im\tI->I re\tI->I im\n", fz);
-		write4complex(fz, zeroD, N / 2);
+		write4complex(fz, zeroD);
 	}
 
 	puts("completed.");
 	// read until EOF
 	if (disctrail)
-	{	//do
-		//   puts("trail");
-		while (fread(inbuffertmp, 2 * sizeof *inbuffertmp * addch, N, in) > 0)
-			;
-		//puts("fin");
-	}
+		while (fread(inbuffertmp.get(), sizeof inbuffertmp[0], inbuffertmp.size(), in) > 0);
 
 	return 0;
 }

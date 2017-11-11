@@ -4,6 +4,47 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include <assert.h>
+#include <memory>
+
+
+template <typename T>
+class scoped_array : public std::unique_ptr<T[],void (*)(void*)>
+{	//static_assert(std::is_pod<T>::value, "T must be POD");
+	size_t Size;
+ protected:
+	typedef std::unique_ptr<T[],void (*)(void*)> base;
+	scoped_array(T* ptr, size_t size, void (*deleter)(void*)) noexcept : base(ptr, deleter), Size(size) {}
+	void reset(T* ptr, size_t size) noexcept { base::reset(ptr); Size = size; }
+ public:
+	constexpr scoped_array() noexcept : base(NULL, operator delete[]), Size(0) {}
+	explicit scoped_array(size_t size) : base(new T[size], operator delete[]), Size(size) {}
+	void reset(size_t size = 0) { base::reset(size ? new T[size] : NULL); Size = size; }
+	void swap(scoped_array<T>& other) noexcept { base::swap(other); swap(Size, other.Size); }
+	void clear() const { memset(base::get(), 0, Size * sizeof(T)); }
+	void copyfrom(const scoped_array<T>& other) const { assert(Size == other.Size); memcpy(base::get(), other.get(), Size * sizeof(T)); }
+	size_t size() const noexcept { return Size; }
+	T* begin() const noexcept { return base::get(); }
+	T* end() const noexcept { return base::get() + Size; }
+	T& operator[](size_t i) const { assert(i < Size); return base::operator[](i); }
+	scoped_array<T> slice(size_t start, size_t count) const noexcept
+	{	return scoped_array<T>(begin() + start, count, [](void*){}); }
+};
+
+extern "C"
+{	void *fftw_malloc(size_t n);
+	void fftw_free(void *p);
+}
+template <typename T>
+class scoped_fftw_arr : public scoped_array<T>
+{protected:
+	typedef scoped_array<T> base;
+ public:
+	scoped_fftw_arr() noexcept : base(NULL, 0, fftw_free) {}
+	explicit scoped_fftw_arr(size_t size) : base((T*)fftw_malloc(size * sizeof(T)), size, fftw_free) {}
+	void reset(size_t size = 0) { base::reset(size ? (T*)fftw_malloc(size * sizeof(T)) : NULL, size); }
+};
+
 
 // Termination flag, set by die(...).
 extern bool termrq;
