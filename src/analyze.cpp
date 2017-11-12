@@ -1310,7 +1310,7 @@ int main(int argc, char* argv[])
 		write4complex(fz, zeroD);
 	}
 
-	puts("completed.");
+	fputs("completed.", stderr);
 	// read until EOF
 	if (disctrail)
 		while (fread(inbuffertmp.get(), sizeof inbuffertmp[0], inbuffertmp.size(), in) > 0);
