@@ -1051,15 +1051,15 @@ int main(int argc, char* argv[])
 			//double C1f = -resIm[0] / M_2PI / rref;
 
 			// write summary
-			fprintf(stderr, "\nreal: R [Ohm]     \t%12g\n"
+			fprintf(stderr, "\nreal: R [Ohm]\t%12g\n"
 			//       "      R/f [Ohm/Hz]\t%12g\t%12g @100Hz\n"
-			    "imaginary: C [�F] \t%12g\n"
+			    "imag.: C [µF]\t%12g\n"
 			//  "      Cf [F Hz]   \t%12g\t%12g @100Hz\n"
-			    "imaginary: L [�H] \t%12g\n"
+			    "imag.: L [µH]\t%12g\n"
 			//             , R0, R1_f, R1_f/100, C0, C1f, C1f*100);
 			, R0, C0 * 1E6, L0 * 1E6);
 			if (crosscorr)
-				fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
+				fprintf(stderr, "delay [ms]\t%12g\n", 1E3 / M_2PI * linphase);
 		}
 		else if (mpca)
 		{
@@ -1164,11 +1164,13 @@ int main(int argc, char* argv[])
 
 			// write summary
 			// fprintf(stderr, "\n%6i %12g %12g %12g %12g %12g %12g %12g %12g\n", nsum, wsum, Rsum, R2sum, Csum, C2sum, Lsum, L2sum, sLC);
-			fprintf(stderr, "\nreal (R)     \t%12g � %g\n"
-					"imaginary (C)\t%12g � %g\n"
-					"imaginary (L)\t%12g � %g\n", rref * R, rref * RE, 1 / (rref * C * M_2PI), 1 / (CE * rref * M_2PI), rref * L / M_2PI, LE * rref / M_2PI);
+			fprintf(stderr,
+				"\nreal: R [Ohm]\t%12g ± %g\n"
+				"imag.: C [µF]\t%12g ± %g\n"
+				"imag.: L [µH]\t%12g ± %g\n",
+				rref * R, rref * RE, 1E6 / (rref * C * M_2PI), 1E6 / (CE * rref * M_2PI), 1E6 * rref * L / M_2PI, 1E6 * rref * LE / M_2PI);
 			if (crosscorr)
-				fprintf(stderr, "delay        \t%12g\n", linphase / M_2PI);
+				fprintf(stderr, "delay [ms]\t%12g\n", 1E3 / M_2PI * linphase);
 		}
 		else if (mxy)
 		{	// we need to do an FFT here, at least for the calibration
