@@ -440,8 +440,8 @@ static void dofft()
 
 	// Calculate cross correlation to compensate for constant group delay.
 	if (crosscorr)
-	{  // calculate outbuffer1[] * conjugate(outbuffer2[])
-	   // f(0)
+	{	// calculate outbuffer1[] * conjugate(outbuffer2[])
+		// f(0)
 		ccbuffer1[0] = outbuffer[0][0] * outbuffer[1][0];
 		// f(1..N/2-1)
 		for (unsigned i = 1; i < N / 2; ++i)
@@ -1019,7 +1019,7 @@ int main(int argc, char* argv[])
 						calc.PrintBin(tout);
 				}
 
-				if (calc.f() / calc.h() < famin && calc.f() / calc.h() >= famax)
+				if (calc.f() < famin || calc.f() >= famax)
 					continue;
 				// component analysis
 				PCAdataRe[0] = calc.Z().real();
@@ -1029,7 +1029,7 @@ int main(int argc, char* argv[])
 				PCAdataIm[1] = 1 / calc.f();
 				PCAdataIm[2] = calc.f();
 				//PCAdataIm[3] = 1/af;
-				//printf("Re: %12g %12g %12g %12g\n", PCAdataRe[0], PCAdataRe[1], PCAdataRe[2], weight);
+				//fprintf(stderr, "Re: %12g %12g %12g %12g\n", calc.f(), PCAdataRe[0], PCAdataRe[1], calc.W());
 
 				// add values
 				pcaRe.Store(PCAdataRe, calc.W());
@@ -1135,8 +1135,9 @@ int main(int argc, char* argv[])
 						calc.PrintBin(tout);
 				}
 
-				if (calc.f() / calc.h() < famin && calc.f() / calc.h() >= famax)
+				if (calc.f() < famin || calc.f() >= famax)
 					continue;
+				//fprintf(stderr, "FW %12g %12g\n", calc.f(), calc.W());
 				// average
 				++nsum;
 				wsum += calc.W();
