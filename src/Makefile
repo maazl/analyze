@@ -12,8 +12,8 @@ LDFLAGSFFTW = -lfftw3
 
 all : $(BINPATH)analyze$(EXEEXT) $(BINPATH)noise$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)sampledist$(EXEEXT) $(BINPATH)test$(EXEEXT)
 
-$(BINPATH)analyze$(EXEEXT) : analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h utils.cpp utils.h
-	$(CC) $(CFLAGS) -o $@ analyze.cpp nrc.cpp parser.cpp utils.cpp $(LDFLAGSFFTW) $(LDFLAGS)
+$(BINPATH)analyze$(EXEEXT) : analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h pcminput.cpp pcmio.h utils.cpp utils.h
+	$(CC) $(CFLAGS) -o $@ analyze.cpp nrc.cpp parser.cpp pcminput.cpp utils.cpp $(LDFLAGSFFTW) $(LDFLAGS)
 
 $(BINPATH)noise$(EXEEXT) : noise.cpp parser.cpp parser.h utils.cpp utils.h
 	$(CC) $(CFLAGS) -o $@ noise.cpp parser.cpp utils.cpp $(LDFLAGSFFTW) $(LDFLAGS)

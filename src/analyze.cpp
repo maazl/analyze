@@ -1,7 +1,6 @@
 #include "pca.h"
 #include "parser.h"
 #include "utils.h"
-
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
@@ -13,6 +12,8 @@
 #include <fftw3.h>
 #include <complex>
 #include <vector>
+
+#include "pcmio.h"
 using namespace std;
 typedef double fftw_real;
 typedef complex<double> Complex;
@@ -35,7 +36,7 @@ typedef complex<double> Complex;
 
 
 // data buffers
-static scoped_array<int16_t> inbuffertmp;      // Buffer for raw input
+static scoped_array<char> inbuffertmp;         // Buffer for raw input
 static scoped_fftw_arr<fftw_real> inbuffer[2]; // Buffer for nominator and denominator input
 static scoped_fftw_arr<fftw_real> ovrbuffer[2];// Buffer for overridden nominator/denominator
 static scoped_fftw_arr<fftw_real> outbuffer[2];// Buffer for FFT(inbuffer[])
@@ -46,7 +47,7 @@ static scoped_array<int> harmonics;            // Buffer for harmonics dispatch 
 
 static double noiselvl_;
 
-static const double minval = 1E-20;
+const double minval = 1E-20;
 
 static double getweight(double a1, double a2, double)
 { /*a1 -= noiselvl;
@@ -138,6 +139,7 @@ static unsigned addch = 1;    // binsize in raw samples
 static unsigned addloop = 1;  // add raw data before analysis # times
 static bool incremental = false;// incremental mode (add all raw data)
 static double rref = 1;       // value of the reference resistor in impedance measurements
+static bool floatin = false;  // read floating point data instead of int16
 static bool swapbytes = false;// swap bytes on PCM input
 static unsigned scalemode = 1;// l/r matrix decoder: 1 = L=l & R=r, 2 = L=r & R=l-r, 3 = L=r & R=l
 static bool stereo = false;   // Stereo aggregate mode (Toggle harmonics)
@@ -206,112 +208,6 @@ static void createwindow(const scoped_array<fftw_real>& dst, int type)
 	vectorscale(dst, len / sum);
 }
 
-struct limits
-{	int Min;
-	int Max;
-	void reset() { Min = INT_MAX; Max = INT_MIN; }
-	int store(int val)
-	{	if (val < Min)
-			Min = val;
-		if (val > Max)
-			Max = val;
-		return val;
-	}
-};
-static limits minmax[2];
-
-class reader16
-{	size_t Len;
-	const int16_t* Sp;
-	fftw_real* Dp[2];
-	double Ch[2];
-	void read2float();
- public:
-	reader16(const scoped_array<fftw_real>& dst1, const scoped_array<fftw_real>& dst2, const scoped_array<int16_t>& src);
-	reader16(const reader16&) = delete;
-	const reader16& operator=(const reader16&) = delete;
-	void short2float2();
-	void short2float2add();
-	void short2float2window();
-	void short2floatD();
-	void short2floatDadd();
-	void short2floatDwindow();
-};
-
-reader16::reader16(const scoped_array<fftw_real>& dst1, const scoped_array<fftw_real>& dst2, const scoped_array<int16_t>& src)
-:	Len(dst1.size())
-,	Sp(src.get())
-,	Dp{dst1.get(), dst2.get()}
-{	assert(2 * addch * Len == src.size() && Len == dst2.size());
-}
-
-void reader16::read2float()
-{	Ch[0] = Ch[1] = 0;
-	unsigned i = addch;
-	if (swapbytes)
-		do
-		{	Ch[0] += minmax[0].store(bswap(Sp[0]));
-			Ch[1] += minmax[1].store(bswap(Sp[1]));
-			Sp += 2;
-		} while (--i);
-	else
-		do
-		{	Ch[0] += minmax[0].store(Sp[0]);
-			Ch[1] += minmax[1].store(Sp[1]);
-			Sp += 2;
-		} while (--i);
-}
-
-void reader16::short2float2()
-{	while (Len--)
-	{	read2float();
-		*Dp[0]++ = Ch[0] * gainadj[0];
-		*Dp[1]++ = Ch[1] * gainadj[1];
-	}
-}
-
-void reader16::short2float2add()
-{	while (Len--)
-	{	read2float();
-		*Dp[0]++ += Ch[0] * gainadj[0];
-		*Dp[1]++ += Ch[1] * gainadj[1];
-	}
-}
-
-void reader16::short2float2window()
-{	const fftw_real* win = window.get();
-	while (Len--)
-	{	read2float();
-		*Dp[0]++ = Ch[0] * *win * gainadj[0];
-		*Dp[1]++ = Ch[1] * *win++ * gainadj[1];
-	}
-}
-
-void reader16::short2floatD()
-{	while (Len--)
-	{	read2float();
-		*Dp[1]++ = Ch[0] * gainadj[0] - (*Dp[0]++ = Ch[1] * gainadj[1]);
-	}
-}
-
-void reader16::short2floatDadd()
-{	while (Len--)
-	{	read2float();
-		Ch[1] *= gainadj[1];
-		*Dp[0]++ += Ch[1];
-		*Dp[1]++ += Ch[0] * gainadj[0] - Ch[1];
-	}
-}
-
-void reader16::short2floatDwindow()
-{	const fftw_real* win = window.get();
-	while (Len--)
-	{	read2float();
-		*Dp[1]++ = Ch[0] * *win * gainadj[0] - (*Dp[0]++ = Ch[1] * *win * gainadj[1]);
-		++win;
-	}
-}
-
 
 static void write1ch(FILE* out, const scoped_array<fftw_real>& data)
 {	size_t len = data.size();
@@ -320,20 +216,6 @@ static void write1ch(FILE* out, const scoped_array<fftw_real>& data)
 		fprintf(out, "%g\n", *sp++);
 }
 
-static void write2ch(FILE* out, const scoped_array<int16_t>& data)
-{	size_t len = data.size() >> 1;
-	const int16_t* sp = data.get();
-	if (swapbytes)
-		while (len--)
-		{	fprintf(out, "%i\t%i\n", bswap(sp[0]), bswap(sp[1]));
-			sp += 2;
-		}
-	else
-		while (len--)
-		{	fprintf(out, "%i\t%i\n", sp[0], sp[1]);
-			sp += 2;
-		}
-}
 static void write2ch(FILE* out, const scoped_array<fftw_real>& data1, const scoped_array<fftw_real>& data2)
 {	size_t len = data1.size();
 	assert (len == data2.size());
@@ -342,16 +224,6 @@ static void write2ch(FILE* out, const scoped_array<fftw_real>& data1, const scop
 	while (len--)
 		fprintf(out, "%g\t%g\n", *sp1++, *sp2++);
 }
-
-/*static void writepolar(FILE* out, const fftw_real* data, size_t len, double inc)
-{
-	const fftw_real* data2 = data + len;
-	// 1st line
-	fprintf(out, "0\t%g\t0\n", *data++);
-	len = 1;
-	while (data < --data2)
-		fprintf(out, "%g\t%g\t%g\n", len++ * inc, *data++, *data2);
-}*/
 
 static void writecomplex(FILE* out, const scoped_array<Complex>& data)
 {	size_t len = data.size();
@@ -422,7 +294,7 @@ static void readfloat_2(FILE* in, unsigned column, const scoped_array<fftw_real>
 }
 
 static void dofft()
-{	// forwardtransformation
+{	// forward transformation
 	fftw_execute_r2r(P, inbuffer[0].get(), outbuffer[0].get());
 	fftw_execute_r2r(P, inbuffer[1].get(), outbuffer[1].get());
 
@@ -491,15 +363,14 @@ static scoped_array<array<Complex,4>> zeroD;
 static void docal(int bin, double f, Complex& U, Complex& I)
 {
 	switch (gainmode)
-	{
-	case 1: // read
+	{case 1: // read
 		U /= gain[bin];
 		/*t = I * gainD[len];
 		 I -= U * gainD[len];
 		 U -= t;*/
 		break;
-	case 2: // write
-	case 3:
+	 case 2: // write
+	 case 3:
 		{
 			double weight = sqrt((*weightfn)(abs(U), abs(I), f));
 			wsums[bin] += weight;
@@ -508,30 +379,25 @@ static void docal(int bin, double f, Complex& U, Complex& I)
 		}
 	}
 	if (normalize)
-	{
-		Complex s = 1. / (U + I);
+	{	Complex s = 1. / (U + I);
 		U *= s;
 		I *= s;
 	}
 	if (zeromode & 1)
-	{
-		array<Complex,4>& cp = zero[bin];
+	{	array<Complex,4>& cp = zero[bin];
 		Complex t = U; // multiply (U,I) by (*cp)^(-1). The matrix inversion is easy because det(*cp) == 1.
 		//Complex det = cp[0]*cp[3] - cp[1]*cp[2];
 		U = (U * cp[3] - I * cp[1]);
 		I = (-t * cp[2] + I * cp[0]);
-		//U = (U * c22 - I * c12);
-		//I = (-t * c21 + I * c11);
 	}
 	switch (zeromode)
-	{
-	case 2: // write part 1
-	case 3:
+	{case 2: // write part 1
+	 case 3:
 		zeroD[bin][0] += U;
 		zeroD[bin][2] += I;
 		break;
-	case 4: // write part 2
-	case 5:
+	 case 4: // write part 2
+	 case 5:
 		zeroD[bin][1] += U;
 		zeroD[bin][3] += I;
 	}
@@ -549,8 +415,7 @@ static double unwrap(double lph, double phase)
 }
 
 class FFTbin
-{
-public:
+{public:
 	enum StoreRet
 	{	BelowMin,  // frequency less than fmin
 		AboveMax,  // frequency above fmax
@@ -558,7 +423,7 @@ public:
 		Aggregated,     // bin used for aggregation only
 		Skip       // skip this bin because it is a harmonic
 	};
-private:
+ private:
 	struct aggentry
 	{	double f;
 		double Uabs; // Magnitude of nomiator
@@ -577,7 +442,7 @@ private:
 		double fnext;// next frequency for bin size
 		unsigned binc;// number of bins accumulated
 	};
-private:
+ private:
 	const double finc;
 
 	aggentry agg[2 * HA_MAX + 1];
@@ -585,7 +450,7 @@ private:
 	aggentry* curagg;
 	Complex Zcache;
 
-public:
+ public:
 	FFTbin(double finc) : finc(finc)
 	{	memset(agg, 0, sizeof agg);
 	}
@@ -646,7 +511,7 @@ FFTbin::StoreRet FFTbin::StoreBin(unsigned bin)
 	// weight
 	double w = (*weightfn)(Uabs, Iabs, f);
 	if (curagg->binc == 0)
-	{  // init
+	{	// init
 		curagg->f = f * w;
 		curagg->Uabs = Uabs * w;
 		curagg->Uarg = Uarg * w;
@@ -717,6 +582,8 @@ static const OptionDesc OptMap[] =
 ,	MkOpt("famax","upper frequency range for LCR analysis", &famax)
 ,	MkOpt("famin","lower frequency range for LCR analysis", &famin)
 ,	MkOpt("fbin", "average FFT channels with logarithmic bandwidth", &fbinsc)
+,	MkOpt("ff32", "32 bit floating point format", &floatin, true)
+,	MkOpt("fi16", "16 bit integer format (default)", &floatin, false)
 ,	MkOpt("finc", "linear increment for used FFT channels", &f_inc)
 ,	MkOpt("flog", "logarithmic increment for used FFT channels", &f_log)
 ,	MkOpt("fmax", "upper frequency range for analysis", &fmax)
@@ -771,12 +638,6 @@ static const OptionDesc OptMap[] =
 
 int main(int argc, char* argv[])
 {
-	/*for (int i = 0; i < 3; ++i)
-	 { puts("");
-	 fflush(stdout);
-	 DosSleep(500);
-	 }*/
-
 	// parse cmdl
 	{	Parser parser(OptMap);
 		while (--argc)
@@ -798,10 +659,15 @@ int main(int argc, char* argv[])
 	linphase *= M_2PI;
 	f_inc -= .5;
 	f_log += 1;
-	gainadj[0] /= 32767;
-	gainadj[1] /= 32767;
+	if (!floatin)
+	{	gainadj[0] /= 32767;
+		gainadj[1] /= 32767;
+	}
+	// setup input
+	PCMinput pcmin(floatin ? Format::F32 : swapbytes ? Format::I16_SWAP : Format::I16,
+		!(scalemode & 1), addch, &gainadj);
 	// allocate buffers
-	inbuffertmp.reset(2 * N * addch);
+	inbuffertmp.reset(pcmin.BytesPerSample * addch * N);
 	window.reset(N);
 	if (mxy)
 	{	// reserve space for integrals and differentials too
@@ -837,8 +703,7 @@ int main(int argc, char* argv[])
 		int sign = 1;
 		for (unsigned i = (int)floor(fmin / freq * N + .5); i <= floor(fmax / freq * N + .5); ++i)
 		{	if (i)
-			{
-				for (unsigned j = 1; j <= harmonic && i * j <= N / 2; ++j)
+			{	for (unsigned j = 1; j <= harmonic && i * j <= N / 2; ++j)
 					if (harmonics[i * j])
 						goto next_f;
 				for (unsigned j = 1; i * j <= N / 2; ++j)
@@ -847,7 +712,7 @@ int main(int argc, char* argv[])
 			if (stereo)
 				sign = -sign;
 			i = (int)floor(i * f_log + f_inc);
-		 next_f: ;
+		 next_f:;
 		}
 		/*FILE* f = fopen("harm.dat", "w");
 		 for (unsigned i = 0; i <= N/2; ++i)
@@ -866,11 +731,7 @@ int main(int argc, char* argv[])
 			? binmode(stdin) // streaming
 			: checkedopen(infile, "rb");
 		// discard first samples
-		while (discsamp > inbuffertmp.size())
-		{	fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0], inbuffertmp.size(), in);
-			discsamp -= inbuffertmp.size();
-		}
-		fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0], discsamp, in);
+		pcmin.discard(in, discsamp, inbuffertmp);
 	}
 
 	if (overwrt[0].file)
@@ -913,35 +774,19 @@ int main(int argc, char* argv[])
 	do
 	{
 		if (in)
-		{
-			fread2(inbuffertmp.get(), 2 * sizeof inbuffertmp[0] * addch, N, in);
-
+		{	// read data
+			fread2(inbuffertmp.get(), inbuffertmp.size(), 1, in);
 			// write raw data
 			if (writeraw)
-				write2ch(FILEguard(rawfile, "wt"), inbuffertmp);
+				pcmin.ASCIIdump(FILEguard(rawfile, "wt"), inbuffertmp);
 
 			// reset min/max
-			minmax[0].reset();
-			minmax[1].reset();
-
-			reader16 rdr(input[scalemode >= 3], input[scalemode < 3], inbuffertmp);
-			if (scalemode & 1)
-			{	if (incremental || addloops)
-					rdr.short2float2add();
-				else if (winfn && addloop == 1)
-					rdr.short2float2window();
-				else
-					rdr.short2float2();
-			} else
-			{	if (incremental || addloops)
-					rdr.short2floatDadd();
-				else if (winfn && addloop == 1)
-					rdr.short2floatDwindow();
-				else
-					rdr.short2floatD();
-			}
+			pcmin.reset();
+			// convert data
+			pcmin.convert(input[scalemode >= 3], input[scalemode < 3], inbuffertmp, incremental || addloops);
 			// write raw status
-			fprintf(stderr, "\nmin:\t%i\t%i\nmax:\t%i\t%i\n", minmax[0].Min, minmax[1].Min, minmax[0].Max, minmax[1].Max);
+			fprintf(stderr, "\nmin:\t%f\t%f\nmax:\t%f\t%f\n",
+				pcmin.Limits[0].Min, pcmin.Limits[1].Min, pcmin.Limits[0].Max, pcmin.Limits[1].Max);
 		}
 
 		if (incremental || addloops)
@@ -956,12 +801,13 @@ int main(int argc, char* argv[])
 				input[1].copyfrom(ovrbuffer[1]);
 		}
 
+		if (++addloops < addloop)
+			continue; // add more data
+
 		// write source data
 		if (writesrc)
 			write2ch(FILEguard(srcfile, "wt"), inbuffer[0], inbuffer[1]);
 
-		if (++addloops < addloop)
-			continue; // add more data
 		if (winfn && (incremental || addloops))
 		{	// optimization: apply window function later
 			vectormul(input[0], window);
@@ -1002,7 +848,7 @@ int main(int argc, char* argv[])
 
 			// 1st line
 			for (size_t len = 0; len <= N / 2; ++len)
-			{  // do calculations and aggregations
+			{	// do calculations and aggregations
 				switch (calc.StoreBin(len))
 				{case FFTbin::AboveMax:
 					// write
@@ -1252,12 +1098,6 @@ int main(int argc, char* argv[])
 		{	// for gnuplot!
 			puts(plotcmd);
 			fflush(stdout);
-			/*#ifdef __OS2__
-			 // Fix for curious bug in OS/2 preventing the fflush in the pipe from working reliable.
-			 puts("\r\n");
-			 fflush(stdout);
-			 DosSleep(500);
-			 #endif*/
 		}
 
 		// undo window function because of incremental mode
