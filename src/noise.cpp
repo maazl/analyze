@@ -116,12 +116,10 @@ int main(int argc, char**argv)
 	fprintf(stderr, "imin=%zi imax=%zi finc=%f flog=%f\n", i_min, i_max, f_inc, f_log);
 
 	// generate coefficients
-	fftw_real* fftbuf = fftw_alloc_real((stereo+1)*(n_fft+1));
-	int* harmonics = new int[n_fft+2];
-	if (fftbuf == NULL || harmonics == NULL)
-		die(39, "malloc(%lu) failed", n_fft);
-	memset(fftbuf, 0, (stereo+1)*(n_fft+1) * sizeof *fftbuf);   // all coefficients -> 0
-	memset(harmonics, 0, (n_fft/2+1) * sizeof *harmonics);
+	scoped_fftw_arr<fftw_real> fftbuf((stereo + 1) * (n_fft + 1));
+	scoped_array<int> harmonics(n_fft + 2);
+	fftbuf.clear(); // all coefficients -> 0
+	harmonics.clear();
 	size_t fcount = 0; // number of used frequencies
 	fftw_real maxamp = 0;
 	int sign = 1;
@@ -159,7 +157,7 @@ int main(int argc, char**argv)
 	 next_f:;
 	}
 	// normalize
-	{	fftw_real* dp = fftbuf;
+	{	fftw_real* dp = fftbuf.begin();
 		fftw_real* ep = dp + (stereo+1)*(n_fft+1);
 		while (dp != ep)
 			*dp++ /= maxamp;
@@ -189,7 +187,7 @@ int main(int argc, char**argv)
 
 		if (sweep)
 		{	// Sweep mode
-			fftw_real* sampbuf = new fftw_real[n_fft];
+			scoped_array<fftw_real> sampbuf(n_fft);
 
 			if (F_wav)
 			{	buf = new short[2*n_fft];
@@ -208,8 +206,8 @@ int main(int argc, char**argv)
 				// write result
 				if (F_res)
 				{	FILEguard of(F_res, resmode);
-					const fftw_real* spe = sampbuf + n_fft;
-					for (const fftw_real* sp = sampbuf; sp != spe; ++sp)
+					const fftw_real* spe = sampbuf.end();
+					for (const fftw_real* sp = sampbuf.begin(); sp != spe; ++sp)
 						fprintf(of, "%12g\n", *sp);
 				}
 
@@ -218,7 +216,7 @@ int main(int argc, char**argv)
 
 				// and quantize
 				if (F_wav)
-				{	quantize1(buf, sampbuf, n_fft);
+				{	quantize1(buf, sampbuf.begin(), n_fft);
 
 					// Output
 					size_t j = n_rep;
@@ -229,86 +227,82 @@ int main(int argc, char**argv)
 				}
 			} // for each frequency
 
-			delete[] sampbuf;
-
 		} else // if (sweep)
 		{
 			if (!stereo)
 			{
 				// ifft
-				fftw_real* sampbuf = fftw_alloc_real(n_fft);
-				fftw_plan plan = fftw_plan_r2r_1d(n_fft, fftbuf, sampbuf, FFTW_HC2R, FFTW_ESTIMATE);
+				scoped_fftw_arr<fftw_real> sampbuf(n_fft);
+				fftw_plan plan = fftw_plan_r2r_1d(n_fft, fftbuf.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE);
 				fftw_execute(plan);   // IFFT
 				fftw_destroy_plan(plan);
 
 				// normalize
 				double fnorm = 0;
-				fftw_real* sp = sampbuf;
+				fftw_real* sp = sampbuf.begin();
 				const fftw_real* const spe = sp + n_fft;
 				for (; sp != spe; ++sp)
 					if (fabs(*sp) > fnorm)
 						fnorm = fabs(*sp);
 				fnorm = 1/fnorm;
-				for (sp = sampbuf; sp != spe; ++sp)
+				for (sp = sampbuf.begin(); sp != spe; ++sp)
 					*sp *= fnorm; 
 
 				// write result
 				if (F_res)
 				{	FILEguard of(F_res, resmode);
-					for (sp = sampbuf; sp != spe; ++sp)
+					for (sp = sampbuf.begin(); sp != spe; ++sp)
 						fprintf(of, "%12g\n", *sp);
 				}
 
 				// and quantize
 				if (F_wav)
 				{	buf = new short[2*n_fft];
-					quantize1(buf, sampbuf, n_fft);
+					quantize1(buf, sampbuf.get(), n_fft);
 				}
-				fftw_free(sampbuf); // no longer needed
 
 			} else // stereo
 			{
 				// split channels
-				fftw_real* const fftr = fftbuf + n_fft+1;
+				fftw_real* const fftr = fftbuf.get() + n_fft+1;
 				for (size_t i = i_min; i <= i_max; ++i)
 				{	if (harmonics[i] < 0)
 						fftbuf[i] = fftbuf[n_fft-i] = 0;
 				}
 
 				// ifft
-				fftw_real* sampbuf = fftw_alloc_real(2*n_fft);
+				scoped_fftw_arr<fftw_real> sampbuf(2*n_fft);
 				fftw_plan plan = fftw_plan_r2r_1d(n_fft, NULL, NULL, FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED);
-				fftw_execute_r2r(plan, fftbuf, sampbuf);   // IFFT
-				fftw_execute_r2r(plan, fftr, sampbuf+n_fft);
+				fftw_execute_r2r(plan, fftbuf.get(), sampbuf.get());   // IFFT
+				fftw_execute_r2r(plan, fftr, sampbuf.get() + n_fft);
 				fftw_destroy_plan(plan);
 
 				// normalize
 				{	double fnorm = 0;
-					fftw_real* sp = sampbuf;
+					fftw_real* sp = sampbuf.begin();
 					const fftw_real* const spe = sp + 2*n_fft;
 					for (; sp != spe; ++sp)
 						if (fabs(*sp) > fnorm)
 							fnorm = fabs(*sp);
 					fnorm = 1/fnorm;
-					for (sp = sampbuf; sp != spe; ++sp)
+					for (sp = sampbuf.begin(); sp != spe; ++sp)
 						*sp *= fnorm;
 				}
 
 				// write result
 				if (F_res)
 				{	FILEguard of(F_res, resmode);
-					const fftw_real* const spe = sampbuf + n_fft;
+					const fftw_real* const spe = sampbuf.begin() + n_fft;
 					fputs("#l+r\tl\tr\n", of);
-					for (fftw_real* sp = sampbuf; sp != spe; ++sp)
+					for (fftw_real* sp = sampbuf.begin(); sp != spe; ++sp)
 						fprintf(of, "%12g %12g %12g\n", sp[0]+sp[n_fft], sp[0], sp[n_fft]);
 				}
 
 				// and quantize
 				if (F_wav)
 				{	buf = new short[2*n_fft];
-					quantize2(buf, sampbuf, sampbuf + n_fft, n_fft);
+					quantize2(buf, sampbuf.begin(), sampbuf.begin() + n_fft, n_fft);
 				}
-				fftw_free(sampbuf); // no longer needed
 			} // if (stereo)
 
 			if (F_wav)
@@ -323,9 +317,5 @@ int main(int argc, char**argv)
 
 		delete[] buf;
 	} // if (F_wav || F_res)
-
- end:
-	delete[] harmonics;
-	fftw_free(fftbuf);
 }
 

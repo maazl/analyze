@@ -22,11 +22,10 @@
 #define M_180_PI (180./M_PI)
 
 #define N_MAX (65536*8)
-#define CA_MAX 2
 
 // data buffers
-static short inbuffertmp[2 * CA_MAX * N_MAX];
-static int sumbuffer[CA_MAX][65536];
+static scoped_array<short> inbuffertmp;
+static int sumbuffer[2][65536];
 static int64_t nsamp;
 
 // config
@@ -158,12 +157,15 @@ int main(int argc, char* argv[])
 	if (N > N_MAX)
 		die(32, "Data Length too large.");
 
+	// allocate buffers
+	inbuffertmp.reset(2 * N);
+
 	FILEguard in = infile == NULL
 		? binmode(stdin)
 		: checkedopen(infile, "rb");
 
 	// discard first samples
-	fread(inbuffertmp, sizeof *inbuffertmp, 2 * discsamp, in);
+	fread(inbuffertmp.begin(), sizeof(short), 2 * discsamp, in);
 
 	memset(sumbuffer, 0, sizeof sumbuffer);
 	nsamp = 0;
@@ -173,16 +175,16 @@ int main(int argc, char* argv[])
 	unsigned loop = loops;
 	do
 	{
-		fread2(inbuffertmp, 2 * sizeof *inbuffertmp, N, in);
+		fread2(inbuffertmp.begin(), 2 * sizeof(short), N, in);
 
 		// write raw data
 		if (rawfile)
-			write2ch(FILEguard(rawfile, "wt"), inbuffertmp, N);
+			write2ch(FILEguard(rawfile, "wt"), inbuffertmp.begin(), N);
 
 		if (swapbytes)
-			asshortx2(inbuffertmp, N);
+			asshortx2(inbuffertmp.begin(), N);
 		else
-			asshort2(inbuffertmp, N);
+			asshort2(inbuffertmp.begin(), N);
 		nsamp += N;
 
 		analyze();

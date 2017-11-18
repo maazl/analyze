@@ -1,6 +1,7 @@
 #include "pca.h"
 #include "parser.h"
 #include "utils.h"
+#include "pcmio.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -16,11 +17,7 @@
 
 #include <chrono>
 #include <thread>
-#include <complex>
-#include <fftw3.h>
 using namespace std;
-typedef double fftw_real;
-typedef complex<double> Complex;
 
 #define M_2PI (2.*M_PI)
 #define M_3PI (3.*M_PI)
@@ -31,40 +28,21 @@ typedef complex<double> Complex;
 #define M_180_PI (180./M_PI)
 #define M_sqrtPI (1.772453851)
 
-#define N_MAX (65536*8)
-#define CA_MAX 2
 #define SYNC_FIR 64
 
 int __gxx_personality_v0; // gcc @�$%&!
 
 // data buffers
-static short refbuffer[N_MAX * 2];
-static short inprebuffer[CA_MAX * (N_MAX + SYNC_FIR)];
-static short* const inbuffer = inprebuffer + CA_MAX * SYNC_FIR;
-static float outprebuffer[N_MAX + 2 * SYNC_FIR];
-static float* const outbuffer = outprebuffer + 2 * SYNC_FIR;
+static scoped_array<int16_t> refbuffer;
+static scoped_array<int16_t> inprebuffer;
+static int16_t* inbuffer;
+static scoped_array<float> outprebuffer;
+static float* outbuffer;
 
 static FILE* resh = NULL;
 
 static const double minval = 1E-20;
 
-static void vectorscale(fftw_real* data, double factor, size_t len)
-{
-	while (len--)
-		*data++ *= factor;
-}
-
-static void vectoradd(fftw_real* dst, fftw_real* src, size_t len)
-{
-	while (len--)
-		*dst++ += *src++;
-}
-
-static void vektormul(fftw_real* dst, fftw_real* src, size_t len)
-{
-	while (len--)
-		*dst++ *= *src++;
-}
 
 // config
 static unsigned N = 8192;
@@ -104,17 +82,6 @@ static inline short storeminmax(short val, int* dst)
 	return val;
 }
 
-static void short2float2(fftw_real* dst1, fftw_real* dst2, const short* src, size_t len)
-{
-	while (len)
-	{
-		*dst1++ = storeminmax(fromraw(src[0]), minmax);
-		*dst2++ = storeminmax(fromraw(src[1]), minmax + 2);
-		--len;
-		src += 2;
-	}
-}
-
 static inline double abs(double d1, double d2)
 {
 	return sqrt(sqr(d1) + sqr(d2));
@@ -128,11 +95,6 @@ void init()
 	minmax[3] = INT_MIN;
 }
 
-/*void write1ch(FILE* out, const float* data, size_t len)
- {  while (len--)
- fprintf(out, "%g\n", *data++);
- }*/
-
 void write2ch(FILE* out, const short* data, size_t len)
 {
 	while (len--)
@@ -142,74 +104,7 @@ void write2ch(FILE* out, const short* data, size_t len)
 	}
 }
 
-/*void write2ch(FILE* out, const float* data, size_t len)
- {  while (len--)
- {  fprintf(out, "%g\t%g\n", data[0], data[1]);
- data += 2;
- }
- }
-
- void write2ch(FILE* out, const float* data1, const float* data2, size_t len)
- {  while (len--)
- fprintf(out, "%g\t%g\n", *data1++, *data2++);
- }
-
- void writepolar(FILE* out, const float* data, size_t len, double inc)
- {  const float* data2 = data + len;
- // 1st line
- fprintf(out, "0\t%g\t0\n", *data++);
- len = 1;
- while (data < --data2)
- fprintf(out, "%g\t%g\t%g\n", len++*inc, *data++, *data2);
- }
-
- void writecomplex(FILE* out, const Complex* data, size_t len)
- {  while (len--)
- {  fprintf(out, "%14g\t%14g\t%14g\t%14g\n", data->real(), data->imag(), abs(*data), arg(*data)*M_180_PI);
- ++data;
- }  }
-
- void readcomplex(FILE*in, Complex* data, size_t len)
- {  while (len--)
- {  double a,b;
- if (fscanf(in, "%lg%lg%*[^\n]", &a, &b) != 2)
- die("Failed to read complex data (%i).", errno);
- //(stderr, "%g\t%g\n", a,b);
- *data++ = Complex(a,b);
- }  }*/
-
-static void fwriteexact(const void* buffer, size_t size, size_t n, FILE* f)
-{
-	while (n)
-	{
-		size_t r = fwrite(buffer, size, n, f);
-		if (r <= 0)
-			die(27, "Failed to write %lu blocks a %lu bytes", n, size);
-		n -= r;
-		(const char*&)buffer += r;
-	}
-}
-
-static void freadexact(void* buffer, size_t size, size_t n, FILE* f)
-{
-	while (n)
-	{
-		size_t r = fread(buffer, size, n, f);
-		if (r <= 0)
-			die(27, "Failed to read %lu blocks a %lu bytes", n, size);
-		//fwrite(buffer, size, r, stdout);
-		n -= r;
-		(char*&)buffer += r;
-	}
-}
-
 // synchronize
-static void syncinit()
-{
-	memset(inprebuffer, 0, sizeof inprebuffer);
-	memset(outprebuffer, 0, sizeof outprebuffer);
-}
-
 static bool issync(float* dp)
 {
 	static int synccount = 0;
@@ -217,11 +112,11 @@ static bool issync(float* dp)
 	{
 		static int cnt = 0;
 		fprintf(stderr, "# Res: %2x %- 7f %- 7f %i %i %i %i %- 7f %- 7f %- 7f\n", ++cnt % SYNC_FIR, dp[0], M_180_PI * dp[1], dp[0] >= synclevel,
-		    dp[-2 * SYNC_FIR] >= synclevel, M_180_PI * abs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI) <= syncphase, synccount, dp[-2 * SYNC_FIR],
-		    M_180_PI * abs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI), M_180_PI * abs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI));
+			dp[-2 * SYNC_FIR] >= synclevel, M_180_PI * fabs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI) <= syncphase, synccount, dp[-2 * SYNC_FIR],
+			M_180_PI * fabs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI), M_180_PI * fabs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI));
 	}
 
-	if (dp[0] >= synclevel && dp[-2 * SYNC_FIR] >= synclevel && M_180_PI * abs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI) <= syncphase)
+	if (dp[0] >= synclevel && dp[-2 * SYNC_FIR] >= synclevel && M_180_PI * fabs(fmod(dp[1] - dp[1 - 2 * SYNC_FIR] + M_2PI, M_2PI) - M_PI) <= syncphase)
 		return ++synccount == SYNC_FIR >> 2;
 	synccount = 0;
 	return false;
@@ -255,8 +150,8 @@ static int synchronize(int len)
 	}
 	rem = sp - se;
 	// save history
-	memcpy(inprebuffer, sp - 2 * SYNC_FIR, 2 * SYNC_FIR * sizeof(short));
-	memcpy(outprebuffer, dp - 2 * SYNC_FIR, 2 * SYNC_FIR * sizeof(float));
+	memcpy(inprebuffer.begin(), sp - 2 * SYNC_FIR, 2 * SYNC_FIR * sizeof(short));
+	memcpy(outprebuffer.begin(), dp - 2 * SYNC_FIR, 2 * SYNC_FIR * sizeof(float));
 	return -1;
 }
 
@@ -269,7 +164,7 @@ static void analyze(int fi)
 	memset(ana, 0, sizeof ana);
 	const double fs = M_2PI * fi / N;
 	const short* sp = inbuffer;
-	for (int i = 0; i < N; ++i)
+	for (unsigned i = 0; i < N; ++i)
 	{
 		double s = sin(fs * i);
 		double c = cos(fs * i);
@@ -309,7 +204,7 @@ static void doanalysis()
 		: checkedopen(infile, "rb");
 
 	// skip initial samples
-	freadexact(inbuffer, 2 * sizeof(short), discardsamp, in);
+	fread2(inbuffer, 2 * sizeof(short), discardsamp, in);
 
 	// synchronize
 	int i;
@@ -318,7 +213,7 @@ static void doanalysis()
 	{
 		if (n >= syncsamp)
 			die(29, "Failed to syncronize.");
-		freadexact(inbuffer, 2 * sizeof(short), syncsamp / 4, in);
+		fread2(inbuffer, 2 * sizeof(short), syncsamp / 4, in);
 		/*FILE* fs = fopen("sync.dat", "a");
 		 write2ch(fs, inbuffer, syncsamp/4);
 		 fclose(fs);*/
@@ -328,12 +223,12 @@ static void doanalysis()
 		n += syncsamp / 4;
 	}
 	//fprintf(stderr, "Sync: %i\t%i\t%i\t%i\n", n, i, syncsamp/4, overlap);
-	if ((syncsamp >> 2) + i - SYNC_FIR < 0)
+	if ((int)(syncsamp >> 2) + i < SYNC_FIR)
 		die(29, "Syncpoint missed by %i samples.", -((syncsamp >> 2) + i - SYNC_FIR));
 	// synced. From now no samples must get lost.
 	fprintf(stderr, "Synced after %i samples. Read %i samples, Skip another %i samples\n", n + i, n + (syncsamp >> 2), (syncsamp >> 2) + i - SYNC_FIR);
 	// discard until end of sync - overlap
-	freadexact(inbuffer, 2 * sizeof(short), (syncsamp >> 2) + i - SYNC_FIR, in);
+	fread2(inbuffer, 2 * sizeof(short), (syncsamp >> 2) + i - SYNC_FIR, in);
 
 	// Scan !
 	double fq = f_min;
@@ -347,7 +242,7 @@ static void doanalysis()
 		// show
 		fprintf(stderr, "Now at %.2f Hz ", findex * freq / N);
 		// discard first samples
-		freadexact(inbuffer, 2 * sizeof(short), N, in);
+		fread2(inbuffer, 2 * sizeof(short), N, in);
 		// write raw data #1
 		FILEguard fr = NULL;
 		if (writeraw)
@@ -361,7 +256,7 @@ static void doanalysis()
 		// show
 		fputs("start...", stderr);
 		// read data
-		freadexact(inbuffer, 2 * sizeof(short), N, in);
+		fread2(inbuffer, 2 * sizeof(short), N, in);
 		// write raw data
 		if (writeraw)
 		{
@@ -388,8 +283,8 @@ static void doanalysis()
 // reference signal output
 static void gensync()
 {
-	short* dp = refbuffer;
-	short* de = dp + syncsamp;
+	int16_t* dp = refbuffer.begin();
+	int16_t* de = dp + syncsamp;
 	while (dp != de)
 	{
 		dp[0] = -32767;
@@ -403,7 +298,7 @@ static void gensync()
 		dp += 8;
 	}
 	// phase jump: Pi
-	de = refbuffer + 2 * syncsamp;
+	de = refbuffer.begin() + 2 * syncsamp;
 	while (dp != de)
 	{
 		dp[0] = 32767;
@@ -422,7 +317,7 @@ static void genref(int fi)
 {  // fill reference buffer
 	double fs = M_2PI * fi / N;
 	for (int i = 0; i < 2 * N; i += 2)
-		refbuffer[i + 1] = -(refbuffer[i] = (short)(32767 * cos(fs * i / 2) + rand() / (RAND_MAX + 1.)));
+		refbuffer[i + 1] = -(refbuffer[i] = (short)(32767 * cos(fs * i / 2) + myrand()));
 }
 
 static void refplay()
@@ -442,17 +337,17 @@ static void refplay()
 		'\x80', '\xbb', 0, 0, 0, '\xee', 2, 0, 4, 0, 16, 0,
 		'd', 'a', 't', 'a', 0x70, '\xff', '\xff', 0x7f
 	};
-	fwriteexact(wavhdr, 1, sizeof wavhdr, stdout);
+	fwrite2(wavhdr, 1, sizeof wavhdr, stdout);
 
 	// pregap
-	memset(refbuffer, 0, discardsamp * 2 * sizeof(short));
-	fwriteexact(refbuffer, 2 * sizeof(short), discardsamp, stdout);
+	refbuffer.clear();
+	fwrite2(refbuffer.begin(), 2 * sizeof(short), discardsamp, stdout);
 	// synchronize
 	gensync();
-	fwriteexact(refbuffer, 2 * sizeof(short), syncsamp, stdout);
+	fwrite2(refbuffer.begin(), 2 * sizeof(short), syncsamp, stdout);
 	// overlap
-	memset(refbuffer, 0, overlap * 2 * sizeof(short));
-	fwriteexact(refbuffer, 2 * sizeof(short), overlap, stdout);
+	refbuffer.clear();
+	fwrite2(refbuffer.begin(), 2 * sizeof(short), overlap, stdout);
 	// Wobble !
 	double fq = f_min;
 	int findex = 0;
@@ -464,9 +359,9 @@ static void refplay()
 			findex = nfi;
 		genref(findex);
 		// write reference
-		fwriteexact(refbuffer, 2 * sizeof(short), N, stdout);
+		fwrite2(refbuffer.begin(), 2 * sizeof(short), N, stdout);
 		// write reference 2nd try
-		fwriteexact(refbuffer, 2 * sizeof(short), N, stdout);
+		fwrite2(refbuffer.begin(), 2 * sizeof(short), N, stdout);
 		// next frequency
 		fq *= fstep;
 	}
@@ -475,6 +370,8 @@ static void refplay()
 const OptionDesc OptionMap[] = // must be sorted
 {	MkOpt("bn",   "FFT lenght", &N)
 ,	MkOpt("exec", "execute shell command", &execcmd)
+,	MkOpt("ff32", "32 bit floating point format", &floatin, true)
+,	MkOpt("fi16", "16 bit integer format (default)", &floatin, false)
 ,	MkOpt("flog", "frequency increment factor", &fstep)
 ,	MkOpt("fmax", "maximum frequency", &f_max)
 ,	MkOpt("fmin", "minimum frequency", &f_min)
@@ -509,9 +406,16 @@ int main(int argc, char* argv[])
 
 	syncsamp &= ~7; // must be multiple of 8
 
-	/*resh = fdopen(3, "w");
-	 if (resh == NULL)
-	 die("Failed to open output handle 3 (%i).", errno);*/
+	// allocate buffers
+	refbuffer.reset(2 * N);
+	inprebuffer.reset(2 * (N + SYNC_FIR));
+	outprebuffer.reset(2 * (N + SYNC_FIR));
+	inbuffer = inprebuffer.begin() + 2 * SYNC_FIR;
+	outbuffer = outprebuffer.begin() + 2 * SYNC_FIR;
+
+	inprebuffer.clear();
+	outprebuffer.clear();
+
 	resh = stdout;
 
 	switch (mode)
