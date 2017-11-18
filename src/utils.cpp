@@ -55,8 +55,19 @@ void fread2(void* data, size_t size, size_t count, FILE* stream)
 {	while (count)
 	{	size_t read = fread(data, size, count, stream);
 		if (read == 0)
-			die(27, "Failed to read data from input.");
-		(char*&)data += size * read;
+			die(27, "Failed to read %zu blocks a %zu bytes.", count, size);
 		count -= read;
+		(char*&)data += size * read;
 	}
 }
+
+void fwrite2(const void* buffer, size_t size, size_t count, FILE* stream)
+{	while (count)
+	{	size_t wrote = fwrite(buffer, size, count, stream);
+		if (wrote <= 0)
+			die(27, "Failed to write %zu blocks a %zu bytes.", count, size);
+		count -= wrote;
+		(const char*&)buffer += wrote * size;
+	}
+}
+

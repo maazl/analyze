@@ -1,6 +1,9 @@
 #include "pca.h"
 #include "parser.h"
 #include "utils.h"
+#include "pcmio.h"
+#include "mathx.h"
+
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
@@ -13,7 +16,6 @@
 #include <complex>
 #include <vector>
 
-#include "pcmio.h"
 using namespace std;
 typedef double fftw_real;
 typedef complex<double> Complex;

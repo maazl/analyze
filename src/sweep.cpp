@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "utils.h"
 #include "pcmio.h"
+#include "mathx.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -82,11 +83,6 @@ static inline short storeminmax(short val, int* dst)
 	return val;
 }
 
-static inline double abs(double d1, double d2)
-{
-	return sqrt(sqr(d1) + sqr(d2));
-}
-
 void init()
 {
 	minmax[0] = INT_MAX;
@@ -140,7 +136,7 @@ static int synchronize(int len)
 			b += fromraw(sp2[-2]) - fromraw(sp2[-6]);
 			sp2 -= 8;
 		}
-		dp[0] = abs(a, b);
+		dp[0] = sqrt(sqr(a) + sqr(b));
 		dp[1] = atan2((float)b, a);
 		//fprintf(stderr, "# Data: %4.4x %4.4x %4.4x %4.4x\t", fromraw(sp[0]), fromraw(sp[-2]), fromraw(sp[-4]), fromraw(sp[-6]));
 		if (issync(dp))

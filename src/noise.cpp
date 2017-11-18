@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "utils.h"
+#include "mathx.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,10 +43,6 @@ static unsigned    n_rep      = 1;
 static const char* execcmd    = NULL;  // shell command to execute after analysis
 
 static double      mfact; // Master gain factor
-
-inline static double myrand()
-{	return rand() / (double)RAND_MAX + rand() / ((double)RAND_MAX*RAND_MAX);
-}
 
 
 static void quantize1(short* dst, const fftw_real* src, size_t count)

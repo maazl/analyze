@@ -1,14 +1,13 @@
 #ifndef MOMENT_H_
 #define MOMENT_H_
 
-#include "utils.h"
 #include "math.h"
+#include "mathx.h"
 
 class Mean
 {protected:
 	double Count;
 	double Sum;
-
  public:
 	Mean() : Count(0), Sum(0) {}
 	void push(double val, double weight = 1) { Count += weight; Sum += val * weight; }

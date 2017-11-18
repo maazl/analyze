@@ -12,19 +12,19 @@ LDFLAGSFFTW = -lfftw3
 
 all : $(BINPATH)analyze$(EXEEXT) $(BINPATH)noise$(EXEEXT) $(BINPATH)ref$(EXEEXT) $(BINPATH)sweep$(EXEEXT) $(BINPATH)sampledist$(EXEEXT) $(BINPATH)test$(EXEEXT)
 
-$(BINPATH)analyze$(EXEEXT) : analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h pcminput.cpp pcmio.h utils.cpp utils.h
+$(BINPATH)analyze$(EXEEXT) : analyze.cpp pca.h nrc.h nrc.cpp parser.cpp parser.h pcminput.cpp pcmio.h utils.cpp utils.h mathx.h
 	$(CC) $(CFLAGS) -o $@ analyze.cpp nrc.cpp parser.cpp pcminput.cpp utils.cpp $(LDFLAGSFFTW) $(LDFLAGS)
 
-$(BINPATH)noise$(EXEEXT) : noise.cpp parser.cpp parser.h utils.cpp utils.h
+$(BINPATH)noise$(EXEEXT) : noise.cpp parser.cpp parser.h utils.cpp utils.h mathx.h
 	$(CC) $(CFLAGS) -o $@ noise.cpp parser.cpp utils.cpp $(LDFLAGSFFTW) $(LDFLAGS)
 
-$(BINPATH)ref$(EXEEXT) : ref.cpp utils.cpp utils.h
+$(BINPATH)ref$(EXEEXT) : ref.cpp utils.cpp utils.h mathx.h
 	$(CC) $(CFLAGS) -o $@ ref.cpp utils.cpp $(LDFLAGSFFTW) $(LDFLAGS)
 
-$(BINPATH)sampledist$(EXEEXT) : sampledist.cpp parser.cpp parser.h moment.cpp moment.h utils.cpp utils.h
+$(BINPATH)sampledist$(EXEEXT) : sampledist.cpp parser.cpp parser.h moment.cpp moment.h utils.cpp utils.h mathx.h
 	$(CC) $(CFLAGS) -o $@ sampledist.cpp parser.cpp moment.cpp utils.cpp $(LDFLAGS)
 
-$(BINPATH)sweep$(EXEEXT) : sweep.cpp parser.cpp parser.h utils.cpp utils.h
+$(BINPATH)sweep$(EXEEXT) : sweep.cpp parser.cpp parser.h utils.cpp utils.h mathx.h
 	$(CC) $(CFLAGS) -o $@ sweep.cpp parser.cpp utils.cpp $(LDFLAGS)
 
 $(BINPATH)test$(EXEEXT) : test.cpp moment.cpp moment.h utils.cpp utils.h

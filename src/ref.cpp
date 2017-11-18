@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "parser.h"
+#include "mathx.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,15 +12,6 @@
 #include <limits.h>
 #include <ctype.h>
 
-
-inline static double myrand()
-{	return rand() / (double)RAND_MAX + rand() / ((double)RAND_MAX*RAND_MAX);
-}
-
-inline static double fsqr(double d)
-{
-	return d * d;
-}
 
 static double square(double p)
 {
@@ -33,7 +25,7 @@ static double triangle(double p)
 
 static double parabolic(double p)
 {
-	return p < .5 ? 1 - fsqr(4. * p - 1.) : fsqr(4. * p - 3.) - 1;
+	return p < .5 ? 1 - sqr(4. * p - 1.) : sqr(4. * p - 3.) - 1;
 }
 
 static double sine(double p)

@@ -3,9 +3,18 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <math.h>
 #include <assert.h>
+#include <string.h>
 #include <memory>
+
+
+#ifdef __GNUC__
+#define PRINTFATTR(i) __attribute__((format(printf, i, i+1)))
+#define SCANFATTR(i) __attribute__((format(scanf, i, i+1)))
+#else
+#define PRINTFATTR(i)
+#define SCANFATTR(i)
+#endif
 
 
 template <typename T>
@@ -24,8 +33,8 @@ class scoped_array : public std::unique_ptr<T[],void (*)(void*)>
 	void clear() const { memset(base::get(), 0, Size * sizeof(T)); }
 	void copyfrom(const scoped_array<T>& other) const { assert(Size == other.Size); memcpy(base::get(), other.get(), Size * sizeof(T)); }
 	size_t size() const noexcept { return Size; }
-	T* begin() const noexcept { return base::get(); }
-	T* end() const noexcept { return base::get() + Size; }
+	T* begin() const noexcept { assert(base::get() != NULL || !Size); return base::get(); }
+	T* end() const noexcept { return begin() + Size; }
 	T& operator[](size_t i) const { assert(i < Size); return base::operator[](i); }
 	scoped_array<T> slice(size_t start, size_t count) const noexcept
 	{	return scoped_array<T>(begin() + start, count, [](void*){}); }
@@ -55,7 +64,7 @@ extern bool termrq;
  * @param msg error message format string
  * @param ... error message arguments
  */
-void die(int rc, const char* msg, ...);
+void die(int rc, const char* msg, ...) PRINTFATTR(2);
 
 /** Switch stream to binary mode
  * @param stream file stream
@@ -91,7 +100,7 @@ class FILEguard
  */
 void wavheader(FILE* fo, size_t nsamp, size_t sfreq);
 
-/** Really read up to count items (or die).
+/** Really read count items (or die).
  * @param data target buffer
  * @param size size of items
  * @param count number of items
@@ -99,28 +108,17 @@ void wavheader(FILE* fo, size_t nsamp, size_t sfreq);
  */
 void fread2(void* data, size_t size, size_t count, FILE* stream);
 
-static inline uint16_t bswap(uint16_t v)
+/** Really write count items (or die).
+ * @param data target buffer
+ * @param size size of items
+ * @param count number of items
+ * @param stream source stream
+ */
+void fwrite2(const void* data, size_t size, size_t count, FILE* stream);
+
+inline uint16_t bswap(uint16_t v)
 {	//return _srotl(v, 8);
 	return (uint16_t)v >> 8 | v << 8;
 }
-
-static inline double sqr(double v)
-{	return v * v;
-}
-static inline int64_t sqr(int64_t v)
-{	return v * v;
-}
-static inline double cb(double v)
-{	return v * v * v;
-}
-
-static inline double todB(double f)
-{	return 20 * log10(f);
-}
-
-static inline double fromdB(double d)
-{	return pow(10, d / 20);
-}
-
 
 #endif // UTILS_H_
