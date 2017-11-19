@@ -885,8 +885,8 @@ int main(int argc, char* argv[])
 			}
 
 			// calculate summary
-			Vektor<1> resRe = pcaRe.Result();
-			Vektor<2> resIm = pcaIm.Result();
+			Vector<1> resRe = pcaRe.Result();
+			Vector<2> resIm = pcaIm.Result();
 
 			fprintf(stderr, "resRe: %12g %12g %12g\n", resRe[0], resRe[1], resRe[2]);
 			//printf("resRe: %12g %12g %12g %12g\n", resRe[0], resRe[1], resRe[2], resRe[3]);
@@ -933,7 +933,7 @@ int main(int argc, char* argv[])
 				i -= 2;
 			} while (i > 0);
 
-			Vektor<4> res = pca.Result() * rref;
+			Vector<4> res = pca.Result() * rref;
 			fprintf(stderr, "\nPCA: %12g %12g %12g %12g %12g %12g\n",
 				res[0], res[1], 2. / freq / res[2], res[3], 1. / 2 * freq * res[2] / M_2PI / res[0], freq * res[4] / 2);
 		}
