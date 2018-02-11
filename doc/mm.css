@@ -1,95 +1,143 @@
 h1 {
   color: #ff0000;
-  font-family: Arial,Helvetica,sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: xx-large;
   text-align: center;
 }
+
 h2 {
-  padding: 3px;
+  padding-top: 3px;
+  padding-right: 3px;
+  padding-bottom: 3px;
+  padding-left: 3px;
   color: #000000;
   background-color: #cccccc;
-  font-family: Arial,Helvetica,sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: x-large;
   margin-top: 35px;
   clear: both;
 }
+
 h3 {
-  font-family: Arial,Helvetica,sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: large;
 }
+
 h4 {
-  font-family: Arial,Helvetica,sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: medium;
 }
+
 h5 {
   font-weight: normal;
   font-style: italic;
-  font-family: Arial,Helvetica,sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   padding-bottom: 0px;
 }
+
 .notes {
   text-decoration: underline;
 }
+
 ol, ul {
   margin-left: 0px;
   padding-left: 30px;
 }
+
 blockquote, dd {
   margin-left: 30px;
   margin-right: 0px;
   padding-left: 0px;
 }
+
 tr {
   vertical-align: baseline;
 }
+
 th {
   background-color: #eeeeee;
   text-align: left;
 }
+
 .tl {
   background-color: #eeeeee;
 }
+
 sub, sup {
   font-size: smaller;
 }
+
 .rightbox {
-  margin: 5px 0 10px 15px;
+  margin-top: 5px;
+  margin-right: 0px;
+  margin-bottom: 10px;
+  margin-left: 15px;
   float: right;
 }
+
 .leftbox {
-  margin: 5px 15px 10px 0;
+  margin-top: 5px;
+  margin-right: 15px;
+  margin-bottom: 10px;
+  margin-left: 0px;
   float: left;
 }
+
 .lefticon {
-  margin: 3px 5px 3px 0;
+  margin-top: 3px;
+  margin-right: 5px;
+  margin-bottom: 3px;
+  margin-left: 0px;
   float: left;
 }
+
 .righticon {
-  margin: 3px 0 3px 5px;
+  margin-top: 3px;
+  margin-right: 0px;
+  margin-bottom: 3px;
+  margin-left: 5px;
   float: right;
 }
+
 .figure, .leftbox, .rightbox {
   font-size: smaller;
 }
+
 body {
   background-color: #ffffff;
 }
+
 em {
   color: blue;
 }
+
 strong {
   color: red;
 }
+
+sub, sup {
+  font-size: smaller;
+}
+
 a:link {
   color: #000066;
 }
+
 a:visited {
   color: #660066;
 }
+
 .abstract {
   font-style: italic;
   text-align: center;
 }
+
 .symbol {
-  font-family: Arial,Helvetica,sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
 }
+
+.current {
+  font-weight: bold;
+  color: #000099;
+}
+

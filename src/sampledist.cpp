@@ -1,3 +1,6 @@
+#include "parser.h"
+#include "utils.h"
+#include "moment.h"
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
@@ -9,9 +12,7 @@
 #include <assert.h>
 #include <algorithm>
 
-#include "parser.h"
-#include "utils.h"
-#include "moment.h"
+#include "unique_array.h"
 
 #define M_2PI (2.*M_PI)
 #define M_3PI (3.*M_PI)
@@ -24,7 +25,7 @@
 #define N_MAX (65536*8)
 
 // data buffers
-static scoped_array<short> inbuffertmp;
+static unique_num_array<short> inbuffertmp;
 static int sumbuffer[2][65536];
 static int64_t nsamp;
 
@@ -130,20 +131,19 @@ static void write2ch(FILE* out, const short* data, size_t len)
 	}
 }
 
-const OptionDesc OptionMap[] = // must be sorted
-{	MkOpt("al",   "add blocks, infinite by default", &addloop)
-,	MkOpt("bn",   "block length, 32768 by default", &N)
-,	MkOpt("df",   "write histogram data to file", &datafile)
-,	MkOpt("exec", "execute shell command after block completed", &execcmd)
-,	MkOpt("in",   "name of input file, default stdin", &infile)
-,	MkOpt("ln",   "number of cycles, 1 by default", &loops)
-,	MkOpt("loop", "infinite input", &loops, UINT_MAX)
-,	MkOpt("plot", "pipe command after block completed", &plotcmd)
-,	MkOpt("psa",  "discard first samples", &discsamp)
-,	MkOpt("rf",   "write raw data file (diagnostics)", &rawfile)
-,	MkOpt("wd",   "write histogram data to hist.dat", &datafile, "hist.dat")
-,	MkOpt("wr",   "write raw data to raw.dat", &rawfile, "raw.dat")
-,	MkOpt("xb" ,  "swap bytes", &swapbytes)
+/// Table of configuration parameters - MUST BE ORDERED BY NAME!
+const reference<const OptionDesc> OptionMap[] =
+{	MkOpt("al",   "add blocks, infinite by default", addloop)
+,	MkOpt("bn",   "block length, 32768 by default", N)
+,	MkOpt("exec", "execute shell command after block completed", execcmd)
+,	MkOpt("in",   "name of input file, default stdin", infile)
+,	MkOpt("ln",   "number of cycles, 1 by default", loops)
+,	MkSet("loop", "infinite input", loops, UINT_MAX)
+,	MkOpt("plot", "pipe command after block completed", plotcmd)
+,	MkOpt("psa",  "discard first samples", discsamp)
+,	MkDOp("wd",   "write histogram data to hist.dat", datafile, "hist.dat")
+,	MkDOp("wr",   "write raw data to raw.dat", rawfile, "raw.dat")
+,	MkOpt("xb" ,  "swap bytes", swapbytes)
 };
 
 int main(int argc, char* argv[])
@@ -160,9 +160,7 @@ int main(int argc, char* argv[])
 	// allocate buffers
 	inbuffertmp.reset(2 * N);
 
-	FILEguard in = infile == NULL
-		? binmode(stdin)
-		: checkedopen(infile, "rb");
+	FILEguard in(infile, "rb");
 
 	// discard first samples
 	fread(inbuffertmp.begin(), sizeof(short), 2 * discsamp, in);
@@ -175,7 +173,7 @@ int main(int argc, char* argv[])
 	unsigned loop = loops;
 	do
 	{
-		fread2(inbuffertmp.begin(), 2 * sizeof(short), N, in);
+		fread2(inbuffertmp.begin(), 2 * sizeof(short) * N, in);
 
 		// write raw data
 		if (rawfile)
@@ -192,8 +190,7 @@ int main(int argc, char* argv[])
 		if (datafile)
 			outdata();
 
-		if (execcmd)
-			system(execcmd);
+		execute(execcmd);
 		if (plotcmd)
 		{	// for gnuplot!
 			puts(plotcmd);

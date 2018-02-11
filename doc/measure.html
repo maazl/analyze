@@ -1,0 +1,177 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>Analyze: How it works</title>
+    <link href="mm.css" rel="stylesheet" type="text/css">
+    <meta content="Marcel M&uuml;ller" name="author">
+  </head>
+  <body>
+    <h1>Analyze: How it works</h1>
+    <a href="index.html">△</a><a href="index.html"> Index</a> <a href="parameter.html">▷
+      Parameters</a> <a href="calibration.html">▷ Calibration</a> <a href="fileformat.html">▷
+      File formats</a> <a href="index.html#download">&rarr;&nbsp;Download</a> <a
+      href="#history">&rarr;&nbsp;History</a> <a href="#todo">&rarr;&nbsp;Todo</a>
+    <a href="index.html#build">&rarr;&nbsp;Build<br>
+    </a><a href="#syntax">▾ Syntax</a> <a href="#list">▾ Alphabetic list</a><br>
+    <a href="#general">▾ General options</a> <a href="#input">▾ Input options</a>
+    <a href="#output">▾ Output options</a> <a href="#control">▾ Control options</a>
+    <a href="#FFT">▾ FFT parameter</a> <a href="#calibrate">▾ Calibration
+      options</a><br>
+    <h2><b><strong><a name="mfft"></a> </strong>FFT analysis</b> (option <a href="parameter.html#_mfft"><tt>mfft</tt></a>)</h2>
+    <p>The FFT mode is intended for <em>measurement of impedance and transfer
+        functions</em>. It calculates as follows:</p>
+    <blockquote>
+      <math>
+        <mrow>
+          <mi>H</mi>
+          <mo>(</mo>
+          <mi>f</mi>
+          <mo>)</mo> </mrow>
+        <mo>=</mo>
+        <mfrac>
+          <mrow>
+            <mi>Z</mi>
+            <mo>(</mo>
+            <mi>f</mi>
+            <mo>)</mo> </mrow>
+          <mrow>
+            <msub>
+              <mi>R</mi>
+              <mi mathvariant="italic">ref</mi> </msub> </mrow> </mfrac>
+        <mo>=</mo>
+        <mfrac>
+          <mrow>
+            <mi>FFT</mi>
+            <mo>(</mo>
+            <mrow>
+              <mi>L</mi>
+              <mo>(</mo>
+              <mi>t</mi>
+              <mo>)</mo> </mrow>
+            <mo>)</mo> </mrow>
+          <mrow>
+            <mi>FFT</mi>
+            <mo>(</mo>
+            <mrow>
+              <mi>R</mi>
+              <mo>(</mo>
+              <mi>t</mi>
+              <mo>)</mo> </mrow>
+            <mo>)</mo> </mrow> </mfrac> </math> </blockquote>
+    <p>with</p>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <thead>
+          <tr>
+            <th>input<br>
+              channel</th>
+            <th>two port<br>
+              measurement</th>
+            <th>impedance<br>
+              measurement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="tl"><var>L</var>(<var>t</var>)</td>
+            <td>response signal<br>
+            </td>
+            <td>voltage <var>U</var>(<var>t</var>)<br>
+            </td>
+          </tr>
+          <tr>
+            <td class="tl"><var>R</var>(<var>t</var>)</td>
+            <td>reference signal<br>
+            </td>
+            <td>current <var>I</var>(<var>t</var>)<br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </blockquote>
+    <h3>Impedance measurement: ESR, ESC, ESL</h3>
+    <p>ESR, ESC and ESL is calculated by fitting <var>Z</var>(<var>f</var>).
+      Therefore the weighted averages in the interval [<a href="parameter.html#_famin"><tt>famin</tt></a>,
+      <a href="parameter.html#_famax"><tt>famax</tt></a>] are calculated as
+      follows: </p>
+    <blockquote> <var>ESR</var> = &lt; <var>a<sub>i</sub></var> &gt; = &lt;
+      re(<var>Z</var>(<var>f</var>)) &gt;<br>
+      <var>ESL</var> = &lt; <var>b<sub>i</sub></var> / <var>&omega;</var> &gt;
+      = &lt; im(<var>Z</var>(<var>f</var>)) / <var>&omega;</var> &gt;<br>
+      <var>ESC</var> = &lt; &minus;<var>b<sub>i</sub></var> &middot; <var>&omega;</var>
+      &gt; = &lt; &minus;im(<var>Z</var>(<var>f</var>)) &middot; <var>&omega;</var>
+      &gt;</blockquote>
+    <p>Of course, only one of ESL or ESC is reasonable, the positive one. The
+      standard deviation of the above average values gives a coarse estimation
+      of the reliability.</p>
+    <p>You will not get reasonable results when the impedance contains
+      components that change with frequency. In this case you should view the <a
+        href="parameter.html#_wd">frequency dependent results</a> in the data
+      file. Electrolytic capacitors tend to show such behavior.</p>
+    <h2><a name="noise"></a>Noise Reference</h2>
+    <p>This program <tt>analyze</tt> generates cyclic noise patterns with
+      adjustable properties, like energy distribution and relatively prime
+      frequencies. The cyclic nature of the patterns makes the spectrum discrete
+      which is ideal for FFT analysis without the need of a window function.</p>
+    <h3>Energy distribution</h3>
+    <p>The program creates the noise reference by inverse Discrete Fourier
+      Transform. The <b>amplitudes</b> of the Fourier coefficients are
+      calculated by:</p>
+    <blockquote>
+      <p><var>r<sub>i</sub></var> = <var>f<sub>i</sub><sup>&kappa;</sup></var></p>
+    </blockquote>
+    <p>The phase angles are chosen randomly.</p>
+    <p>The exponent &kappa; controls the <b>energy distribution</b>. An
+      homogeneous distribution (&kappa;&nbsp;=&nbsp;0) represents white noise.
+      Positive values prefer high frequencies, negative values prefer low
+      frequencies. &kappa;&nbsp;= -1 creates pink noise.</p>
+    <p>All coefficients, outside the <b>frequency range [<var>f<sub>min</sub></var>,
+        <var>f<sub>max</sub></var>]</b>, are purged. This is particularly
+      required when &kappa; &lt; 0, because otherwise the amplitude of the DC
+      component becomes singular. </p>
+    <p>After the inverse Fourier Transform the wave form is normalized to <b>0dB
+        FSR</b> unless another level is selected by option <a href="parameter.html#_gain"><tt>gain</tt></a>.</p>
+    <h2><a name="harmonics"></a>Dealing with harmonics</h2>
+    <p>The harmonics option excludes frequencies from the resulting spectrum if
+    </p>
+    <ul>
+      <li>the current frequency is a harmonic of another used frequency or </li>
+      <li>one of the first <var>n</var> harmonics of the current frequency is a
+        harmonic of another used frequency.</li>
+    </ul>
+    <p>Because of the second condition it is strongly recommended to set the
+      minimum frequency at least higher than the <var>n</var>th harmonic of the
+      ground frequency of the generated pattern. Otherwise a large gap would
+      occur after the first used frequency. </p>
+    <img style="width: 771px; height: 368px;" alt="" src="images/64H3.png"><br>
+    <p>The graph shows an example of the generated frequencies for a 64 sample
+      noise pattern with 3 harmonics and a minimum frequency of 4:</p>
+    <blockquote>
+      <p><samp>analyze fsamp=64 fmin=3 fmax=32 harm3 wspec=noise.dat</samp></p>
+    </blockquote>
+    <p><u>Comments</u><samp> </samp></p>
+    <ul>
+      <li>Frequency 4 is the first after <a href="#_fmin"><tt>fmin</tt></a>.
+        This is always used.</li>
+      <li>Frequency 6 has a collision at its 2nd harmonic with the 3rd harmonic
+        of frequency 4 at frequency 12 and therefore cannot be used because it
+        would make frequency 12 ambiguous.</li>
+      <li>Frequency 5 has also a collision at its 4th harmonic with the 5th
+        harmonic of frequency 4, but both are beyond the maximum harmonic to
+        analyze (3 in this case) and so this does not care.</li>
+      <li>Frequency 8 has a direct collision with the 2nd harmonic of frequency
+        4 and must not be used.</li>
+      <li>Frequency 16 has a direct collision with the 4th harmonic of frequency
+        4. Although this harmonic is not analyzed it might get additional energy
+        by non-linearities, so it is not used either.</li>
+    </ul>
+    <p> In effect the noise pattern contains only energy at the frequencies with
+      red circles. While all the frequencies with red <em>or</em> pink circles
+      are used for analysis. See <a href="http://www.maazl.de/electronic/LS/Noise.html">The
+        Art of Noise</a> for further information.</p>
+    <h2><a name="stereo"></a>Two channel mode</h2>
+    <p><br>
+    </p>
+  </body>
+</html>

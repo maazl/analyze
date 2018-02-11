@@ -1,6 +1,7 @@
 #include "parser.h"
 #include "utils.h"
 #include "mathx.h"
+#include "pcmio.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,7 +16,6 @@
 
 #include <complex>
 using namespace std;
-typedef double fftw_real;
 typedef complex<double> Complex;
 
 #define M_2PI (2.*M_PI)
@@ -38,6 +38,8 @@ static const char* F_data     = NULL;
 static const char* F_res      = NULL;
 static const char* resmode    = "w";
 static const char* F_wav      = NULL;
+static bool        floatout   = false;
+static bool        swapbytes  = false;
 static unsigned    n_rep      = 1;
 //static int chirpphase = 0;
 static const char* execcmd    = NULL;  // shell command to execute after analysis
@@ -45,45 +47,30 @@ static const char* execcmd    = NULL;  // shell command to execute after analysi
 static double      mfact; // Master gain factor
 
 
-static void quantize1(short* dst, const fftw_real* src, size_t count)
-{	const fftw_real* const spe = src + count;
-	while (src != spe)
-	{	register short s = (short)floor(*src++ * mfact + myrand());
-		dst[0] = s;
-		dst[1] = -s;
-		dst += 2;
-	}
-}
-
-static void quantize2(short* dst, const fftw_real* src1, const fftw_real* src2, size_t count)
-{	const fftw_real* const spe = src1 + count;
-	while (src1 != spe)
-	{	dst[0] = (short)floor(*src1++ * mfact + myrand());
-		dst[1] = (short)floor(*src2++ * mfact + myrand());
-		dst += 2;
-	}
-}
-
-const OptionDesc OptionMap[] = // must be sorted
-{	MkOpt("ar",   "append reference file (instead of overwriting)", &resmode, "a")
-,	MkOpt("bn",   "number of samples in one period", &n_fft)
-,	MkOpt("exec", "execute shell command after a frequency completed", &execcmd)
-,	MkOpt("finc", "linear increment for used frequencies", &f_inc)
-,	MkOpt("flog", "logarithmic increment for used frequencies", &f_log)
-,	MkOpt("fmax", "maximum frequency", &f_max)
-,	MkOpt("fmin", "minimum frequency", &f_min)
-,	MkOpt("fsamp","sampling frequency, 48k by default", &f_samp)
-,	MkOpt("gm",   "gain in dB", &mgain)
-,	MkOpt("harm", "use harmonics", &n_harmonic)
-,	MkOpt("ln" ,  "number of cycles", &n_rep)
-,	MkOpt("loop", "infinite output", &n_rep, 0U)
-,	MkOpt("mst",  "two channel mode", &stereo)
-,	MkOpt("msweep","sweep mode", &sweep)
-,	MkOpt("scale","noise type", &scalepow)
+/// Table of configuration parameters - MUST BE ORDERED BY NAME!
+const reference<const OptionDesc> OptionMap[] = // must be sorted
+{	MkSet("ar",   "append reference file (instead of overwriting)", resmode, "a")
+,	MkOpt("bn",   "number of samples in one period", n_fft)
+,	MkOpt("exec", "execute shell command after a frequency completed", execcmd)
+,	MkSet("ff32", "32 bit floating point format", floatout, true)
+,	MkSet("fi16", "16 bit integer format (default)", floatout, false)
+,	MkOpt("finc", "linear increment for used frequencies", f_inc)
+,	MkOpt("flog", "logarithmic increment for used frequencies", f_log)
+,	MkOpt("fmax", "maximum frequency", f_max)
+,	MkOpt("fmin", "minimum frequency", f_min)
+,	MkOpt("fsamp","sampling frequency, 48k by default", f_samp)
+,	MkOpt("gm",   "gain in dB", mgain)
+,	MkOpt("harm", "use harmonics", n_harmonic)
+,	MkOpt("ln" ,  "number of cycles", n_rep)
+,	MkSet("loop", "infinite output", n_rep, 0U)
+,	MkOpt("mst",  "two channel mode", stereo)
+,	MkOpt("msweep","sweep mode", sweep)
+,	MkOpt("scale","noise type", scalepow)
 //,	MkOpt("sync", "length of sync pattern", &synclen)
-,	MkOpt("wd",   "write design data", &F_data)
-,	MkOpt("wr",   "write reference signal", &F_res)
-,	MkOpt("ww",   "write PCM data", &F_wav)
+,	MkOpt("wd",   "write design data file", F_data)
+,	MkOpt("wr",   "write reference signal", F_res)
+,	MkOpt("ww",   "write PCM data", F_wav)
+,	MkOpt("xb" ,  "swap bytes", swapbytes)
 };
 
 
@@ -113,8 +100,8 @@ int main(int argc, char**argv)
 	fprintf(stderr, "imin=%zi imax=%zi finc=%f flog=%f\n", i_min, i_max, f_inc, f_log);
 
 	// generate coefficients
-	scoped_fftw_arr<fftw_real> fftbuf((stereo + 1) * (n_fft + 1));
-	scoped_array<int> harmonics(n_fft + 2);
+	unique_fftw_arr<fftw_real> fftbuf((stereo + 1) * (n_fft + 1));
+	unique_num_array<int> harmonics(n_fft + 2);
 	fftbuf.clear(); // all coefficients -> 0
 	harmonics.clear();
 	size_t fcount = 0; // number of used frequencies
@@ -172,24 +159,23 @@ int main(int argc, char**argv)
 		}
 	}
 
+	PCMoutput pcmout(floatout ? Format::F32 : swapbytes ? Format::I16_SWAP : Format::I16);
+
 	if (F_wav || F_res)
 	{	FILEguard wavF = NULL;
-		short* buf = NULL; // Buffer for raw sample data
+		unique_num_array<char> outbuf; // Buffer for raw sample data
 
 		if (F_wav)
-		{	wavF = strcmp(F_wav, "-") != 0
-				? checkedopen(F_wav, "wb")
-				: binmode(stdout);
+		{	wavF = checkedopen(F_wav, "wb");
+			outbuf.reset(pcmout.BytesPerSample * n_fft);
 		}
 
 		if (sweep)
 		{	// Sweep mode
-			scoped_array<fftw_real> sampbuf(n_fft);
+			unique_num_array<fftw_real> sampbuf(n_fft);
 
 			if (F_wav)
-			{	buf = new short[2*n_fft];
-				wavheader(wavF, n_rep ? 2*n_fft * n_rep * fcount : 0x1fffffdc, f_samp);
-			}
+				pcmout.WAVheader(wavF, n_fft * n_rep * fcount, f_samp);
 
 			// for each frequency
 			for (size_t i = i_min; i <= i_max; ++i)
@@ -208,16 +194,16 @@ int main(int argc, char**argv)
 						fprintf(of, "%12g\n", *sp);
 				}
 
-				if (execcmd)
-					system(execcmd);
+				execute(execcmd);
 
 				// and quantize
 				if (F_wav)
-				{	quantize1(buf, sampbuf.begin(), n_fft);
+				{	pcmout.convert(sampbuf, outbuf);
 
 					// Output
 					size_t j = n_rep;
-					do fwrite(buf, 2*n_fft * sizeof(short), 1, wavF);
+					do
+						fwrite2(outbuf.begin(), outbuf.size(), wavF);
 					while (--j);
 
 					// cleanup, well not in case of an exception...
@@ -229,10 +215,10 @@ int main(int argc, char**argv)
 			if (!stereo)
 			{
 				// ifft
-				scoped_fftw_arr<fftw_real> sampbuf(n_fft);
-				fftw_plan plan = fftw_plan_r2r_1d(n_fft, fftbuf.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE);
-				fftw_execute(plan);   // IFFT
-				fftw_destroy_plan(plan);
+				unique_fftw_arr<fftw_real> sampbuf(n_fft);
+				fftwf_plan plan = fftwf_plan_r2r_1d(n_fft, fftbuf.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE);
+				fftwf_execute(plan);   // IFFT
+				fftwf_destroy_plan(plan);
 
 				// normalize
 				double fnorm = 0;
@@ -254,9 +240,7 @@ int main(int argc, char**argv)
 
 				// and quantize
 				if (F_wav)
-				{	buf = new short[2*n_fft];
-					quantize1(buf, sampbuf.get(), n_fft);
-				}
+					pcmout.convert(sampbuf, outbuf);
 
 			} else // stereo
 			{
@@ -268,11 +252,11 @@ int main(int argc, char**argv)
 				}
 
 				// ifft
-				scoped_fftw_arr<fftw_real> sampbuf(2*n_fft);
-				fftw_plan plan = fftw_plan_r2r_1d(n_fft, NULL, NULL, FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED);
-				fftw_execute_r2r(plan, fftbuf.get(), sampbuf.get());   // IFFT
-				fftw_execute_r2r(plan, fftr, sampbuf.get() + n_fft);
-				fftw_destroy_plan(plan);
+				unique_fftw_arr<fftw_real> sampbuf(2*n_fft);
+				fftwf_plan plan = fftwf_plan_r2r_1d(n_fft, NULL, NULL, FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED);
+				fftwf_execute_r2r(plan, fftbuf.get(), sampbuf.get());   // IFFT
+				fftwf_execute_r2r(plan, fftr, sampbuf.get() + n_fft);
+				fftwf_destroy_plan(plan);
 
 				// normalize
 				{	double fnorm = 0;
@@ -297,22 +281,20 @@ int main(int argc, char**argv)
 
 				// and quantize
 				if (F_wav)
-				{	buf = new short[2*n_fft];
-					quantize2(buf, sampbuf.begin(), sampbuf.begin() + n_fft, n_fft);
-				}
+					pcmout.convert(sampbuf.slice(0, n_fft), sampbuf.slice(n_fft, n_fft), outbuf);
 			} // if (stereo)
 
 			if (F_wav)
-			{	wavheader(wavF, n_rep ? 2*n_fft * n_rep : 0x1fffffdc, f_samp);
+			{	pcmout.WAVheader(wavF, n_fft * n_rep, f_samp);
 				// Output loop
-				do fwrite(buf, 2*n_fft * sizeof(short), 1, wavF);
+				do
+					fwrite2(outbuf.begin(), outbuf.size(), wavF);
 				while (--n_rep);
 				// cleanup, well not in case of an exception...
 			}
 
 		} // if (sweep)
 
-		delete[] buf;
 	} // if (F_wav || F_res)
 }
 

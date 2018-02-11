@@ -1,0 +1,522 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>Analyze: File formats</title>
+    <link href="mm.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <script type="text/javascript" async="" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML">
+    </script>
+    <h1>Analyze: File formats</h1>
+    <a href="index.html">△ Index</a> <a href="#overview">&rarr;&nbsp;Overview</a>
+    <a href="parameter.html">▷ Parameters</a> <a href="calibration.html">▷
+      Calibration</a>&nbsp;<span class="current"><span class="current">▼</span>
+      File format</span> <a href="index.html#download">&rarr;&nbsp;Download</a>
+    <a href="#history">&rarr;&nbsp;History</a> <a href="#todo">&rarr;&nbsp;Todo</a>
+    <a href="index.html#build">&rarr;&nbsp;Build</a><br>
+    <a href="#data_dat">▾ FFT data</a> <a href="#spectrum_dat">▾ Reference
+      spectrum</a> <a href="#ref_dat">▾ Reference signal</a> <a href="#gain_dat">▾
+      Gain correction</a> <a href="#matrix_dat">▾ Matrix correction</a> <a href="#window_dat">▾
+      Window function</a> <a href="#raw_dat">▾ Raw samples</a><br>
+    <p>All files are <em>ASCII, with tab separated, numeric columns</em>. There
+      is a header line starting with a <span style="font-family: monospace;">#</span>.
+      This line is ignored on read.<br>
+      Applications like Gnuplot can process this files directly as well as
+      LibreOffice and even Excel can read them out of the box (simply rename to
+      <tt>*.xls</tt>).</p>
+    <h2><tt><a name="data_dat"></a></tt>FFT data &ndash; <tt>data.dat</tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>$1</td>
+            <td><var>f</var></td>
+            <td>Frequency</td>
+          </tr>
+          <tr>
+            <td>$2</td>
+            <td>|<var>U</var>|</td>
+            <td>Amplitude of <var>U</var>(<var>f</var>) or nominator
+              respectively<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$3</td>
+            <td>arg <var>U</var></td>
+            <td>Phase angle of <var>U</var>(<var>f</var>) or nominator
+              respectively in degrees<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$4</td>
+            <td>|<var>I</var>|</td>
+            <td>Amplitude of <var>I</var>(<var>f</var>) or denominator
+              respectively<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$5</td>
+            <td>arg&nbsp;<var>I</var></td>
+            <td>Phase angle of <var>I</var>(<var>f</var>) or denominator
+              respectively in degrees<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$6</td>
+            <td>|<var>U</var>/<var>I</var>|</td>
+            <td>Amplitude of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
+              or transfer function</td>
+          </tr>
+          <tr>
+            <td>$7</td>
+            <td>arg <var>U</var>/<var>I</var></td>
+            <td>Phase angle of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
+              or transfer function in degrees<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$8</td>
+            <td>re&nbsp;<var>U</var>/<var>I</var></td>
+            <td>Real part of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
+              or transfer function</td>
+          </tr>
+          <tr>
+            <td>$9</td>
+            <td>im <var>U</var>/<var>I</var></td>
+            <td>Imaginary part of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
+              or transfer function</td>
+          </tr>
+          <tr>
+            <td>$10</td>
+            <td><var>weight</var></td>
+            <td>Relative weight</td>
+          </tr>
+          <tr>
+            <td>$11</td>
+            <td><var>delay</var></td>
+            <td>Group delay d(<var>U</var>/<var>I</var>)/d<var>&omega;</var><br>
+            </td>
+          </tr>
+          <tr>
+            <td>$12</td>
+            <td><var>harmonic</var></td>
+            <td>Ordinal of the harmonic. Negative values indicate the second
+              channel in case <a href="#_mst">two channel mode</a> is activated</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>From the above columns you may calculate the following parameters for
+        one-port measurements:</p>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Symbol</th>
+            <th>Description</th>
+            <th>Formula</th>
+            <th>Unit</th>
+            <th>Remarks</th>
+          </tr>
+          <tr>
+            <td valign="middle"><var>ESR</var></td>
+            <td valign="middle">equivalent series resistor</td>
+            <td valign="middle">$8 &middot; <var>R<sub>ref</sub></var></td>
+            <td valign="middle">&Omega;</td>
+            <td><br>
+            </td>
+          </tr>
+          <tr>
+            <td valign="middle"><var>ESC</var></td>
+            <td valign="middle">equivalent series capacitor<br>
+            </td>
+            <td valign="middle">
+              <math>
+                <mfrac>
+                  <mn>-1</mn>
+                  <mrow>
+                    <mn>2</mn>
+                    <mo>⁢</mo>
+                    <mi>&pi;</mi>
+                    <mo>&middot;</mo>
+                    <mi>$9</mi>
+                    <mo>&middot;</mo>
+                    <msub>
+                      <mi>R</mi>
+                      <mi>ref</mi> </msub> </mrow> </mfrac> </math> </td>
+            <td valign="middle">F</td>
+            <td valign="middle">only if $9 &lt; 0</td>
+          </tr>
+          <tr>
+            <td valign="middle"><var>ESL</var></td>
+            <td valign="middle">equivalent series inductor<br>
+            </td>
+            <td valign="middle">
+              <math>
+                <mfrac>
+                  <mrow>
+                    <mi>$9</mi>
+                    <mo>&middot;</mo>
+                    <msub>
+                      <mi>R</mi>
+                      <mi>ref</mi> </msub> </mrow>
+                  <mrow>
+                    <mn>2</mn>
+                    <mo>⁢</mo>
+                    <mi>&pi;</mi>
+                    <mo>&middot;</mo>
+                    <mi>$1</mi> </mrow> </mfrac> </math> </td>
+            <td valign="middle">H</td>
+            <td valign="middle">only if $9 &gt; 0</td>
+          </tr>
+          <tr>
+            <td valign="middle">|<var>Z</var>|</td>
+            <td valign="middle">absolute value of the impedance</td>
+            <td valign="middle">$6 &middot; <var>R<sub>ref</sub></var></td>
+            <td valign="middle">&Omega;</td>
+            <td><br>
+            </td>
+          </tr>
+          <tr>
+            <td valign="middle"><var>Q</var></td>
+            <td valign="middle">quality factor<br>
+            </td>
+            <td valign="middle">|$9| / $8</td>
+            <td>1<br>
+            </td>
+            <td><br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </blockquote>
+    <h2><a name="spectrum_dat"></a> Reference signal (frequency domain) &ndash;
+      <tt>spectrum.dat</tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>$1</td>
+            <td><var>f</var></td>
+            <td>Frequency</td>
+          </tr>
+          <tr>
+            <td>$2</td>
+            <td>|<var>Ref</var>|</td>
+            <td>Amplitude of <var>Ref</var>(<var>f</var>)<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$3</td>
+            <td>arg <var>Ref</var></td>
+            <td>Phase angle of <var>Ref</var>(<var>f</var>)<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$4</td>
+            <td>re <var>Ref</var><var></var></td>
+            <td>Real part of <var>Ref</var>(<var>f</var>)</td>
+          </tr>
+          <tr>
+            <td>$5</td>
+            <td>im <var>Ref</var><var></var></td>
+            <td>Imaginary part of <var>Ref</var>(<var>f</var>)</td>
+          </tr>
+          <tr>
+            <td>$6</td>
+            <td><var>harmonic</var></td>
+            <td>Ordinal of the harmonic. Negative values indicate the second
+              channel in case <a href="#_mst">two channel mode</a> is
+              activated.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p></p>
+    </blockquote>
+    <h2><a name="ref_dat"></a>Reference signal (time domain) &ndash; <tt>ref.dat</tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>-</td>
+            <td>line number<br>
+            </td>
+            <td>Sample index <var>n</var><br>
+            </td>
+          </tr>
+          <tr>
+            <td>$1</td>
+            <td><var>ref</var>(<var>n</var>)</td>
+            <td>Sample value in range [-1..1]<var></var><br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </blockquote>
+    <h2><tt><a name="gain_dat"></a></tt>Gain correction file &ndash;&nbsp;<tt>gain.dat</tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>$1<br>
+            </td>
+            <td><var>f</var></td>
+            <td>Frequency<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$2</td>
+            <td><var>re</var></td>
+            <td>Real part of gain difference</td>
+          </tr>
+          <tr>
+            <td>$3</td>
+            <td><var>im</var></td>
+            <td>Imaginary part of gain difference</td>
+          </tr>
+          <tr>
+            <td>$4</td>
+            <td><var>abs</var></td>
+            <td>Absolute value of gain difference</td>
+          </tr>
+          <tr>
+            <td>$5</td>
+            <td><var>arg</var></td>
+            <td>Phase angle of gain difference in degrees</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>On input (option <a href="#_gr"><tt>gr</tt></a><a href="#_gd"><tt></tt></a>)
+        only the first three columns are used.</p>
+    </blockquote>
+    <h2><a name="zero_dat"></a>Matrix correction file &ndash; <tt>matrix.dat</tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>$1<br>
+            </td>
+            <td><var>f</var></td>
+            <td>Frequency</td>
+          </tr>
+          <tr>
+            <td>$2</td>
+            <td>re <var>c<sub>ll</sub></var></td>
+            <td>Real part of coefficient <var>c<sub>ll</sub></var></td>
+          </tr>
+          <tr>
+            <td>$3</td>
+            <td>im&nbsp;<var>c<sub>ll</sub></var></td>
+            <td>Imaginary part of coefficient <var>c<sub>ll</sub></var></td>
+          </tr>
+          <tr>
+            <td>$4</td>
+            <td>re <var>c<sub>lr</sub></var></td>
+            <td>Real part of coefficient <var>c<sub>lr</sub></var></td>
+          </tr>
+          <tr>
+            <td>$5</td>
+            <td>im <var>c<sub>lr</sub></var></td>
+            <td>Imaginary part of coefficient <var>c<sub>lr</sub></var></td>
+          </tr>
+          <tr>
+            <td>$6</td>
+            <td>re <var>c<sub>rl</sub></var></td>
+            <td>Real part of coefficient <var>c<sub>rl</sub></var></td>
+          </tr>
+          <tr>
+            <td>$7</td>
+            <td>im <var>c<sub>rl</sub></var></td>
+            <td>Imaginary part of coefficient <var>c<sub>rl</sub></var></td>
+          </tr>
+          <tr>
+            <td>$8</td>
+            <td>re <var>c<sub>rr</sub></var></td>
+            <td>Real part of coefficient <var>c<sub>rr</sub></var></td>
+          </tr>
+          <tr>
+            <td>$9</td>
+            <td>im <var>c<sub>rr</sub></var></td>
+            <td>Imaginary part of coefficient <var>c<sub>rr</sub></var></td>
+          </tr>
+          <tr>
+            <td>$10</td>
+            <td>abs&nbsp;<var>c<sub>ll</sub></var></td>
+            <td>Absolute value of coefficient <var>c<sub>ll</sub></var></td>
+          </tr>
+          <tr>
+            <td>$11</td>
+            <td>arg&nbsp;<var>c<sub>ll</sub></var></td>
+            <td>Phase angle of coefficient <var>c<sub>ll</sub></var> in degrees<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$12</td>
+            <td>abs <var>c<sub>lr</sub></var></td>
+            <td>Absolute value of coefficient <var>c<sub>lr</sub></var></td>
+          </tr>
+          <tr>
+            <td>$13</td>
+            <td>arg <var>c<sub>lr</sub></var></td>
+            <td>Phase angle of coefficient <var>c<sub>lr</sub></var> in degrees</td>
+          </tr>
+          <tr>
+            <td>$14</td>
+            <td>abs <var>c<sub>rl</sub></var></td>
+            <td>Absolute value of coefficient <var>c<sub>rl</sub></var></td>
+          </tr>
+          <tr>
+            <td>$15</td>
+            <td>arg <var>c<sub>rl</sub></var></td>
+            <td>Phase angle of coefficient <var>c<sub>rl</sub></var> in degrees</td>
+          </tr>
+          <tr>
+            <td>$16</td>
+            <td>abs <var>c<sub>rr</sub></var></td>
+            <td>Absolute value of coefficient <var>c<sub>rr</sub></var></td>
+          </tr>
+          <tr>
+            <td>$17</td>
+            <td>arg <var>c<sub>rr</sub></var></td>
+            <td>Phase angle of coefficient <var>c<sub>rr</sub></var> in degrees</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>The file contains an array of complex 2&times;2 matrices
+        <math>
+          <mrow>
+            <mo>[</mo>
+            <mtable>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>ll</mi> </msub> </mtd>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>lr</mi> </msub> </mtd> </mtr>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>rl</mi> </msub> </mtd>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>rr</mi> </msub> </mtd> </mtr> </mtable>
+            <mo>]</mo> </mrow> </math>. On input (option <a href="#_zr"><tt>zr</tt></a>)
+        only the first 9 columns are used. <a href="#matrix_cal">&rarr; matrix
+          calibration</a></p>
+      <p>The physical meaning of the coefficients is: </p>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Coefficient</th>
+            <th>Meaning</th>
+          </tr>
+          <tr>
+            <td><var>c<sub>ll</sub></var></td>
+            <td>Channel 1 gain<br>
+            </td>
+          </tr>
+          <tr>
+            <td><var>c<sub>lr</sub></var></td>
+            <td>Cross talk from channel 2 to channel 1<br>
+            </td>
+          </tr>
+          <tr>
+            <td><var>c<sub>rl</sub></var></td>
+            <td>Cross talk from channel 1 to channel 2<br>
+            </td>
+          </tr>
+          <tr>
+            <td><var>c<sub>rr</sub></var></td>
+            <td>Channel 2 gain<br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </blockquote>
+    <h2><tt><a name="window_dat"></a>window.dat</tt> - window function<tt> </tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>-</td>
+            <td>line number<br>
+            </td>
+            <td>sample index <var>n</var><br>
+            </td>
+          </tr>
+          <tr>
+            <td>$1</td>
+            <td><var>win(n)</var></td>
+            <td>Relative value of the window function at index <var>n</var><br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </blockquote>
+    <h2><tt><a name="raw_dat"></a>raw.dat</tt> - raw data<tt> </tt></h2>
+    <blockquote>
+      <table border="1" cellpadding="3" cellspacing="0">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>-</td>
+            <td>line number<br>
+            </td>
+            <td>sample index <var>n</var><br>
+            </td>
+          </tr>
+          <tr>
+            <td>$1</td>
+            <td><var>L(n)</var></td>
+            <td>Channel 1 sample value in range [-1..1)<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$2</td>
+            <td><var>R(n)</var></td>
+            <td>Channel 2 sample value in range [-1..1)<br>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </blockquote>
+  </body>
+</html>

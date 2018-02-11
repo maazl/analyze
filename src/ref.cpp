@@ -78,16 +78,14 @@ int main(int argc, char**argv)
 	const char* dfile = NULL;
 	size_t nrep = 0;
 	switch (argc)
-	{
-	default:
+	{default:
 		die(45, "usage: %s nsamp[/harmonic] sampfreq shape [nrep [file]]]\n"
 				"shape is one of square, triangle, sine, saw-up, saw-down, pulse, parabolic.\n", argv[0]);
-	case 6:
+	 case 6:
 		dfile = argv[5];
-	case 5:
+	 case 5:
 		nrep = atol(argv[4]);
-	case 4:
-		;
+	 case 4:;
 	}
 	size_t nsamp = atol(strtok(argv[1], "/"));
 	const char* cp = strtok(NULL, "");

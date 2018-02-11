@@ -1,10 +1,13 @@
 #include "utils.h"
 
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <inttypes.h>
+#include <cstdio>
+#include <cstdarg>
+#include <cstdlib>
+#include <cstring>
+#include <cinttypes>
+#include <cerrno>
 
+using namespace std;
 
 bool termrq = false;
 
@@ -25,12 +28,20 @@ FILE* binmode(FILE* stream)
 }
 
 FILE* checkedopen(const char* file, const char* mode)
-{	FILE* ret = fopen(file, mode);
-	if (ret == NULL)
-	{	if (strchr(mode, 'w'))
-			die(21, "Failed to open file '%s' for writing.", file);
+{	FILE* ret;
+	if (strcmp(file, "-") == 0)
+	{	if (strchr(mode, 'r'))
+			ret = stdin;
+		else if (strchr(mode, 'w') || strrchr(mode, 'a'))
+			ret = stdout;
 		else
-			die(20, "Failed to open file '%s' for reading.", file);
+			die(28, "invalid open mode.");
+		if (strchr(mode, 'b'))
+			ret = binmode(ret);
+	} else
+	{	ret = fopen(file, mode);
+		if (ret == NULL)
+			die(21, "Failed to open file '%s' for %s: %s", file, strchr(mode, 'r') ? "reading" : "writing", strerror(errno));
 	}
 	return ret;
 }
@@ -51,23 +62,30 @@ void wavheader(FILE* fo, size_t nsamp, size_t sfreq)
 	fwrite(wavhdr, sizeof wavhdr, 1, fo);
 }
 
-void fread2(void* data, size_t size, size_t count, FILE* stream)
+void fread2(void* data, size_t count, FILE* stream)
 {	while (count)
-	{	size_t read = fread(data, size, count, stream);
+	{	size_t read = fread(data, 1, count, stream);
 		if (read == 0)
-			die(27, "Failed to read %zu blocks a %zu bytes.", count, size);
+			die(27, "Failed to read %zu bytes: %s", count, ferror(stream) ? strerror(errno) : "end of file");
 		count -= read;
-		(char*&)data += size * read;
+		(char*&)data += read;
 	}
 }
 
-void fwrite2(const void* buffer, size_t size, size_t count, FILE* stream)
+void fwrite2(const void* buffer, size_t count, FILE* stream)
 {	while (count)
-	{	size_t wrote = fwrite(buffer, size, count, stream);
-		if (wrote <= 0)
-			die(27, "Failed to write %zu blocks a %zu bytes.", count, size);
+	{	size_t wrote = fwrite(buffer, 1, count, stream);
+		if (wrote == 0)
+			die(27, "Failed to write %zu bytes: %s", count, ferror(stream) ? strerror(errno) : "no space left");
 		count -= wrote;
-		(const char*&)buffer += wrote * size;
+		(const char*&)buffer += wrote;
 	}
 }
 
+void execute(const char* cmd)
+{	if (cmd)
+	{	int rc = system(cmd);
+		if (rc)
+			die(25, "Failed to execute external command '%.30s', RC = %i.", cmd, rc);
+	}
+}

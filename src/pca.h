@@ -17,7 +17,7 @@ class PCA
 		N = 0;
 	}
 	void Store(const double(&v)[O], double w = 1);
-	Vector<O-1> Result() const;
+	VectorD<O-1> Result() const;
 };
 
 template <size_t O>
@@ -36,9 +36,9 @@ void PCA<O>::Store(const double(&v)[O], double w)
 }
 
 template <size_t O>
-Vector<O-1> PCA<O>::Result() const
+VectorD<O-1> PCA<O>::Result() const
 {	// design matrix
-	Matrix<O-1,O-1> dm;
+	MatrixD<O-1,O-1> dm;
 	const double* s = Data + O;
 	for (unsigned m = 0; m < O-1; ++m)
 	{	dm[m][m] = *s++;
@@ -47,6 +47,6 @@ Vector<O-1> PCA<O>::Result() const
 	}
 	// inverse
  	dm = inverse(dm);
- 	return *(const Vector<O-1>*)&Data[1] * dm;
+ 	return *(const VectorD<O-1>*)&Data[1] * dm;
 }
 

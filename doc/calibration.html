@@ -1,0 +1,325 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+    <title>Analyze: Calibration</title>
+    <link href="mm.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML">
+    </script>
+    <h1>Analyze: Calibration</h1>
+    <a href="index.html">&#9651;</a><a href="index.html"> Index</a> <a href="#overview">&#9661;
+      Overview</a> <a href="parameter.html">&#9655; Parameters</a> <span class="current"></span><span
+      class="current"><span class="current">&#9660;</span> Calibration&nbsp;</span><a
+      href="fileformat.html">&#9655; File format</a> <a href="index.html#download">&rarr;&nbsp;Download</a>
+    <a href="#history">&rarr;&nbsp;History</a> <a href="#todo">&rarr;&nbsp;Todo</a>
+    <a href="index.html#build">&rarr;&nbsp;Build<br>
+    </a><a href="#gain-cal">&#9662; Gain correction</a> <a href="#matrix-cal">&#9662;
+      Matrix correction</a><a href="index.html#build"><br>
+    </a>
+    <h2><a name="gain-cal"></a>Gain correction</h2>
+    <p>The simple gain calibration mode only takes care of the <em>differences</em>
+      in the transfer function between the two input channels. This is
+      sufficient to compensate for tolerances and phase differences between the
+      channels. This is particularly important in <a href="#_diff">differential
+        mode</a>.</p>
+    <p>Note that the gain calibration does not compensate for the absolute
+      transfer function of the sound device in any way. It does not even
+      distinguish between the transfer function of the line output stage and the
+      transfer function of the line input. </p>
+    <h3>How to do gain calibration</h3>
+    <div style="width: 151px;" class="rightbox"> <img style="margin-bottom: 5px;"
+        alt="" src="images/CircuitGainCal.png" height="77" width="151"><br>
+      Schematic how to prepare for gain calibration. </div>
+    <p>Connect both line in channels to one line out channel. Play a white noise
+      and activate the gain correction mode with option <a href="#_gg"><tt>gg</tt></a>.
+      The FFT and sampling parameters should match the parameters used for the
+      subsequent measurements.</p>
+    <p>For high precision it is recommended to use a cyclic reference signal
+      that exactly match the FFT length. You could use the program <a href="noise.html">noise</a>
+      to generate the reference. For synchronized measurements it is essential
+      that the sampling rate of the DAC <em>exactly</em> matches that of the
+      ADC, i.e they have to use the same clock oscillator. This requirement is
+      usually fulfilled if both are on the same sound device. If you have
+      different devices for analog input and output, then you need a world
+      clock. </p>
+    <h3>Result</h3>
+    <div class="rightbox" style="width: 371px;"><img src="images/GainSample.png"
+        alt="Beispiel fr Gainkorrektur" height="234" width="371"><br>
+      Example of gain correction: Terratec XLerate (Aureal AU8820 chip) at 48kHz
+      and an FFT length of 65536 samples, average over 10 cycles.<br>
+      The deviation in the amplitude is with &lt;&nbsp;0,2 dB pretty good, but
+      the channels are obviously not sampled simultaneously. The time difference
+      of &frac12; sample at the Nyquist frequency point to a serial conversion
+      with two way oversampling. </div>
+    <p>The result of the gain calibration is the complex and frequency dependent
+      quotient:</p>
+    <blockquote>
+      <math>
+        <mrow>
+          <mi mathvariant="italic">gain_corr</mi>
+          <mo>(</mo>
+          <mi>f</mi>
+          <mo>)</mo></mrow>
+        <mo>=</mo>
+        <mfrac>
+          <mrow>
+            <mi>FFT</mi>
+            <mo>(</mo>
+            <mi mathvariant="italic">channel 2</mi>
+            <mo>)</mo> </mrow>
+          <mrow>
+            <mi>FFT</mi>
+            <mo>(</mo>
+            <mi mathvariant="italic">channel 1</mi>
+            <mo>)</mo> </mrow> </mfrac> </math> </blockquote>
+    <p>The magnitude of this quotient is a measure of the degree of gain
+      difference between the two channels. A typical value is mainly independent
+      of the frequency and close to but not exactly one. This is due to
+      tolerances in resistors. At low frequencies the difference may increase
+      due to tolerances in the coupling capacitors.</p>
+    <p>The phase angle of the correction shows the synchronization of the
+      channels. Beyond the small differences due to tolerance of the coupling
+      capacitors there are usually no particular deviations. But some sound
+      devices sample the two channels not simultaneously but alternating. In
+      this case there is a linear phase shift.</p>
+    <h3>Using the correction</h3>
+    <p>When using the correction is used with option <a href="#_gr">gr</a> it
+      is only applied to channel 1. So do not use this correction to compensate
+      for a complex transition function or there will be an impact on automatic
+      weight function. </p>
+    <h2><a name="matrix-cal"></a>Matrix correction</h2>
+    <p>The simple gain calibration method above does not compensate for cross
+      talk. So there is a superior calibration method called <em>matrix
+        calibration</em>. It should be preferred at least for impedance
+      measurements. </p>
+    <p>Using
+      <math><msub>
+          <mi>L</mi>
+          <mi>ideal</mi> </msub><mo>&prop;</mo><mi>U</mi></math> and
+      <math><msub>
+          <mi>R</mi>
+          <mi>ideal</mi> </msub><mo>&prop;</mo><mi>I</mi><mo>&middot;</mo><msub>
+          <mi>R</mi>
+          <mi>ref</mi> </msub></math> (<var>L</var> = channel 1, <var>R</var>
+      = channel 2) the real impedance is:</p>
+    <blockquote>
+      <math>
+        <mi>Z</mi>
+        <mo>=</mo>
+        <mrow>
+          <mrow>
+            <mo>[</mo>
+            <mtable>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>L</mi>
+                    <mi>ideal</mi> </msub> </mtd> </mtr>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>R</mi>
+                    <mi>ideal</mi> </msub> </mtd> </mtr> </mtable>
+            <mo>]</mo> </mrow>
+          <mo>&middot;</mo> </mrow>
+        <msub>
+          <mi>R</mi>
+          <mi>ref</mi> </msub> </math> </blockquote>
+    <p>But in fact you can't see <var>L<sub>ideal</sub></var> and <var>R<sub>ideal</sub></var>.
+      What you really record is <var>L<sub>real</sub></var> and<var></var> <var>R<sub>real</sub></var>,
+      a transformation:</p>
+    <blockquote>
+      <math>
+        <mrow>
+          <mrow>
+            <mo>[</mo>
+            <mtable>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>L</mi>
+                    <mi>ideal</mi> </msub> </mtd> </mtr>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>R</mi>
+                    <mi>ideal</mi> </msub> </mtd> </mtr> </mtable>
+            <mo>]</mo> </mrow>
+          <mo>=</mo>
+          <mrow>
+            <mo>[</mo>
+            <mtable>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>ll</mi> </msub> </mtd>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>lr</mi> </msub> </mtd> </mtr>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>rl</mi> </msub> </mtd>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>rr</mi> </msub> </mtd> </mtr> </mtable>
+            <mo>]</mo> </mrow>
+          <mo>&middot;</mo>
+          <mrow>
+            <mo>[</mo>
+            <mtable>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>L</mi>
+                    <mi>real</mi> </msub> </mtd> </mtr>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>R</mi>
+                    <mi>real</mi> </msub> </mtd> </mtr> </mtable>
+            <mo>]</mo> </mrow> </mrow> </math> </blockquote>
+    <p>Of course, all the coefficients <var>c<sub>xx</sub></var> are complex
+      and frequency dependent.</p>
+    <h3>How to do the matrix calibration</h3>
+    <h4>Impedance measurements</h4>
+    <p>The matrix calibration is a two point calibration. In fact you do two
+      calibration measurements. One with <var>Z</var>&nbsp;=&nbsp;0 (<var>L<sub>ideal</sub></var>&nbsp;=&nbsp;0)
+      and another with <var>Z&nbsp;</var>=&nbsp;&infin; (<var>R<sub>ideal</sub></var>&nbsp;=&nbsp;0),
+      in fact a short cut and no connection. The advantage is that this does not
+      only compensate for the sound device but also for the whole measurement
+      setup.</p>
+    <h4>Transfer functions, two port measurements</h4>
+    <div style="width: 340px;" class="rightbox"> <img style="margin-bottom: 5px;"
+        alt="" src="images/CircuitMatrixCal.png" height="100" width="340"><br>
+      Schematic how to prepare for matrix calibration of measurements of
+      transfer functions. </div>
+    <p>In case of two port measurements you usually cannot compensate for the
+      setup. Then you have to compensate for the sound device only. The first
+      calibration is done with the reference signal only connected to channel 2
+      (<var>R</var>) and channel 1 (<var>L</var>) grounded. The second
+      calibration is done the other way around. </p>
+    <h4>Calibration sequence</h4>
+    <p>When the matrix calibration is initiated with option <a href="#_zg"><tt>zg</tt></a>,
+      analyze takes the following steps in sequence:</p>
+    <ol>
+      <li>Discard the first samples. (option <a href="#_psa"><tt>psa</tt></a>)</li>
+      <li>Record <var>n</var> cycles (option <a href="#_ln"><tt>ln</tt></a>)
+        of data.</li>
+      <li>Output a message to setup for the next step to <tt>stderr</tt>.</li>
+      <li>Discard some cycles. (option <a href="#_lp"><tt>lp</tt></a>)<br>
+        In this time you have to change the setup for step two. </li>
+      <li>Record another <var>n</var> cycles.</li>
+      <li>Write the result file (option <a href="#_zg"><tt>zg</tt></a>) and
+        terminate.</li>
+    </ol>
+    <h4>Important notes</h4>
+    <p>It is essential to use <em>absolutely the same reference</em> signal in
+      both steps. The reference therefore must be exactly reproducible. So it
+      cannot be done with white noise but must by cyclic. This implies to use
+      the same output channel of the sound device, too. It is also essential the
+      the <em>phase</em> of the reference signal is 100% correlated in both
+      steps. This is the reason why both measurements have to be done at one
+      single run without closing the sound device in between. The
+      synchronization of the input (ADC) and the output (DAC) have to be stable
+      within less than one sample over the whole measurement. This is only
+      possible if both are controlled by the same crystal oscillator.
+      Fortunately this is naturally ensured as long as both are on the same
+      sound device.</p>
+    <h3>Result </h3>
+    <p>In theory the matrix correction omits all linear errors without the need
+      of an absolute reference. Practically this only works for the correction
+      of sound device itself. For impedance measurements there is one degree of
+      freedom to much. You know neither <var>R<sub>ideal</sub></var> at <var>Z</var>&nbsp;=&nbsp;0
+      nor <var>L<sub>ideal</sub></var> at <var>Z&nbsp;</var>=&nbsp;&infin;
+      and they are not necessarily the same. You could eliminate the additional
+      degree of freedom if you assume that&nbsp;<var></var><var>U<sub>ref</sub></var>&nbsp;&prop;&nbsp;<var>L<sub>ideal</sub></var>&nbsp;+&nbsp;<var>R<sub>ideal</sub></var>
+      =&gt; <var>R<sub>ideal</sub></var> at <var>Z</var>&nbsp;=&nbsp;0 equals
+      <var>L<sub>ideal</sub></var> at <var>Z&nbsp;</var>=&nbsp;&infin;
+      (see option <a href="#_zn"><tt>zn</tt></a>). But this introduces the
+      systematic error that the high current at <var>Z</var>&nbsp;=&nbsp;0
+      causes an additional voltage drop at <em>inductance of the wires</em>.</p>
+    <div class="figure"><img src="images/ZeroSample.png" alt="Beispiel fr Gainkorrektur"
+        height="484" width="748"><br>
+      Example of matrix calibration result: on board Realtek ALC650 codec at 48
+      kHz sampling rate and a <a href="http://www.maazl.de/electronic/LCR/LCR-Adapter.html">self-made
+        probe</a> with 200&Omega; <var>R<sub>ref</sub></var> and an FFT length
+      of 65536 samples, averaged over u10 cycles.<br>
+      The graphs show the diagonal (left) and the non diagonal (right) matrix
+      elements, each with amplitude (top) and phase angle in degrees (bottom).<br>
+      You see a capacitive cross talk from channel 1 to channel 2. The
+      asymmetric cross talk is due to the probe.<br>
+      The phase response of <i>c<sub>ll</sub></i> and <i>c<sub>rr</sub></i>
+      shows a delay of about 12ns (!) between both channels. Note the extremely
+      high accuracy in spite of the 20&micro;s sampling resolution.<br>
+      <i>c<sub>lr</sub></i> is that small (about -70 dB) that its phase (blue)
+      is nearly undetermined. </div>
+    <h3>Using the matrix correction</h3>
+    <p>The matrix correction is applied to the measurement data with option <a
+        href="#_zr"><tt>zr</tt></a>. This calculates the inverse transformation
+      matrix and applies it to the input data before the data is passed to the
+      FFT analysis.</p>
+    <blockquote>
+      <math>
+        <mrow>
+          <mo>[</mo>
+          <mtable>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>L</mi>
+                  <mi>ideal</mi> </msub> </mtd> </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>R</mi>
+                  <mi>ideal</mi> </msub> </mtd> </mtr> </mtable>
+          <mo>]</mo> </mrow>
+        <mo>=</mo>
+        <msup>
+          <mrow>
+            <mo>[</mo>
+            <mtable>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>ll</mi> </msub> </mtd>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>lr</mi> </msub> </mtd> </mtr>
+              <mtr>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>rl</mi> </msub> </mtd>
+                <mtd>
+                  <msub>
+                    <mi>c</mi>
+                    <mi>rr</mi> </msub> </mtd> </mtr> </mtable>
+            <mo>]</mo> </mrow>
+          <mn>-1</mn> </msup>
+        <mo>&middot;</mo>
+        <mrow>
+          <mo>[</mo>
+          <mtable>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>L</mi>
+                  <mi>real</mi> </msub> </mtd> </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>R</mi>
+                  <mi>real</mi> </msub> </mtd> </mtr> </mtable>
+          <mo>]</mo> </mrow> </math> </blockquote>
+  </body>
+</html>
