@@ -74,7 +74,7 @@ bool AnalyzeOut::Setup()
 		if (Cfg.stereo && !Cfg.sweep)
 			sign = -sign;
 		//fprintf(stderr, "f %i %i\n", i, (int)floor(i * f_log + f_inc));
-		i = (unsigned)floor(i * (1+Cfg.f_log) + Cfg.f_inc - .5);
+		i = (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5);
 	 next_f:;
 	}
 	// normalize

@@ -62,12 +62,21 @@ void OptionDesc::Opt<unsigned>::Parse(const char* value) const
 	}
 }
 
-void OptionDesc::Opt<double>::Parse(const char* s) const
-{	if (!s)
+void OptionDesc::Opt<double>::Parse(const char* value) const
+{	if (!value)
 		die(42, "Option %.8s requires a value.", Option.data());
+	int ex = *value == '^';
+	if (ex)
+	{	++value;
+		if (*value == '/');
+		{ ex = -1;
+			++value;
+	}	}
 	unsigned l = UINT_MAX;
-	if (sscanf(s, "%lf%n", &Param, &l) != 1 || l != strlen(s))
-		die(42, "Floating point value expected for option %.8s, found '%s'.", Option.data(), s);
+	if (sscanf(value, "%lf%n", &Param, &l) != 1 || l != strlen(value))
+		die(42, "Floating point value expected for option %.8s, found '%s'.", Option.data(), value);
+	if (ex)
+		Param = pow(2, ex < 0 ? 1/Param : Param);
 }
 
 void OptionDesc::Opt<const char*>::Parse(const char* value) const

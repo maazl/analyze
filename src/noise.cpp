@@ -48,7 +48,7 @@ static double      mfact; // Master gain factor
 
 
 /// Table of configuration parameters - MUST BE ORDERED BY NAME!
-const reference<const OptionDesc> OptionMap[] = // must be sorted
+const reference<const OptionDesc> OptionMap[] =
 {	MkSet("ar",   "append reference file (instead of overwriting)", resmode, "a")
 ,	MkOpt("bn",   "number of samples in one period", n_fft)
 ,	MkOpt("exec", "execute shell command after a frequency completed", execcmd)

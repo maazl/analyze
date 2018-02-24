@@ -9,10 +9,10 @@
     <script type="text/javascript" async="" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML">
     </script>
     <h1>Analyze: Configuration parameters</h1>
-    <a href="index.html">&#9651;</a><a href="index.html"> Index</a> <a href="#overview">&#9661;
-      Overview</a> <span class="current">&#9660; Parameters</span> <a href="calibration.html">&#9655;
-      Calibration</a> <a href="fileformat.html">&#9655; File formats</a> <a href="index.html#download">&rarr;&nbsp;Download</a>
-    <a href="#history">&rarr;&nbsp;History</a> <a href="#todo">&rarr;&nbsp;Todo</a>
+    <a href="index.html">&#9651;</a><a href="index.html"> Index</a> <span class="current">&#9660;
+      Parameters</span> <a href="calibration.html">&#9655; Calibration</a> <a href="fileformat.html">&#9655;
+      File formats</a> <a href="index.html#download">&rarr;&nbsp;Download</a> <a
+      href="#history">&rarr;&nbsp;History</a> <a href="#todo">&rarr;&nbsp;Todo</a>
     <a href="index.html#build">&rarr;&nbsp;Build</a><a href="#syntax"><br>
       &#9662; Syntax</a> <a href="#list">&#9662; Alphabetic list</a> <a href="#general">&#9662;
       General options</a> <a href="#input">&#9662; Input options</a> <a href="#output">&#9662;
@@ -58,8 +58,8 @@
         and also decimal exponents but no thousands separator. Again the
         individual parameter might restrict the domain.</dd>
       <dt><b>string</b></dt>
-      <dd>String parameters accept any <b>single line string</b>, but the is a
-        length restriction of 1kB. Leading or trailing blanks are kept.<br>
+      <dd>String parameters accept any <b>single line string</b>, but there is
+        a length restriction of 1kB. Leading or trailing blanks are kept.<br>
         Note that the syntax <tt><var>key</var>=</tt> will assign an empty
         string while just <var><tt>key</tt></var> will assign a null value or
         the default for this parameter.</dd>
@@ -160,7 +160,7 @@
         <tr>
           <td><a href="#_flog"><tt>flog</tt></a></td>
           <td>logarithmic increment for used FFT channels</td>
-          <td><tt>0</tt> (off)</td>
+          <td><tt>1</tt> (off)</td>
           <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
         </tr>
         <tr>
@@ -271,7 +271,9 @@
         </tr>
         <tr>
           <td><a href="#_lp"><tt>lp</tt></a></td>
-          <td>pause at <a href="#matrix-cal">matrix calibration</a></td>
+          <td>pause between measurements (at <a href="#matrix-cal">matrix
+              calibration</a> or sweep)<a href="#matrix-cal"><br>
+            </a></td>
           <td><tt>10</tt></td>
           <td><a href="#calibrate">calibration</a><a href="#calibrate_options"></a></td>
         </tr>
@@ -746,11 +748,9 @@ This
         logarithmic increment for used frequencies </dt>
       <dd>This is intended to be used with custom, discrete energy
         distributions. Subsequent used frequencies have at least the distance <var>f<sub>n+1</sub>&nbsp;=
-          f<sub>n</sub></var>&nbsp;&middot;&nbsp;<tt><var>channels</var>&nbsp;+&nbsp;<var>increment</var></tt>
+          f<sub>n</sub></var>&nbsp;&middot; <tt><var>factor</var> + <var>channels</var></tt>
         rounded to the closest frequency in the FFT result. Any channels in
-        between are ignored. </dd>
-      <dd>The setting must be chosen to <a href="noise.html#_finc">match the
-          reference signal</a>.</dd>
+        between are ignored.</dd>
       <dt><tt><a name="_harm"></a><b>harm</b>=<var>n</var></tt> - use harmonics</dt>
       <dd>With this option the first <i><tt>n</tt></i> harmonics of any used
         frequency is reserved. In fact it is assumed that the reference signal

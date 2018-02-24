@@ -286,7 +286,7 @@ bool AnalyzeIn::Setup()
 			}
 			if (Cfg.stereo)
 				sign = -sign;
-			i = (unsigned)floor(i * (1 + Cfg.f_log) + Cfg.f_inc - .5);
+			i = (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5);
 		 next_f:;
 		}
 		/*FILE* f = fopen("harm.dat", "w");

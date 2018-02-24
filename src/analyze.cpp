@@ -35,7 +35,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("fftlen", "analysis block size", Cfg.N)
 ,	MkSet("fi16",   "16 bit integer format", Cfg.floatsamp, false)
 ,	MkOpt("finc",   "linear increment for used FFT channels", Cfg.f_inc, 1., +std::numeric_limits<double>::infinity())
-,	MkOpt("flog",   "logarithmic increment for used FFT channels", Cfg.f_log)
+,	MkOpt("flog",   "logarithmic increment for used FFT channels", Cfg.f_log, 1., +std::numeric_limits<double>::infinity())
 ,	MkOpt("fmax",   "upper frequency range for analysis", Cfg.fmax)
 ,	MkOpt("fmin",   "lower frequency range for analysis", Cfg.fmin)
 ,	MkOpt("fsamp",  "sampling frequency, 48k by default", Cfg.srate)

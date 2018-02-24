@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <cstring>
 
+// get rid of many false positives with non-virtual dtor warning.
+//#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 
 /// Abstract base class of command line argument descriptor.
 struct OptionDesc
@@ -23,15 +25,6 @@ struct OptionDesc
 	template <typename T>	struct Opt{}; // invalid type, see specializations below
 	template <typename T>	struct DefOpt;
 	template <typename T>	struct LimitOpt{}; // invalid type, see specializations below
-
-	void PrintDesc(unsigned val) const;
-	void PrintDesc(bool val) const;
-	void PrintDesc(double val) const;
-	void PrintDesc(const char* val) const;
-	void PrintDefDesc(unsigned val, unsigned def) const;
-	void PrintDefDesc(bool val, bool def) const;
-	void PrintDefDesc(double val, double def) const;
-	void PrintDefDesc(const char* val, const char* def) const;
 
 	struct Comparer
 	{	bool operator()(const OptionDesc& opt, const char* val) { return std::strncmp(opt.Option.data(), val, 8) < 0; }
@@ -51,7 +44,7 @@ struct OptionDesc::SetBase : OptionDesc
 	void DoWrite(FILE* out) const;
 };
 template <typename T>
-struct OptionDesc::Set : OptionDesc::SetBase
+struct OptionDesc::Set final : OptionDesc::SetBase
 {	T& Param;
 	const T Value;
 	constexpr Set(cstring<8> opt, const char* desc, T& par, const T& val) : SetBase(opt, desc), Param(par), Value(val) {}
@@ -120,7 +113,7 @@ struct OptionDesc::Opt<const char*> : OptionDesc
 };
 
 template <typename T>
-struct OptionDesc::DefOpt : OptionDesc::Opt<T>
+struct OptionDesc::DefOpt final : OptionDesc::Opt<T>
 {	const T Default;
 	constexpr DefOpt(cstring<8> opt, const char* desc, T& par, T def) : OptionDesc::Opt<T>(opt, desc, par), Default(def) {}
 	virtual void Parse(const char* val) const;
@@ -128,14 +121,14 @@ struct OptionDesc::DefOpt : OptionDesc::Opt<T>
 };
 
 template <>
-struct OptionDesc::LimitOpt<unsigned> : OptionDesc::Opt<unsigned>
+struct OptionDesc::LimitOpt<unsigned> final : OptionDesc::Opt<unsigned>
 {	const unsigned Min;
 	const unsigned Max;
 	constexpr LimitOpt(cstring<8> opt, const char* desc, unsigned& par, unsigned min, unsigned max) : OptionDesc::Opt<unsigned>(opt, desc, par), Min(min), Max(max) {}
 	virtual void Parse(const char* val) const;
 };
 template <>
-struct OptionDesc::LimitOpt<double> : OptionDesc::Opt<double>
+struct OptionDesc::LimitOpt<double> final : OptionDesc::Opt<double>
 {	const double Min;
 	const double Max;
 	constexpr LimitOpt(cstring<8> opt, const char* desc, double& par, double min, double max) : OptionDesc::Opt<double>(opt, desc, par), Min(min), Max(max) {}

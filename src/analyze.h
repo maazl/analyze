@@ -61,7 +61,7 @@ struct Config
 	unsigned binsz = 1;    ///< binsize in FFT channels
 	double fbinsc = 0;     ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
 	double f_inc = 1;      ///< Absolute increment for harmonic table calculation
-	double f_log = 0;      ///< Relative increment for harmonic table calculation
+	double f_log = 1;      ///< Relative increment for harmonic table calculation
 	unsigned harmonic = 0; ///< analyze up to # harmonics
 	bool crosscorr = false;///< Calculate and remove time delay by cross correlation
 	const char* infile = nullptr;     ///< PCM input file name
