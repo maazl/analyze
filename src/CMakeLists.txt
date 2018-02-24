@@ -1,7 +1,3 @@
-# does not work:  SET_PROPERTY(GLOBAL PROPERTY CXX_STANDARD 11)
-# so let's use plan B:
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
 FIND_PACKAGE(Threads REQUIRED)
 
 # Work around for the insufficiency of cmake to handle common dependencies of targets w/o building them repeatedly.

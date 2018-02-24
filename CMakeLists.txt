@@ -6,6 +6,9 @@ IF(NOT CMAKE_BUILD_TYPE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
 PROJECT(analyze CXX C)
+# does not work:  SET_PROPERTY(GLOBAL PROPERTY CXX_STANDARD 11)
+# so let's use plan B:
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # Place results in make root rather than source dir
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
