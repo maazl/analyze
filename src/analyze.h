@@ -30,60 +30,67 @@ struct action
 };
 
 struct Config
-{	bool help = false;     ///< Show detailed help screen
-	fftw_real gainadj[2] = { 1, 1 };///< gain {l, r}
-	unsigned N = 8192;     ///< FFT length
-	unsigned winfn = 0;    ///< window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
-	unsigned srate = 48000;///< sampling rate
-	double fmin = 1E-3;    ///< minimum frequency for FFT analysis
-	double fmax = INFINITY;///< minimum frequency for FFT analysis
-	double famin = 1;      ///< ignore frequencies below famin for calculation of screen output
-	double famax = 1E99;   ///< ignore frequencies above famax for calculation of screen output
-	bool mpca = false;     ///< analysis method PCA
-	bool mfft = false;     ///< analysis method FFT
-	bool mxy = false;      ///< analysis method XY
-	bool sweep = false;    ///< Use sweep instead of noise
-	unsigned purgech = 1;  ///< set the first FFT frequencies to 0
-	unsigned discsamp = 0; ///< skip the first samples
-	bool disctrail = false;///< consume trailing samples after completion
-	unsigned addloop = 1;  ///< add raw data before analysis # times
-	bool incremental = false;///< incremental mode (add all raw data)
-	double rref = 1;       ///< value of the reference resistor in impedance measurements
-	bool floatsamp = false;///< read/write floating samples instead of int16
-	bool swapbytes = false;///< swap bytes on PCM input
-	bool diffmode = false; ///< Differential mode, i.e. denominator I(t) = channel 2 - channel 1
-	bool swapch = false;   ///< Swap input channels L <-> R
-	bool stereo = false;   ///< Stereo aggregate mode (Toggle harmonics)
-	unsigned loops = 1;    ///< number of analysis loops
-	unsigned lpause = 10;  ///< number of loops between zero calibration parts
-	double linphase = 0;   ///< linear phase correction [s]
-	bool normalize = false;///< normalize L+R to 1. for impedance measurements
-	unsigned binsz = 1;    ///< binsize in FFT channels
-	double fbinsc = 0;     ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
-	double f_inc = 1;      ///< Absolute increment for harmonic table calculation
-	double f_log = 1;      ///< Relative increment for harmonic table calculation
-	unsigned harmonic = 0; ///< analyze up to # harmonics
-	bool crosscorr = false;///< Calculate and remove time delay by cross correlation
+{	// general options
+	bool        help = false;         ///< Show detailed help screen
+	const char* cfgout = nullptr;     ///< write effective configuration to this file
+	unsigned    srate = 48000;        ///< sampling rate
+	bool        floatsamp = false;    ///< read/write floating samples instead of int16
+	bool        swapbytes = false;    ///< swap bytes on PCM input
+	unsigned    N = 8192;             ///< FFT or analysis block length
+	// input options
 	const char* infile = nullptr;     ///< PCM input file name
-	const char* datafile = nullptr;   ///< filename for analysis data
-	const char* zeroinfile = nullptr; ///< file name for zero calibration data
-	const char* zerooutfile = nullptr;///< file name for differential zero calibration data
-	const char* gaininfile = nullptr; ///< file name for gain calibration data
-	const char* gainoutfile = nullptr;///< file name for differential gain calibration data
+	filecolumn  overwrt[2];           ///< overwrite channel with ...
 	const char* rawfile = nullptr;    ///< file name for raw data
 	const char* srcfile = nullptr;    ///< file name for input data ASCII output
-	const char* windowfile = nullptr; ///< file name for window data
+	double      rref = 1;             ///< value of the reference resistor in impedance measurements
+	fftw_real   gainadj[2] = { 1, 1 };///< input gain {l, r}
+	unsigned    discsamp = 0;         ///< skip the first samples
+	bool        disctrail = false;    ///< consume trailing samples after completion
+	bool        diffmode = false;     ///< Differential mode, i.e. denominator I(t) = channel 2 - channel 1
+	bool        swapch = false;       ///< Swap input channels L <-> R
+	unsigned    addloop = 1;          ///< add raw data before analysis # times
+	bool        incremental = false;  ///< incremental mode (add all raw data)
+	// output options
+	const char* outfile = nullptr;    ///< PCM output file name
+	double      outgain = 0.;         ///< output gain
 	const char* specfile = nullptr;   ///< file name for frequency domain reference data
 	const char* reffile = nullptr;    ///< file name for time domain reference data
 	const char* refmode = "w";        ///< open mode for time domain reference data
-	const char* outfile = nullptr;    ///< PCM output file name
-	double      outgain = 0.;         ///< output gain
 	double      scalepow = 0;
-	filecolumn  overwrt[2];           ///< overwrite channel with ...
-	const char* cfgout = nullptr;     ///< write effective configuration to this file
-	action      init;      ///< action to take before any processing
-	action      plot;      ///< action to take after analysis step
-	action      post;      ///< action to take after program completion
+	// control options
+	unsigned    loops = 1;            ///< number of analysis loops
+	bool        mpca = false;         ///< analysis method PCA
+	bool        mfft = false;         ///< analysis method FFT
+	bool        mxy = false;          ///< analysis method XY
+	bool        sweep = false;        ///< Use sweep instead of noise
+	bool        stereo = false;       ///< Stereo aggregate mode (Toggle harmonics)
+	action      init;                 ///< action to take before any processing
+	action      plot;                 ///< action to take after analysis step
+	action      post;                 ///< action to take after program completion
+	// FFT parameter
+	const char* datafile = nullptr;   ///< filename for analysis data
+	unsigned    winfn = 0;            ///< window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
+	const char* windowfile = nullptr; ///< file name for window data
+	double      fmin = 1E-3;          ///< minimum frequency for FFT analysis
+	double      fmax = INFINITY;      ///< minimum frequency for FFT analysis
+	double      famin = 1;            ///< ignore frequencies below famin for calculation of screen output
+	double      famax = 1E99;         ///< ignore frequencies above famax for calculation of screen output
+	double      f_inc = 1;            ///< Absolute increment for harmonic table calculation
+	double      f_log = 1;            ///< Relative increment for harmonic table calculation
+	unsigned    purgech = 1;          ///< set the first FFT frequencies to 0
+	unsigned    binsz = 1;            ///< binsize in FFT channels
+	double      fbinsc = 0;           ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
+	double      linphase = 0;         ///< linear phase correction [s]
+	bool        crosscorr = false;    ///< Calculate and remove time delay by cross correlation
+	bool        normalize = false;    ///< normalize L+R to 1. for impedance measurements
+	unsigned    harmonic = 0;         ///< analyze up to # harmonics
+	double (*weightfn)(double, double, double) = &Config::GetWeight;///< weight function
+	// calibration options
+	const char* gaininfile = nullptr; ///< file name for gain calibration data
+	const char* gainoutfile = nullptr;///< file name for differential gain calibration data
+	const char* zeroinfile = nullptr; ///< file name for zero calibration data
+	const char* zerooutfile = nullptr;///< file name for differential zero calibration data
+	unsigned    lpause = 10;          ///< number of loops between zero calibration parts
 
 	static double GetWeight(double a1, double a2, double)
 	{	double w = 1. / (1. / sqr(a1) + 1. / sqr(a2));
@@ -100,8 +107,6 @@ struct Config
 	static double Get1_fWeight(double, double, double f)
 	{	return f ? 1. / f : 0;
 	}
-	/// weight function
-	double (*weightfn)(double, double, double) = &Config::GetWeight;
 };
 
 /// Interface for asynchronous tasks.
