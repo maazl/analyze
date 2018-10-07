@@ -63,6 +63,7 @@ struct Config
 	bool        mfft = false;         ///< analysis method FFT
 	bool        mxy = false;          ///< analysis method XY
 	bool        sweep = false;        ///< Use sweep instead of noise
+	unsigned    sync = 0;             ///< synchronize cycles before start of measurement
 	bool        stereo = false;       ///< Stereo aggregate mode (Toggle harmonics)
 	action      init;                 ///< action to take before any processing
 	action      plot;                 ///< action to take after analysis step
@@ -92,6 +93,7 @@ struct Config
 	const char* zerooutfile = nullptr;///< file name for differential zero calibration data
 	unsigned    lpause = 10;          ///< number of loops between zero calibration parts
 
+	// weight functions
 	static double GetWeight(double a1, double a2, double)
 	{	double w = 1. / (1. / sqr(a1) + 1. / sqr(a2));
 		return std::isfinite(w) ? w : 0.;
@@ -239,7 +241,7 @@ class AnalyzeIn : public ITask
 	};
 };
 
-class AnalyzeOut : public ITask
+class AnalyzeOut final : public ITask
 {private:
 	const Config& Cfg;
 	const double N2f;     ///< Frequency bin size.
@@ -257,7 +259,8 @@ class AnalyzeOut : public ITask
 	AnalyzeOut(const Config& cfg);
 	bool Setup();
 	void Normalize(const unique_fftw_arr<fftw_real>& dst);
-	void Run();
+	virtual void Run();
+	/// Play OutBuf LoopCount times or unless termrq.
 	void PlayLoop();
  public:
 	/// Setup output worker.

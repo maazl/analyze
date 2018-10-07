@@ -12,7 +12,9 @@
 
 /// Abstract base class of command line argument descriptor.
 struct OptionDesc
-{	const cstring<8> Option;
+{	/// Name of the option
+	const cstring<8> Option;
+	/// Description, might be \c nullptr when the option should be hidden from help screen
 	const char* const Description;
 	constexpr    OptionDesc(cstring<8> opt, const char* desc) : Option(opt), Description(desc) {}
 	virtual void Parse(const char* val) const = 0;

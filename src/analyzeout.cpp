@@ -189,9 +189,6 @@ void AnalyzeOut::Run()
 					fprintf(of, "%12g\n", v);
 			}
 
-			/*if (execcmd)
-				system(execcmd);*/
-
 			// and play
 			if (FOut)
 			{	PCMOut.convert(sampbuf, OutBuf);

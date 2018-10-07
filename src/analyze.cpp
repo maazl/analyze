@@ -76,8 +76,9 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkDOp("pte",    "read input data till the end", Cfg.disctrail, true)
 ,	MkOpt("rref",   "reference resistor", Cfg.rref)
 ,	MkOpt("scale",  "noise type", Cfg.scalepow)
+,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 2U)
 ,	MkDOp("wd",     "(over)write FFT data file on the fly", Cfg.datafile, "data.dat")
-,	MkOpt("win",    "select window function [0,5]", Cfg.winfn, 0U, 5U)
+,	MkOpt("win",    "select window function [0..5]", Cfg.winfn, 0U, 5U)
 ,	MkDOp("wraw",   "write raw input data to file", Cfg.rawfile, "raw.dat")
 ,	MkDOp("wref",   "write time domain reference data to file", Cfg.reffile, "ref.dat")
 ,	MkDOp("wspec",  "write frequency domain reference data to file", Cfg.specfile, "spectrum.dat")
@@ -162,11 +163,14 @@ int main(int argc, char* argv[])
 			parser.WriteConfig(FILEguard(Cfg.cfgout, "wt"));
 	}
 
-	Cfg.init.execute();
-
 	srand(clock());
 
-	do_parallel({ AnalyzeOut::Setup(Cfg).get(), AnalyzeIn::Setup(Cfg).get() });
+	auto source = AnalyzeOut::Setup(Cfg);
+	auto drain = AnalyzeIn::Setup(Cfg);
+
+	Cfg.init.execute();
+
+	do_parallel({ source.get(), drain.get() });
 
 	return 0;
 }
