@@ -85,7 +85,7 @@ struct Config
 	double      linphase = 0;         ///< linear phase correction [s]
 	bool        crosscorr = false;    ///< Calculate and remove time delay by cross correlation
 	bool        normalize = false;    ///< normalize L+R to 1. for impedance measurements
-	unsigned    harmonic = 0;         ///< analyze up to # harmonics
+	unsigned    harmonic = 1;         ///< analyze up to # harmonics
 	double (*weightfn)(double, double, double) = &Config::GetWeight;///< weight function
 	// calibration options
 	const char* gaininfile = nullptr; ///< file name for gain calibration data

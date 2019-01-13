@@ -13,7 +13,7 @@ AnalyzeIn::FFTbin::StoreRet AnalyzeIn::FFTbin::StoreBin(unsigned bin)
 	// frequency
 	double f = bin * Parent.N2f;
 	ch = Parent.Harmonics[bin];
-	if ((unsigned)(abs(ch) - 1) >= HA_MAX)
+	if ((unsigned)(abs(ch) - 1) >= Parent.Cfg.harmonic) // skips also ch == 0
 		return Skip;
 	curagg = agg + ch + HA_MAX;
 	unsigned base = bin;        //ch != 0 ? bin/abs(ch) : bin;
@@ -81,10 +81,6 @@ AnalyzeIn::FFTbin::StoreRet AnalyzeIn::FFTbin::StoreBin(unsigned bin)
 	curagg->D /= w;
 	curagg->binc = 0;
 	Zcache = polar(curagg->Zabs, curagg->Zarg);
-	/*if (curagg->f < fmin)
-	 return BelowMin;
-	 if (curagg->f > fmax)
-	 return AboveMax;*/
 	return Ready;
 }
 
@@ -438,12 +434,7 @@ void AnalyzeIn::Run()
 			for (size_t len = 0; len <= Cfg.N / 2; ++len)
 			{	// do calculations and aggregations
 				switch (calc.StoreBin(len))
-				{case FFTbin::AboveMax:
-					// write
-					if (tout && calc.h() > 1)
-						calc.PrintBin(tout);
-				 default:
-					//case FFTbin::BelowMin:
+				{default:
 					//case FFTbin::Aggregated:
 					//case FFTbin::Skip:
 					continue;
@@ -553,12 +544,7 @@ void AnalyzeIn::Run()
 			for (size_t len = 0; len <= Cfg.N / 2; ++len)
 			{	// do calculations and aggregations
 				switch (calc.StoreBin(len))
-				{case FFTbin::AboveMax:
-					// write
-					if (tout && abs(calc.h()) > 1)
-						calc.PrintBin(tout);
-				 default:
-					//case FFTbin::BelowMin:
+				{default:
 					//case FFTbin::Aggregated:
 					//case FFTbin::Skip:
 					continue;
