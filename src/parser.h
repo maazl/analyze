@@ -27,6 +27,7 @@ struct OptionDesc
 	template <typename T>	struct Opt{}; // invalid type, see specializations below
 	template <typename T>	struct DefOpt;
 	template <typename T>	struct LimitOpt{}; // invalid type, see specializations below
+	template <typename T>	struct LimitDefOpt;
 
 	struct Comparer
 	{	bool operator()(const OptionDesc& opt, const char* val) { return std::strncmp(opt.Option.data(), val, 8) < 0; }
@@ -123,18 +124,26 @@ struct OptionDesc::DefOpt final : OptionDesc::Opt<T>
 };
 
 template <>
-struct OptionDesc::LimitOpt<unsigned> final : OptionDesc::Opt<unsigned>
+struct OptionDesc::LimitOpt<unsigned> : OptionDesc::Opt<unsigned>
 {	const unsigned Min;
 	const unsigned Max;
 	constexpr LimitOpt(cstring<8> opt, const char* desc, unsigned& par, unsigned min, unsigned max) : OptionDesc::Opt<unsigned>(opt, desc, par), Min(min), Max(max) {}
 	virtual void Parse(const char* val) const;
 };
 template <>
-struct OptionDesc::LimitOpt<double> final : OptionDesc::Opt<double>
+struct OptionDesc::LimitOpt<double> : OptionDesc::Opt<double>
 {	const double Min;
 	const double Max;
 	constexpr LimitOpt(cstring<8> opt, const char* desc, double& par, double min, double max) : OptionDesc::Opt<double>(opt, desc, par), Min(min), Max(max) {}
 	virtual void Parse(const char* val) const;
+};
+
+template <typename T>
+struct OptionDesc::LimitDefOpt final : OptionDesc::LimitOpt<T>
+{	const T Default;
+	constexpr LimitDefOpt(cstring<8> opt, const char* desc, T& par, T min, T max, T def) : OptionDesc::LimitOpt<T>(opt, desc, par, min, max), Default(def) {}
+	virtual void Parse(const char* val) const;
+	virtual void Print() const;
 };
 
 template <typename T>
@@ -153,6 +162,10 @@ template <typename T>
 constexpr OptionDesc::DefOpt<T> MkDOp(cstring<8> opt, const char* desc, T& par, T def)
 {	return OptionDesc::DefOpt<T>(opt, desc, par, def);
 }
+template <typename T>
+constexpr OptionDesc::LimitDefOpt<T> MkDOp(cstring<8> opt, const char* desc, T& par, T min, T max, T def)
+{	return OptionDesc::LimitDefOpt<T>(opt, desc, par, min, max, def);
+}
 
 template <typename T>
 void OptionDesc::DefOpt<T>::Parse(const char* val) const
@@ -168,6 +181,23 @@ void OptionDesc::DefOpt<T>::Print() const
 	Opt<T>::PrintValue(Opt<T>::Param);
 	fputs(", default: ", stderr);
 	Opt<T>::PrintValue(Default);
+	fputc(')', stderr);
+}
+
+template <typename T>
+void OptionDesc::LimitDefOpt<T>::Parse(const char* val) const
+{	if (!val)
+		LimitOpt<T>::Param = Default;
+	else
+		LimitOpt<T>::Parse(val);
+}
+template <typename T>
+void OptionDesc::LimitDefOpt<T>::Print() const
+{	LimitOpt<T>::PrintPreamble();
+	fputs(" (current: ", stderr);
+	LimitOpt<T>::PrintValue(Opt<T>::Param);
+	fputs(", default: ", stderr);
+	LimitOpt<T>::PrintValue(Default);
 	fputc(')', stderr);
 }
 

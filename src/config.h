@@ -5,7 +5,7 @@
 typedef float fftw_real;
 
 /// Maximum number of harmonics
-#define HA_MAX 5
+#define HA_MAX 5U
 /// Maximum FFT size
 #define N_MAX (65536*8)
 

@@ -65,7 +65,8 @@ struct Config
 	bool        sweep = false;        ///< Use sweep instead of noise
 	unsigned    sync = 0;             ///< synchronize cycles before start of measurement
 	bool        stereo = false;       ///< Stereo aggregate mode (Toggle harmonics)
-	action      init;                 ///< action to take before any processing
+	action      setup;                ///< action to take at program startup
+	action      init;                 ///< action to take before any data processing
 	action      plot;                 ///< action to take after analysis step
 	action      post;                 ///< action to take after program completion
 	// FFT parameter

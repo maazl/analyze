@@ -43,13 +43,13 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkDOp("gg",     "generate gain calibration file", Cfg.gainoutfile, "gain.dat")
 ,	MkDOp("gr",     "use gain calibration file", Cfg.gaininfile, "gain.dat")
 ,	MkSet("h/f",    "use 1/f weight", Cfg.weightfn, &Config::Get1_fWeight)
-,	MkOpt("harm",   "take harmonics into account", Cfg.harmonic)
+,	MkOpt("harm",   "take harmonics into account", Cfg.harmonic, 1U, HA_MAX)
 ,	MkSet("hd",     "use weight function for differential input mode", Cfg.weightfn, &Config::GetWeightD)
 ,	MkSet("he",     "disable weight function", Cfg.weightfn, &Config::GetConstWeight)
 ,	MkSet("help",   "show this help", Cfg.help, true)
 ,	MkDOp("in",     "name of input file to analyze, stdin by default", Cfg.infile, "-")
-,	MkOpt("initcmd","execute shell command before any other processing", Cfg.init.shell)
-,	MkOpt("initout","print string to stdout before any other processing", Cfg.init.out)
+,	MkOpt("initcmd","execute shell command before any data processing", Cfg.init.shell)
+,	MkOpt("initout","print string to stdout before any data processing", Cfg.init.out)
 ,	MkOpt("ln",     nullptr, Cfg.loops)
 ,	MkSet("loop",   "infinite number of loops", Cfg.loops, 0U)
 ,	MkOpt("loops",  "number of loops", Cfg.loops)
@@ -76,7 +76,9 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkDOp("pte",    "read input data till the end", Cfg.disctrail, true)
 ,	MkOpt("rref",   "reference resistor", Cfg.rref)
 ,	MkOpt("scale",  "noise type", Cfg.scalepow)
-,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 2U)
+,	MkOpt("setupcmd","execute shell command at program start", Cfg.setup.shell)
+,	MkOpt("setupout","print string to stdout at program start", Cfg.setup.out)
+,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 0U, SY_MAX, 2U)
 ,	MkDOp("wd",     "(over)write FFT data file on the fly", Cfg.datafile, "data.dat")
 ,	MkOpt("win",    "select window function [0..5]", Cfg.winfn, 0U, 5U)
 ,	MkDOp("wraw",   "write raw input data to file", Cfg.rawfile, "raw.dat")
@@ -162,6 +164,8 @@ int main(int argc, char* argv[])
 		if (Cfg.cfgout)
 			parser.WriteConfig(FILEguard(Cfg.cfgout, "wt"));
 	}
+
+	Cfg.setup.execute();
 
 	srand(clock());
 
