@@ -1,0 +1,4 @@
+set Master -3dB
+set Master unmute
+set Capture -1dB
+set Capture unmute

@@ -7,7 +7,7 @@ ADD_LIBRARY(utils OBJECT
 	parser.cpp
 	nrc.cpp
 	moment.cpp
-	interpolation.cpp
+	filereader.cpp
 	pcminput.cpp
 	pcmoutput.cpp
 )

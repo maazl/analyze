@@ -1,5 +1,5 @@
 set grid
-set size ratio 1.4142 1,1.886
+#set size ratio 1.4142 1,1.886
 set y2range [.01:100]
 set y2tics autofreq
 set logscale xy

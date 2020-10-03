@@ -82,10 +82,11 @@ class PCMinput : public PCMIO
 class PCMoutput : public PCMIO
 {public: // public config
 	const fftw_real Gain;
+	const bool Symmetric;
  private:
 	unique_num_array<char> Buffer;
  public:
-	PCMoutput(Format fmt, fftw_real gain = 1.);
+	PCMoutput(Format fmt, fftw_real gain = 1., bool symmetric = false);
 	void convert(const unique_num_array<fftw_real>& src, const unique_num_array<char>& dst);
 	void convert(const unique_num_array<fftw_real>& src1, const unique_num_array<fftw_real>& src2, const unique_num_array<char>& dst);
 	void write(FILE* out, const unique_num_array<fftw_real>& src);

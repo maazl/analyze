@@ -71,6 +71,12 @@ using MatrixD = Matrix<double,R,C>;
 template <size_t R, size_t C>
 using MatrixC = Matrix<Complex,R,C>;
 
+
+template <typename T, size_t N>
+const T(&operator&(const Vector<T,N>& v))[N]
+{	return *(T(*)[N])v.data();
+}
+
 template <typename T, size_t N>
 Vector<T,N> operator*(const Vector<T,N>& v, T f)
 {	Vector<T,N> r;
@@ -125,6 +131,8 @@ Vector<T,P> operator*(const Vector<T,N>& v, const Matrix<T,N,P>& m)
 		*d++ = scalar(v, &m[0][n], N);
 	return r;
 }
+
+
 
 /*template <int N>
 double det(const MatrixD<N,N>& m)

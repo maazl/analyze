@@ -141,3 +141,6 @@ a:visited {
   color: #000099;
 }
 
+.index a {
+  white-space: nowrap;
+}

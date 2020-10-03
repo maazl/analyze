@@ -9,12 +9,11 @@
 
 using namespace std;
 
-static const char blanks[] = "                ";
+static const char blanks[] = "               \t";
 void OptionDesc::PrintPreamble() const
-{	size_t len = strnlen(Option.data(), 8);
-	fwrite(Option.data(), 1, len, stderr);
+{	size_t len = fwrite(Option.data(), 1, strnlen(Option.data(), 8), stderr);
 	len += PrintParam();
-	fputs(len < sizeof(blanks) ? blanks + len : "\t", stderr);
+	fputs(blanks + min(len, sizeof(blanks) -1), stderr);
 	fputs(Description, stderr);
 }
 
@@ -161,7 +160,7 @@ size_t OptionDesc::Opt<double>::PrintParam() const
 }
 size_t OptionDesc::Opt<const char*>::PrintParam() const
 {	fputs("=<str>", stderr);
-	return 8;
+	return 6;
 }
 
 void OptionDesc::Opt<bool>::PrintValue(bool value)

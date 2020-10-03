@@ -1,5 +1,5 @@
 set grid
-set size noratio
+#set size noratio
 set multiplot
 set size .5,.5
 #set y2range [.01:100]

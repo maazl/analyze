@@ -9,5 +9,4 @@ typedef float fftw_real;
 /// Maximum FFT size
 #define N_MAX (65536*8)
 
-
 #endif // CONFIG_H_

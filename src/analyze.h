@@ -15,6 +15,7 @@
 
 typedef float fftw_real;
 
+typedef double (*WeightFn)(double, double, double);
 
 struct filecolumn        ///< configuration reference to a column within a file
 {	const char* file;      ///< ... file
@@ -48,22 +49,25 @@ struct Config
 	bool        disctrail = false;    ///< consume trailing samples after completion
 	bool        diffmode = false;     ///< Differential mode, i.e. denominator I(t) = channel 2 - channel 1
 	bool        swapch = false;       ///< Swap input channels L <-> R
+	bool        minmax = false;       ///< Show min max
 	unsigned    addloop = 1;          ///< add raw data before analysis # times
 	bool        incremental = false;  ///< incremental mode (add all raw data)
 	// output options
 	const char* outfile = nullptr;    ///< PCM output file name
 	double      outgain = 0.;         ///< output gain
-	const char* specfile = nullptr;   ///< file name for frequency domain reference data
+	bool        nohdr = false;        ///< no WAV header
+	bool        symmout = false;      ///< symmetric output
+	const char* rspecfile = nullptr;  ///< file name for frequency domain reference data input
+	const char* specfile = nullptr;   ///< file name for frequency domain reference data output
 	const char* reffile = nullptr;    ///< file name for time domain reference data
 	const char* refmode = "w";        ///< open mode for time domain reference data
 	double      scalepow = 0;
 	// control options
-	unsigned    loops = 1;            ///< number of analysis loops
+	unsigned    loops = 1;            ///< number of analysis loops, 0 = infinite
 	bool        mpca = false;         ///< analysis method PCA
 	bool        mfft = false;         ///< analysis method FFT
 	bool        mxy = false;          ///< analysis method XY
 	bool        sweep = false;        ///< Use sweep instead of noise
-	unsigned    sync = 0;             ///< synchronize cycles before start of measurement
 	bool        stereo = false;       ///< Stereo aggregate mode (Toggle harmonics)
 	action      setup;                ///< action to take at program startup
 	action      init;                 ///< action to take before any data processing
@@ -86,30 +90,55 @@ struct Config
 	bool        crosscorr = false;    ///< Calculate and remove time delay by cross correlation
 	bool        normalize = false;    ///< normalize L+R to 1. for impedance measurements
 	unsigned    harmonic = 1;         ///< analyze up to # harmonics
-	double (*weightfn)(double, double, double) = &Config::GetWeight;///< weight function
+	WeightFn    weightfn = &Config::GetWeight;///< weight function
+	// synchronization options
+	unsigned    sync = 0;             ///< synchronize cycles before start of measurement
+	//bool        syncfall = true;      ///< use all frequencies in the interval [famin, famax] rather than the design function
+	double      synclevel = .2;       ///< minimum SNR ratio of successful synchronization compared to the SNR of the autocorrelation function
+	double      predelay = .99;       ///< gap in sweep mode after a frequency change and before the measurement starts in units of FFT cycles (N).
 	// calibration options
 	const char* gaininfile = nullptr; ///< file name for gain calibration data
 	const char* gainoutfile = nullptr;///< file name for differential gain calibration data
 	const char* zeroinfile = nullptr; ///< file name for zero calibration data
 	const char* zerooutfile = nullptr;///< file name for differential zero calibration data
-	unsigned    lpause = 10;          ///< number of loops between zero calibration parts
+	double      lpause = 10;          ///< number of seconds between zero calibration parts
+	unsigned    PauseLoops() const    ///< Number of loops for pause between zero calibration parts.
+	{	return (unsigned)ceil(lpause / N * srate); }
 
 	// weight functions
 	static double GetWeight(double a1, double a2, double)
 	{	double w = 1. / (1. / sqr(a1) + 1. / sqr(a2));
-		return std::isfinite(w) ? w : 0.;
+		if (!std::isfinite(w))
+			w = 0;
+		return w + 1E-99;
 	}
 	static double GetWeightD(double a1, double a2, double)
 	{	double a1q = 1 / sqr(a1);
 		double w = 1. / (a1q + sqrt(a1q + 1. / sqr(a1 + a2)) / a2);
-		return std::isfinite(w) ? w : 0.;
+		if (!std::isfinite(w))
+			w = 0;
+		return w + 1E-99;
 	}
 	static double GetConstWeight(double, double, double)
 	{	return 1.;
 	}
 	static double Get1_fWeight(double, double, double f)
-	{	return f ? 1. / f : 0;
+	{	return f ? 1. / f : 1E-99;
 	}
+};
+
+/// Safe wrapper around \c fftwf_plan, calls \c fftwf_destroy_plan on destruction.
+class unique_fftwf_plan final
+{	fftwf_plan Plan;
+ public:
+	unique_fftwf_plan() : Plan(NULL) {}
+	unique_fftwf_plan(fftwf_plan plan) : Plan(plan) {}
+	unique_fftwf_plan(unique_fftwf_plan&) = delete;
+	~unique_fftwf_plan() { fftwf_destroy_plan(Plan); }
+	operator fftwf_plan() const { return Plan; }
+	unique_fftwf_plan& operator=(fftwf_plan plan) { fftwf_destroy_plan(Plan); Plan = plan; return *this; }
+	unique_fftwf_plan& operator=(unique_fftwf_plan&) = delete;
+	fftwf_plan get() const { return Plan; }
 };
 
 /// Interface for asynchronous tasks.
@@ -118,133 +147,227 @@ struct ITask
 	virtual ~ITask() {};
 };
 
+struct SetupData
+{
+	/// Design spectrum in packed half complex format, i.e [a(0), a(1) ... a(N/2-1), b(N/2) ... b(1)].
+	/// a(N/2) and b(0) are zero by definition of half complex FFT.
+	unique_fftw_arr<fftw_real> Design;
+	/// Used frequencies and harmonics.
+	/// @details The table is of size N/2+1. Each entry corresponds to the matching FFT frequency bin
+	/// and can have one of the following values:
+	/// - 0 := the frequency is unused.
+	/// - 1 := the frequency is directly used.
+	/// - n := the frequency is the n-th harmonic of a directly used frequency and not exported.
+	/// - < 0 := the frequency is used by the second channel rather than the first one.
+	unique_num_array<int> Harmonics;
+	/// Number of used frequencies.
+	unsigned FCount;
+};
+
+/// Analysis part
 class AnalyzeIn : public ITask
 {private:
-	const Config& Cfg;
-	const double N2f;                       ///< Frequency bin size
+	const Config& Cfg;                      ///< global configuration
+	const SetupData& SD;                    ///< setup data from AnalyzeOut
+	const double N2f;                       ///< Frequency bin size, i.e. sampling rate / N
 
 	PCMinput PCMIn;
-	FILEguard FIn;
-	double LinPhase;
+	FILEguard FIn;                          ///< Input data stream
+	double LinPhase;                        ///< Delay between signal and reference in seconds/2Pi
+	double SNRAC;                           ///< Signal to noise of autocorrelation function
 	bool ZeroPart2 = false;                 ///< We are in phase 2 of zero calibration
+
+	unsigned NextSamples;                   ///< Number of samples to read for the next loop. Typically Cfg.N.
+	bool NeedSync;                          ///< True if Synchronization is (still) required before main data processing.
+	Complex SyncPhaseVector;                ///< Aggregated result from ExecuteCrossCorrelation
+	double SyncWeight;                      ///< Sync cycle counter, < 0 => not synced since # cycles, > 0 sync since # cycles.
 
 	// data buffers
 	unique_num_array<char> InBufferTmp;     ///< Buffer for raw input
 	unique_fftw_arr<fftw_real> InBuffer[2]; ///< Buffer for numerator and denominator input
+	unique_fftw_arr<fftw_real> IntBuffer[2];///< Buffer for integral (XY mode only)
+	unique_fftw_arr<fftw_real> DiffBuffer[2];///< Buffer for differential (XY mode only)
 	unique_fftw_arr<fftw_real> OvrBuffer[2];///< Buffer for overridden numerator/denominator
 	unique_fftw_arr<fftw_real> FFTBuffer[2];///< Buffer for FFT(inbuffer[])
 	unique_fftw_arr<fftw_real> CCBuffer1;   ///< Buffer for cross correlation temporary data
 	unique_fftw_arr<fftw_real> CCBuffer2;   ///< Buffer for cross correlation of outbuffer
 	unique_num_array<fftw_real> Window;     ///< Buffer for window function
-	unique_num_array<int> Harmonics;        ///< Buffer for harmonics dispatch table
 
+	unique_num_array<fftw_real> Input[2];   ///< First Cfg.N samples slice of InBuffer
 	unique_num_array<double> WSums;         ///< Weights [N+1]
 	unique_num_array<Complex> Gain;         ///< Apply gain correction [N / 2 + 1]
 	unique_num_array<Complex> GainD;        ///< Result of gain calibration [N / 2 + 1]
 	unique_num_array<MatrixC<2,2>> Zero;    ///< Apply matrix correction [N / 2 + 1]
 	unique_num_array<MatrixC<2,2>> ZeroD;   ///< Result matrix calibration [N / 2 + 1]
 
-	fftwf_plan P;                           ///< FFT plan for forward transformation
-	fftwf_plan PI;                          ///< FFT plan for inverse transformation
+	unique_fftwf_plan P;                    ///< FFT plan for forward transformation
+	unique_fftwf_plan PI;                   ///< FFT plan for inverse transformation
 
  private:
-	AnalyzeIn(const Config& cfg);
-	/// Setup
-	/// @return true if \see Run needs to be called asynchronously.
-	bool Setup();
 	/// Do the main work
 	void Run();
+	/// Synchronize with sync pattern
+	/// @post NextSamples (out) [1..Cfg.N] number of samples requested for the next sync try.
+	/// If the result is less than Cfg.N the remaining samples should stay in the input buffer.
+	/// @p NeedSync true: further synchronization needed; false: synchronization succeeded, start main measurement.
+	void DoSync();
+	/// Analyze samples in InBuffer by PCA analysis
+	void DoPCA();
+	/// Analyze samples in InBuffer by FFT analysis
+	void DoFFT();
+	/// Analyze samples in InBuffer by FFT & PCA analysis
+	void DoFFTPCA();
+	/// Analyze samples in InBuffer by hysteresis analysis
+	void DoXY();
+	void ExecuteFFT();
+	/// Calculate cross correlation
+	/// @param in1 FFT of the first input.
+	/// @param in2 FFT of the second input.
+	/// @return Relative phase vector between first and second input in units of the base frequency.
+	/// The amplitude corresponds to the SNR of the cross correlation. The higher the less noise.
+	/// But keep in mind that the autocorrelation of the reference signal also adds noise.
+	Complex ExecuteCrossCorrelation(const unique_fftw_arr<fftw_real>& in1, const unique_fftw_arr<fftw_real>& in2);
+
+	void PrintHdr(FILE* dst);
+
 	static void ReadColumn(const filecolumn& src, const unique_fftw_arr<fftw_real>& dst);
 	static void CreateWindow(const unique_num_array<fftw_real>& dst, int type);
-	void ApplyCalibration(int bin, double f, Complex& U, Complex& I);
-	/// Phase unwrapper
-	/// Adjusts phase by adding a multiple of 2pi so that the result
-	/// is as close as possible to lph.
-	/// @param lph last phase
-	/// @param  phase current calculated phase
-	/// @return unwrapped phase
-	static double UnWrap(double lph, double phase)
-	{	return !std::isfinite(lph) ? phase : phase - M_2PI * floor((phase - lph) / M_2PI + .5);
-	}
-
-	void DoFFT();
+	void ApplyCalibration();
 
  public:
-	/// Setup output worker.
+	/// Create input worker.
 	/// @param cfg global configuration.
-	/// @return nonzero if there is something to do asynchronously.
-	static std::unique_ptr<AnalyzeIn> Setup(const Config& cfg)
-	{	std::unique_ptr<AnalyzeIn> ret(new AnalyzeIn(cfg));
-		if (!ret->Setup()) ret.reset();
-		return ret;
-	}
+	/// @param sd setup information, created by the output worker.
+	AnalyzeIn(const Config& cfg, const SetupData& sd);
+	/// Setup input worker.
+	/// @return true if \see Run needs to be called asynchronously.
+	bool Setup();
 
  private:
-	class FFTbin
-	{public:
-		enum StoreRet
-		{	BelowMin,    ///< frequency less than fmin
-			AboveMax,    ///< frequency above fmax
-			Ready,       ///< calculated values available
-			Aggregated,  ///< bin used for aggregation only
-			Skip         ///< skip this bin because it is a harmonic
-		};
-	 private:
-		struct aggentry
-		{	double f;
-			double Uabs; ///< Magnitude of numerator
+	/// Phase unwrapper
+	/// Adjusts phase by adding a multiple of 2π
+	/// so that the result is as close as possible to the last result.
+	struct Unwrapper
+	{	double Phase;  ///< Unwrapped phase
+		Unwrapper() : Phase(0) {}
+		/// Unwrap phase
+		/// @param phase current calculated phase
+		/// @return unwrapped phase
+		double Unwrap(double phase)
+		{	return Phase = phase - M_2PI * floor((phase - Phase) / M_2PI + .5);
+		}
+	};
+
+	struct GroupDelay : public Unwrapper
+	{	double Delay;
+		/// Unwrap phase and calculate gropup delay.
+		/// The unwrapped phase can be extracted by operator double() after the call.
+		/// @param phase current calculated phase
+		/// @param deltaf frequency difference to the last phase
+		/// @return group delay
+		double Unwrap(double phase, double deltaf)
+		{	double lph = Phase;
+			return Delay = (Unwrapper::Unwrap(phase) - lph) / deltaf;
+		}
+	};
+
+	struct AggEntry
+	{	struct VE
+		{	double Uabs; ///< Magnitude of numerator
 			double Uarg; ///< Phase of numerator
-			double Iabs; ///< Magnitude of denominator
-			double Iarg; ///< Phase of denominator
 			double Zabs; ///< Magnitude of quotient
 			double Zarg; ///< Phase of quotient
 			double D;    ///< Group delay
 			double W;    ///< weight sum
-			// internals
-			double lf;   ///< last frequency (for numerical derivative)
-			double lUarg;///< last phase of numerator
-			double lIarg;///< last phase of denominator
-			double lZarg;///< last phase of quotient
-			double fnext;///< next frequency for bin size
-			unsigned binc;///< number of bins accumulated
+		};
+		double F;
+		double Iabs;   ///< Magnitude of denominator
+		double Iarg;   ///< Phase of denominator
+		VE Val[HA_MAX];///< Values per harmonic
+		AggEntry() { memset(this, 0, sizeof *this); }
+		void next() { memset(this, 0, (char*)&lF - (char*)this); }
+		void add(double f, Complex I, Complex* U, unsigned harm, WeightFn wfn);
+		void finish(unsigned harm);
+	 private:
+		double lF;     ///< last frequency (for numerical derivative)
+		Unwrapper lIarg;///< last phase of denominator
+		Unwrapper lUarg[HA_MAX];///< last phase of numerator
+		GroupDelay lZarg[HA_MAX];///< last phase of quotient
+	};
+
+	class FFTWorker
+	{public:
+		enum StoreRet
+		{	BelowMin,    ///< frequency less than fmin
+			AboveMax,    ///< frequency above fmax
+			Aggregated,  ///< bin used for aggregation only
+			Ready        ///< calculated values available
 		};
 	 private:
+		struct FFTAgg : AggEntry
+		{	unsigned Bins;///< Number of bins accumulated
+		 	unsigned Harm;///< number of used entries in Val
+			double NextF;///< Next frequency
+		};
+
 		AnalyzeIn& Parent;
 
-		aggentry agg[2 * HA_MAX + 1];
-		int ch;
-		aggentry* curagg;
-		Complex Zcache;
+		int Ch;        ///< Channel, i.e. index to Agg
+		FFTAgg Agg[2]; ///< Aggregation per channel
 
 	 public:
-		FFTbin(AnalyzeIn& parent)
-		:	Parent(parent)
-		{	memset(agg, 0, sizeof agg);
-		}
+		FFTWorker(AnalyzeIn& parent) : Parent(parent) {}
 		StoreRet StoreBin(unsigned bin);
 
-		static void PrintHdr(FILE* dst);
 		void PrintBin(FILE* dst) const;
 
-		double f() const    { return curagg->f; }    ///< frequency
-		Complex U() const   { return std::polar(curagg->Uabs, curagg->Uarg); } ///< voltage, numerator or wanted signal
-		double Uabs() const { return curagg->Uabs; } ///< voltage magnitude
-		double Uarg() const { return curagg->Uarg; } ///< voltage phase
-		Complex I() const   { return std::polar(curagg->Iabs, curagg->Iarg); } ///< current, denominator or reference signal
-		double Iabs() const { return curagg->Iabs; } ///< current magnitude
-		double Iarg() const { return curagg->Iarg; } ///< current phase
-		Complex Z() const   { return Zcache; }       ///< impedance, quotient or relative signal
-		double Zabs() const { return curagg->Zabs; } ///< impedance magnitude
-		double Zarg() const { return curagg->Zarg; } ///< impedance phase
-		double D() const    { return curagg->D / M_2PI; } ///< group delay
-		double W() const    { return curagg->W; }    ///< weight
-		int    h() const    { return ch; }           ///< harmonic
+		/// Retrieve aggregated information for harmonic of current frequency and channel
+		const AggEntry& ret() const { return Agg[Ch]; }
+	};
+
+	class SweepWorker
+	{private:
+		struct SweepBin
+		{	Complex Xi;
+			double Sum;
+			double Sum2;
+			SweepBin() : Sum(0), Sum2(0) {}
+			void store(Complex vec, double val)
+			{	Xi += vec * val;
+				Sum += val;
+				Sum2 += sqr(val);
+			}
+			void finish(unsigned n)
+			{	Xi /= n * M_SQRT1_2;
+				Sum /= n;
+				Sum2 /= n;
+			}
+			double noise() const { return sqrt(Sum2 - norm(Xi) - sqr(Sum)); }
+		};
+
+	 private:
+		AnalyzeIn& Parent;
+		FILEguard Out;           ///< Target data file
+		unsigned SweepFrequency; ///< Current frequency index
+		unsigned Channel;        ///< Current channel
+		SweepBin Ana[1 + HA_MAX];///< Reference & per harmonic
+		GroupDelay Delay[2];     ///< per channel group delay
+		Unwrapper Phase[2][HA_MAX-1];///< per channel & harmonic
+
+		unsigned LastFrequency;
+
+	 public:
+		SweepWorker(AnalyzeIn& parent);
+		void DoSweep();
+	 private:
+		void Print();
 	};
 };
 
-class AnalyzeOut final : public ITask
+/// Reference signal part
+class AnalyzeOut final : public ITask, public SetupData
 {private:
-	const Config& Cfg;
+	const Config& Cfg;    ///< global configuration
 	const double N2f;     ///< Frequency bin size.
 	const unsigned FminI; ///< Smallest used frequency bin.
 	const unsigned FmaxI; ///< Highest used frequency bin.
@@ -253,25 +376,26 @@ class AnalyzeOut final : public ITask
  private:
 	PCMoutput PCMOut;
 	FILEguard FOut;       ///< PCM output file handle or nullptr.
-	unsigned FCount;      ///< Number of used frequencies.
-	unique_fftw_arr<fftw_real> FFTBuf; ///< Design spectrum
 	unique_fftw_arr<char> OutBuf;      ///< PCM data
  private:
-	AnalyzeOut(const Config& cfg);
-	bool Setup();
-	void Normalize(const unique_fftw_arr<fftw_real>& dst);
+	static fftw_real MaxAbs(const unique_fftw_arr<fftw_real>& dst);
+	static unsigned CalcLoopCount(const Config& cfg);
+	void CreateDesign();
+	void ReadDesign();
+	void CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& norm, unique_fftwf_plan& plan);
+	void CreatePCM(const unique_num_array<fftw_real>& sampbuf);
 	virtual void Run();
-	/// Play OutBuf LoopCount times or unless termrq.
-	void PlayLoop();
+	void DoSweep();
+	/// Play OutBuf loopcount times or unless termrq.
+	void PlayNoise(unsigned loopcount);
+	void PlaySilence(unsigned loopcount);
  public:
-	/// Setup output worker.
+	/// Create output worker
 	/// @param cfg global configuration.
-	/// @return nonzero if there is something to do asynchronously.
-	static std::unique_ptr<AnalyzeOut> Setup(const Config& cfg)
-	{	std::unique_ptr<AnalyzeOut> ret(new AnalyzeOut(cfg));
-		if (!ret->Setup()) ret.reset();
-		return ret;
-	}
+	AnalyzeOut(const Config& cfg);
+	/// Setup output worker.
+	/// @return true if there is something to do asynchronously.
+	bool Setup();
 };
 
 #endif // ANALYZE_H_

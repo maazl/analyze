@@ -10,9 +10,10 @@ using namespace std;
 #define BUFFERSIZE 65536
 
 
-PCMoutput::PCMoutput(Format fmt, fftw_real gain)
+PCMoutput::PCMoutput(Format fmt, fftw_real gain, bool symmetric)
 :	PCMIO(fmt)
 ,	Gain(fmt == Format::F32 ? gain : 32767 * gain)
+,	Symmetric(symmetric)
 {}
 
 void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num_array<char>& dst)
@@ -25,7 +26,7 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 			while (sp != spe)
 			{	float s = *sp++ * Gain;
 				*dp++ = s;
-				*dp++ = -s;
+				*dp++ = Symmetric ? -s : s;
 		}	}
 		break;
 	 case Format::I16:
@@ -33,15 +34,15 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 			while (sp != spe)
 			{	short s = (short)floor(*sp++ * Gain + myrand());
 				*dp++ = s;
-				*dp++ = -s;
+				*dp++ = Symmetric ? -s : s;
 		}	}
 		break;
 	 case Format::I16_SWAP:
 		{	short* dp = (short*)dst.begin();
 			while (sp != spe)
-			{	short s = bswap((short)floor(*sp++ * Gain + myrand()));
-				*dp++ = s;
-				*dp++ = -s;
+			{	short s = (short)floor(*sp++ * Gain + myrand());
+				*dp++ = bswap(s);
+				*dp++ = bswap(Symmetric ? -s : s);
 		}	}
 		break;
 	}

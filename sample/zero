@@ -1,19 +1,23 @@
+if (!exists("datafile")) datafile='zero.dat'
 i={0,1}
 unset y2tics
+set format x "%.0s%c"
 set grid
 set multiplot
 set size .5,.5
 set origin 0,.5
-plot [fmin:fmax] [.99:1.01] 'zero.dat' u ($0*fsamp/fftlen):9 t '|Cll|' w l, \
-                 'zero.dat' u ($0*fsamp/fftlen):15 t '|Crr|' w l 
+plot [fmin:fmax] [.95:1.05] datafile u 1:10 t '|Cll|' w l, \
+                 datafile u 1:16 t '|Crr|' w l
 set origin 0,0
-plot [fmin:fmax] [-1:1] 'zero.dat' u ($0*fsamp/fftlen):10 t 'arg Cll [ø]' w l, \
-                 'zero.dat' u ($0*fsamp/fftlen):16 t 'arg Crr [ø]' w l 
+plot [fmin:fmax] [-.8:.8] datafile u 1:11 t 'arg Cll [Â°]' w l, \
+                 datafile u 1:17 t 'arg Crr [Â°]' w l
 set origin .5,.5
-plot [fmin:fmax] [-.01:.01] 'zero.dat' u ($0*fsamp/fftlen):11 t '|Clr|' w l, \
-                   'zero.dat' u ($0*fsamp/fftlen):13 t '|Crl|' w l 
+plot [fmin:fmax] [0:.02] datafile u 1:12 t '|Clr|' w l, \
+                 datafile u 1:14 t '|Crl|' w l
 set origin .5,0
-plot [fmin:fmax] [-180:180] 'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($3+$4*i)) t 'arg Clr [ø]' w p pt 0, \
-                   'zero.dat' u ($0*fsamp/fftlen):(180/pi*arg($5+$6*i)) t 'arg Crl [ø]' w p pt 0 
+#plot [fmin:fmax] [-180:180] datafile u 1:13 t 'arg Clr [Â°]' w p pt 0, \
+#                 datafile u 1:15 t 'arg Crl [Â°]' w p pt 0
+plot [fmin:fmax] [*:*] datafile u 1:18 t '|Uo|' w l, \
+                 datafile u 1:24 t '|Io|' w l
 unset multiplot
 

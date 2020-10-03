@@ -4,6 +4,8 @@
 #include <string.h>
 
 
+/// Class to do Principal Component Analysis.
+/// @tparam O Number of components + 1.
 template <size_t O>
 class PCA
 {protected:
@@ -11,12 +13,22 @@ class PCA
 	double Wsum;
 	size_t N;
  public:
-	PCA()
+	void reset()
 	{	memset(Data, 0, sizeof Data);
 		Wsum = 0;
 		N = 0;
 	}
+	PCA()
+	{	reset();
+	}
+	/// Add a single data tuple to the PCA buffer. You can add as many data points as you want,
+	/// but you will need at least O data points for the result to become defined.
+	/// @param v Vector with data value (the first element) and the corresponding values of the components.
+	/// @param w Weight of this value. 1 by default.
 	void Store(const double(&v)[O], double w = 1);
+	/// Calculate the result.
+	/// @return Vector with factors for each component. Using the component function with this factors
+	/// will reproduce the result as accurate as possible.
 	VectorD<O-1> Result() const;
 };
 

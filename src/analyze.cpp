@@ -36,8 +36,8 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkSet("fi16",   "16 bit integer format", Cfg.floatsamp, false)
 ,	MkOpt("finc",   "linear increment for used FFT channels", Cfg.f_inc, 1., +std::numeric_limits<double>::infinity())
 ,	MkOpt("flog",   "logarithmic increment for used FFT channels", Cfg.f_log, 1., +std::numeric_limits<double>::infinity())
-,	MkOpt("fmax",   "upper frequency range for analysis", Cfg.fmax)
-,	MkOpt("fmin",   "lower frequency range for analysis", Cfg.fmin)
+,	MkOpt("fmax",   "upper frequency range for analysis", Cfg.fmax, 1E-16, 1E16)
+,	MkOpt("fmin",   "lower frequency range for analysis", Cfg.fmin, 1E-16, 1E16)
 ,	MkOpt("fsamp",  "sampling frequency, 48k by default", Cfg.srate)
 ,	MkOpt("gain",   "output gain in dB FSR", Cfg.outgain)
 ,	MkDOp("gg",     "generate gain calibration file", Cfg.gainoutfile, "gain.dat")
@@ -53,12 +53,14 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("ln",     nullptr, Cfg.loops)
 ,	MkSet("loop",   "infinite number of loops", Cfg.loops, 0U)
 ,	MkOpt("loops",  "number of loops", Cfg.loops)
-,	MkOpt("lp",     "pause at matrix calibration", Cfg.lpause)
+,	MkOpt("lp",     "pause at matrix calibration", Cfg.lpause, 0., 100.)
 ,	MkSet("mfft",   "enable operation mode FFT", Cfg.mfft, true)
+,	MkDOp("minmax", "Show minimum and maxoimum values of input data", Cfg.minmax, true)
 ,	MkSet("mpca",   "enable operation mode PCA", Cfg.mpca, true)
-,	MkDOp("mst",    "two channel mode", Cfg.stereo, true)
+,	MkDOp("mst",    nullptr, Cfg.stereo, true)
 ,	MkSet("msweep", "use sweep mode", Cfg.sweep, true)
 ,	MkSet("mxy",    "enable operation mode XY (preliminary)", Cfg.mxy, true)
+,	MkDOp("nohdr",  "do not generate WAV header", Cfg.nohdr, true)
 ,	MkOpt("olc",    "column to overwrite numerator", Cfg.overwrt[0].column)
 ,	MkOpt("olf",    "file name to overwrite numerator", Cfg.overwrt[0].file)
 ,	MkOpt("orc",    "column to overwrite denominator (reference)", Cfg.overwrt[1].column)
@@ -72,13 +74,18 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("plotout","print string to stdout after data available", Cfg.plot.out)
 ,	MkOpt("postcmd","execute shell command after completion", Cfg.post.shell)
 ,	MkOpt("postout","print string to stdout after completion", Cfg.post.out)
+,	MkOpt("predelay","setup delay in FFT cycles", Cfg.predelay, 0., 100.)
 ,	MkOpt("psa",    "discard first samples", Cfg.discsamp)
 ,	MkDOp("pte",    "read input data till the end", Cfg.disctrail, true)
 ,	MkOpt("rref",   "reference resistor", Cfg.rref)
+,	MkDOp("rspec",  "read frequency domain reference data from file", Cfg.rspecfile, "spectrum.dat")
 ,	MkOpt("scale",  "noise type", Cfg.scalepow)
 ,	MkOpt("setupcmd","execute shell command at program start", Cfg.setup.shell)
 ,	MkOpt("setupout","print string to stdout at program start", Cfg.setup.out)
-,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 0U, SY_MAX, 2U)
+,	MkDOp("stereo", "two channel mode", Cfg.stereo, true)
+,	MkDOp("symmout","symmetric output", Cfg.symmout, true)
+,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 2U)
+,	MkOpt("synclvl","minimum correlation ratio of successful synchronization", Cfg.synclevel, 0., 1.)
 ,	MkDOp("wd",     "(over)write FFT data file on the fly", Cfg.datafile, "data.dat")
 ,	MkOpt("win",    "select window function [0..5]", Cfg.winfn, 0U, 5U)
 ,	MkDOp("wraw",   "write raw input data to file", Cfg.rawfile, "raw.dat")
@@ -103,9 +110,8 @@ void action::execute() const
 }
 
 
-static void do_parallel(vector<ITask*> tasks)
-{	tasks.erase(std::remove(tasks.begin(), tasks.end(), nullptr), tasks.end());
-	switch (tasks.size())
+static void do_parallel(const vector<ITask*>& tasks)
+{	switch (tasks.size())
 	{case 1:
 		tasks[0]->Run();
 	 case 0:
@@ -113,10 +119,11 @@ static void do_parallel(vector<ITask*> tasks)
 	 default:
 		vector<thread> threads;
 		threads.reserve(tasks.size() - 1);
-		ITask* tn(tasks.back()); tasks.pop_back();
 		for (auto task : tasks)
-			threads.emplace_back(&ITask::Run, task);
-		tn->Run();
+			if (threads.size() < tasks.size() -1)
+				threads.emplace_back(&ITask::Run, task);
+			else
+				task->Run();
 		for (auto& thread : threads)
 			thread.join();
 	}
@@ -147,6 +154,8 @@ int main(int argc, char* argv[])
 			die(34, "Invalid combination of measurement modes, e.g. FFT and XY.");
 		if (Cfg.outfile && strcmp(Cfg.outfile,"-") == 0 && (Cfg.init.out || Cfg.plot.out || Cfg.post.out))
 			die(34, "Options initout/plotout/postout cannot be used when writing PCM data to stdout.");
+		if (!Cfg.loops && (Cfg.sweep || Cfg.zerooutfile))
+			die(34, "Cannot use infinite loop in sweep or zero calibration mode.");
 
 		if (Cfg.fmin > Cfg.fmax)
 			die(34, "Frequency range [%g,%g) empty.", Cfg.fmin, Cfg.fmax);
@@ -169,12 +178,18 @@ int main(int argc, char* argv[])
 
 	srand(clock());
 
-	auto source = AnalyzeOut::Setup(Cfg);
-	auto drain = AnalyzeIn::Setup(Cfg);
+	vector<ITask*> tasks;
+	tasks.reserve(2);
+	unique_ptr<AnalyzeOut> source(new AnalyzeOut(Cfg));
+	if (source->Setup())
+		tasks.emplace_back(source.get());
+	unique_ptr<AnalyzeIn> drain(new AnalyzeIn(Cfg, *source));
+	if (drain->Setup())
+		tasks.emplace_back(drain.get());
 
 	Cfg.init.execute();
 
-	do_parallel({ source.get(), drain.get() });
+	do_parallel(tasks);
 
 	return 0;
 }

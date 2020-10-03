@@ -1,21 +1,18 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
-    <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <title>Analysis software</title>
     <link type="text/css" rel="stylesheet" href="mm.css">
   </head>
   <body>
     <h1>Software to do 1-port or 2-port measurements</h1>
-    <p class="abstract">This is a set of programs and scripts to do <b>impedance
-        measurements</b> and <b>transfer function measurements</b>
-      (network analyzer) with PC sound devices.</p>
-    <a href="#software">&rarr;&nbsp;Components</a> <a href="#setup">&rarr;&nbsp;Setup</a>
-    <a href="#download">&rarr;&nbsp;Download</a>
+    <p class="abstract">This is a set of programs and scripts to do <b>impedance measurements</b> and <b>transfer function
+        measurements</b> (network analyzer) with PC sound devices.</p>
+    <a href="#software">&rarr;&nbsp;Components</a> <a href="#setup">&rarr;&nbsp;Setup</a> <a href="#download">&rarr;&nbsp;Download</a>
     <a href="#build">&rarr;&nbsp;Build</a> <a href="#contact">&rarr;&nbsp;Contact</a>
-    <h2><a name="software"></a>Software components
-    </h2>
-    <table border="1" cellpadding="3" cellspacing="0">
+    <h2><a name="software"></a>Software components </h2>
+    <table cellspacing="0" cellpadding="3" border="1">
       <tbody>
         <tr>
           <th>Function</th>
@@ -28,14 +25,10 @@
           </td>
           <td><i>n/a</i></td>
           <td>platform dependent, <em>external tool required</em></td>
-          <td>You need a platform dependent way to record and play 16 bit
-            two channel audio data via a pipe or provide an appropriate
-            character
-            device.<br>
-            On Linux <tt>arecord</tt> and <tt>aplay</tt> will fit your needs.
-            OS/2 has the
-            application <tt>Playrec</tt> 0.20b21. Win*:
-            don't know.<br>
+          <td>You need a platform dependent way to record and play 16 bit two channel audio data via a pipe or provide an
+            appropriate character device.<br>
+            On Linux <tt>arecord</tt> and <tt>aplay</tt> will fit your needs. OS/2 has the application <tt>Playrec</tt> 0.20b21.
+            Win*: don't know.<br>
           </td>
         </tr>
         <tr>
@@ -71,56 +64,36 @@
           </td>
           <td><var>sample/* </var></td>
           <td>Gnuplot 3.x macros</td>
-          <td>In general you can use any graphics application to show the
-            results. But only macros for Gnuplot are part of this package.<br>
+          <td>In general you can use any graphics application to show the results. But only macros for <a href="http://www.gnuplot.info/">Gnuplot</a>
+            are part of this package.<br>
           </td>
-        </tr>
-        <tr>
-          <td calss="tl">Control</td>
-          <td>measure.cmd</td>
-          <td>REXX skript, <em>OS/2 only!</em></td>
-          <td>The REXX scripts are non-portable.</td>
         </tr>
         <tr>
           <td>Statistical analysis of sound data</td>
           <td><a href="sampledist.html">sampledist</a></td>
           <td>C++ application</td>
-          <td>General analysis of sound input. Might be use for diagnostics as
-            well as to identify compressed audio content.</td>
+          <td>General analysis of sound input. Might be used for diagnostics as well as to identify compressed audio content.</td>
         </tr>
       </tbody>
     </table>
     <h2><a name="download"></a>Download</h2>
-    <p>The program is licensed under <a href="gpl.txt"><i>GNU
-          GENERAL PUBLIC LICENSE</i></a>.</p>
-    <p>Source code and scripts: <a href="../analyze-src.zip">repository
-        snapshot</a></p>
-    <p>OS/2 binaries: <a href="../analyze-os2.zip">bulid with gcc 3.3.5</a>
-      (requires <a href="ftp://ftp.netlabs.org/pub/gcc/libc-0.6.3-csd3.zip">libc063.dll</a>)</p>
-    <h2><a name="build"></a>Build the package
-    </h2>
+    <p>The program is licensed under <a href="gpl.txt"><i>GNU GENERAL PUBLIC LICENSE</i></a>.</p>
+    <p>Source code and scripts: <a href="../analyze-src.zip">repository snapshot</a></p>
+    <p><a href="https://github.com/maazl/analyze">Repository at github<br>
+      </a></p>
+    <h2><a name="build"></a>Build the package </h2>
     <h3>Preconditions</h3>
     <ul>
       <li>A <b>C++11</b> compatible compiler like gcc.</li>
-      <li>The library <b><a href="http://www.fftw.org/">FFTW</a>,
-          version 3.x</b> is required. This must be available as shared or
-        static library and the header files.
-      </li>
+      <li>The library <b><a href="http://www.fftw.org/">FFTW</a>, version 3.x</b> is required. This must be available as shared or
+        static library including the header files. E.g. package <tt>libfftw3-dev</tt> on Debian based Linux distributions.</li>
     </ul>
-    <h3>Configuration</h3>
-    <p>The <tt>Makefile</tt> is currently adjusted to Linux gcc. You have to
-      change that on other
-      platforms. In general adjusting the libraries and the compiler options
-      at the top should be sufficient.</p>
-    <h3>Compile</h3>
-    <pre style="margin-left: 40px;"><b><kbd>cd src</kbd><br><kbd>make</kbd></b></pre>If everything is fine the executables are built in the <tt>bin</tt> folder. Feel free to <a
-href="#contact">contact me</a> if you
-don't succeed.<br>
-
-
-<h2><a name="contact"></a>Contact</h2>
-
-<p>Suggestions, help, complaints (but not too much:-): <img style="width: 131px; height: 14px; vertical-align: middle;"
-alt="Email: mueller Klammeraffe maazl Punkt de" src="m.png" align="middle"></p>
-
-</body></html>
+    <h3>Build</h3>
+    <pre style="margin-left: 40px;"><b><kbd>cmake .</kbd><br><kbd>make</kbd></b></pre>
+    If everything is fine the executables are built in the current folder. Feel free to <a href="#contact">contact me</a> if you
+    don't succeed.<br>
+    <h2><a name="contact"></a>Contact</h2>
+    <p>Suggestions, help, complaints (but not too much:-): <img style="width: 131px; height: 14px; vertical-align: middle;" alt="Email: mueller Klammeraffe maazl Punkt de"
+        src="m.png" align="middle"></p>
+  </body>
+</html>

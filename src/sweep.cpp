@@ -139,7 +139,7 @@ static void analyze(int fi)
 	memset(Ana, 0, sizeof Ana);
 	const double fs = M_2PI * fi / N;
 	const fftw_real* sp1 = inbuffer1.begin();
-	const fftw_real* sp2 = inbuffer1.begin();
+	const fftw_real* sp2 = inbuffer2.begin();
 	for (unsigned i = 0; i < N; ++i)
 	{	// calculate sin/cos sums
 		auto phasevec = polar(1., fs * i);

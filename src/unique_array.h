@@ -6,6 +6,9 @@
 #include <cstring>
 #include <cassert>
 
+/*template<class T> class std::complex;
+template<class T> struct is_complex : std::false_type {};
+template<class T> struct is_complex<std::complex<T>> : std::true_type {};*/
 
 /// Array of T with ownership. Like \see std::unique_ptr<T[]> but with size tracking.
 /// @tparam T Element type.
@@ -23,6 +26,8 @@ class unique_array : public std::unique_ptr<T[],void (*)(void*)>
 	unique_array(unique_array<T>&& r) : base(move(r)), Size(r.Size) { r.Size = 0; }
 	void reset(size_t size = 0) { base::reset(size ? new T[size] : nullptr); Size = size; }
 	void swap(unique_array<T>&& other) noexcept { base::swap(other); std::swap(Size, other.Size); }
+	void assign(const unique_array<T>& r) const { assert(this->size() == r.size()); memmove(this->begin(), r.begin(), this->size() * sizeof(T)); }
+	const unique_array<T>& operator =(const unique_array<T>& r) const { assign(r); return *this; }
 	size_t size() const noexcept { return Size; }
 	T* begin() const noexcept { return base::get(); }
 	T* end() const noexcept { return begin() + Size; }
@@ -45,13 +50,14 @@ class unique_num_array : public unique_array<T>
 	{	assert(start + count <= this->size()); return unique_num_array<T>(this->begin() + start, count, [](void*){}); }
  public: // math operations, require some numeric type T
 	void clear() const { std::memset(this->begin(), 0, this->size() * sizeof(T)); }
-	const unique_num_array<T>& operator =(const unique_num_array<T>& r) const { assert(this->size() == r.size()); memcpy(this->begin(), r.begin(), this->size() * sizeof(T)); return *this; }
+	const unique_num_array<T>& operator =(const unique_num_array<T>& r) const { this->assign(r); return *this; }
 	const unique_num_array<T>& operator +=(const unique_num_array<T>& r) const;
 	const unique_num_array<T>& operator -=(const unique_num_array<T>& r) const;
 	const unique_num_array<T>& operator *=(T r) const;
 	const unique_num_array<T>& operator *=(const unique_num_array<T>& r) const;
 	const unique_num_array<T>& operator /=(T r) const { return *this *= 1/r; }
 	const unique_num_array<T>& operator /=(const unique_num_array<T>& r) const;
+	//std::enable_if<is_complex<T>, const unique_num_array<T>&> conj() const;
 };
 
 template <typename T>
@@ -105,6 +111,14 @@ const unique_num_array<T>& unique_num_array<T>::operator /=(const unique_num_arr
 		*dp++ /= *sp++;
 	return *this;
 }
+
+/*template <typename T>
+std::enable_if<is_complex<T>, const unique_num_array<T>&> unique_num_array<T>::conj() const
+{	T* dp = this->begin();
+	for (T* dp = this->begin(), ep = dp + this->size(); dp != ep; ++dp)
+		*dp = std::conj(*dp);
+	return *this;
+}*/
 
 extern "C"
 {	void *fftwf_malloc(size_t n);
