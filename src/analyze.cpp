@@ -156,6 +156,8 @@ int main(int argc, char* argv[])
 			die(34, "Options initout/plotout/postout cannot be used when writing PCM data to stdout.");
 		if (!Cfg.loops && (Cfg.sweep || Cfg.zerooutfile))
 			die(34, "Cannot use infinite loop in sweep or zero calibration mode.");
+		if (Cfg.stereo & Cfg.symmout)
+			die(34, "Symmetric output not supported in multi channel mode.");
 
 		if (Cfg.fmin > Cfg.fmax)
 			die(34, "Frequency range [%g,%g) empty.", Cfg.fmin, Cfg.fmax);

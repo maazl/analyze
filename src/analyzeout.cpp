@@ -182,8 +182,8 @@ void AnalyzeOut::CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& n
 
 		// IFFT
 		sampbuf.reset(2*Cfg.N);
-		plan = fftwf_plan_r2r_1d(Cfg.N, NULL, NULL, FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED);
-		fftwf_execute_r2r(plan, Design.get(), sampbuf.get());   // IFFT
+		plan = fftwf_plan_r2r_1d(Cfg.N, Design.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED|FFTW_PRESERVE_INPUT);
+		fftwf_execute_r2r(plan, Design.get(), sampbuf.get());
 		fftwf_execute_r2r(plan, Design.get() + Cfg.N + 1, sampbuf.get() + Cfg.N);
 	}
 
