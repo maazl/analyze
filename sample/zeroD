@@ -1,17 +1,3 @@
-set grid
-set multiplot
-set size .5,.5
-set origin 0,.5
-plot [] [.9:1.1] 'zeroD.dat' u 9 t 'Cll.arg' w p pt 0, \
-                 'zeroD.dat' u 15 t 'Crr.arg' w p pt 0 
-set origin 0,0
-plot [] [-10:10] 'zeroD.dat' u 10 t 'Cll.phi' w p pt 0, \
-                 'zeroD.dat' u 16 t 'Crr.phi' w p pt 0 
-set origin .5,.5
-plot [] [-.02:.02] 'zeroD.dat' u 11 t 'Clr.arg' w p pt 0, \
-                   'zeroD.dat' u 13 t 'Crl.arg' w p pt 0 
-set origin .5,0
-plot [] [-180:180] 'zeroD.dat' u 12 t 'Clr.phi' w p pt 0, \
-                   'zeroD.dat' u 14 t 'Crl.phi' w p pt 0 
-unset multiplot
+datafile="zeroD.dat"
+l'zero
 

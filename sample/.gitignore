@@ -1,3 +1,5 @@
 *.dat
 *.wav
+*.nb
 gpenv
+current.cfg
