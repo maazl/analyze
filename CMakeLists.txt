@@ -20,7 +20,7 @@ ADD_SUBDIRECTORY(src)
 # install TARGETS links the executables a second time, taking twice a much time just for nothing.
 # install(TARGETS analyze RUNTIME DESTINATION bin)
 # work around: use install PROGRAMS
-INSTALL(PROGRAMS $<TARGET_FILE:analyze> $<TARGET_FILE:noise> $<TARGET_FILE:sweep> $<TARGET_FILE:ref> $<TARGET_FILE:sampledist> DESTINATION bin)
+INSTALL(PROGRAMS $<TARGET_FILE:analyze> $<TARGET_FILE:ref> $<TARGET_FILE:sampledist> DESTINATION bin)
 
 ENABLE_TESTING()
 ADD_SUBDIRECTORY(test EXCLUDE_FROM_ALL)
