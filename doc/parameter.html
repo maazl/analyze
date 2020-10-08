@@ -430,9 +430,15 @@
           <td><a href="#synchronize">synchronization options</a></td>
         </tr>
         <tr>
-          <td><a href="#_syncmod"><tt>syncmod</tt></a></td>
-          <td>modulation of synchronization signal</td>
-          <td><tt>0.0</tt> (off)</td>
+          <td><a href="#_synend"><tt>synend</tt></a></td>
+          <td>decrease of cross correlation for end of synchronisation</td>
+          <td><tt>0.8</tt></td>
+          <td><a href="#synchronize">synchronization options</a></td>
+        </tr>
+        <tr>
+          <td><a href="#_syncch"><tt>syncch</tt></a></td>
+          <td>synchronization channel</td>
+          <td><tt>3</tt> (both)</td>
           <td><a href="#synchronize">synchronization options</a></td>
         </tr>
         <tr>
@@ -764,15 +770,16 @@ This
         the synchronization pattern has completed.<br>
         This option is <em>strongly recommended for sweep mode</em> because otherwise you might not measure the frequency that you
         intend.</dd>
+      <dt><a name="_syncch"></a><b><tt>syncch</tt></b><tt>=<var>channel</var></tt> - synchronization channel</dt>
+      <dd><tt>1</tt> = use left channel = numerator only<br>
+        <tt>2</tt> = use right channel = denominator only<br>
+        <tt>3</tt> = use both channels (default)</dd>
       <dt><a name="_synclvl"></a><b><tt>synclvl</tt></b><tt>=<var>level</var></tt> - minimum SNR level of the cross correlation
         compared to the auto correlation of the sync reference</dt>
       <dd>This level controls when input samples are considered to be a valid synchronization signal. It is a relative value.</dd>
-      <dt><a name="_syncmod"></a><b><tt>syncmod</tt></b><tt>=<var>depth</var></tt> - modulation of synchronization pattern, range [<tt>0.0</tt>,
-        <tt>1.0</tt>]</dt>
-      <dd>If activated the sync pattern is modulated with the sync cycle number. This causes the amplitude of every 11th frequency
-        to be reduced by this modulation factor.<br>
-        Using modulation simplifies the detection of the end of the synchronization pattern. But it also introduces some distortion
-        due to the modulation side bands.</dd>
+      <dt><a name="_syncend"></a><b><tt>syncend</tt></b><tt>=<var>factor</var></tt> - decrease of cross correlation for end of sync</dt>
+      <dd>If the cross correlation decreases at least to this factor this is the end of the synchronization preamble signal.<br>
+      </dd>
       <dt><a name="_predelay"></a><tt><b>predelay</b>=cycles<var></var></tt> - time to setup in FFT cycles</dt>
       <dd>Number of FFT cycles used for setup. This is a fractional number. Since the total time used must be a multiple of the FFT
         length an additional gap is inserted at the <i>end</i> of the measurement to match the next whole number. Example:<br>

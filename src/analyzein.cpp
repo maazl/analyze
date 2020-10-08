@@ -41,7 +41,7 @@ void AnalyzeIn::AggEntry::finish(unsigned harm)
 		val->Uarg /= w;
 		val->Zabs /= w;
 		val->Zarg /= w;
-		val->D    /= w;
+		val->D    /= w * M_2PI;
 	}
 }
 
@@ -56,7 +56,7 @@ AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin
 		return AboveMax;
 
 	Ch = Parent.SD.Harmonics[bin] < 0;
-	FFTAgg& curagg = Agg[Ch < 0];
+	FFTAgg& curagg = Agg[Ch];
 	// retrieve coefficients
 	Complex I(Parent.FFTBuffer[1][bin], bin && bin != Parent.Cfg.N / 2 ? Parent.FFTBuffer[1][Parent.Cfg.N - bin] : 0);
 	Complex U[HA_MAX];
@@ -100,7 +100,7 @@ void AnalyzeIn::PrintHdr(FILE* dst)
 
 void AnalyzeIn::FFTWorker::PrintBin(FILE* dst) const
 {
-	const FFTAgg& curagg = Agg[Ch < 0];
+	const FFTAgg& curagg = Agg[Ch];
 	Complex Z = polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg);
 	fprintf(dst, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%6i",
 		// f      |Hl|                arg l                          |Hr|         arg r
@@ -327,9 +327,6 @@ void AnalyzeIn::Run()
 		// discard first samples
 		PCMIn.discard(FIn, Cfg.discsamp, InBufferTmp);
 
-	InBuffer[0].clear(); // init with 0 because of incremental mode
-	InBuffer[1].clear();
-
 	NeedSync = Cfg.sync || Cfg.predelay;
 	NextSamples = Cfg.N;
 	SyncPhaseVector = 0;
@@ -345,19 +342,17 @@ void AnalyzeIn::Run()
 	if (Cfg.sweep)
 		loop *= SD.FCount;
 	unsigned addloops = 0;
+	unsigned block = 0;
 	do
 	{
 		if (FIn)
 		{resync:
+			fprintf(stderr, "loop block = %u, nsync = %i, nextsamp = %u\n", block, NeedSync, NextSamples);
+			if (sweep && !addloops && !NeedSync && !block)
+				// frequency setup delay for sweep mode
+				PCMIn.discard(FIn, Cfg.N * (unsigned)ceil(Cfg.predelay), InBufferTmp);
+
 			// Read NextSamples and keep Cfg.N - NextSamples if > 0.
-			while (NextSamples > Cfg.N)
-			{	// discard some samples
-				unsigned more = NextSamples - Cfg.N;
-				if (more > Cfg.N)
-					more = Cfg.N;
-				fread2(InBufferTmp.get(), more * PCMIn.BytesPerSample, FIn);
-				NextSamples -= more;
-			}
 			const unsigned overlap = (Cfg.N - NextSamples);
 			// read data
 			const auto& in = InBufferTmp.slice(0, InBufferTmp.size() - overlap * PCMIn.BytesPerSample);
@@ -374,7 +369,7 @@ void AnalyzeIn::Run()
 			// reset min/max
 			PCMIn.reset();
 			// convert data
-			PCMIn.convert(InBuffer[Cfg.swapch].slice(overlap, NextSamples), InBuffer[!Cfg.swapch].slice(overlap, NextSamples), in, !NeedSync && (Cfg.incremental || addloops));
+			PCMIn.convert(InBuffer[Cfg.swapch].slice(overlap, NextSamples), InBuffer[!Cfg.swapch].slice(overlap, NextSamples), in, !NeedSync && (addloops || (Cfg.incremental && block)));
 			// write raw status
 			if (PCMIn.Limits[0].Min == PCMIn.Limits[0].Max && PCMIn.Limits[1].Min == PCMIn.Limits[1].Max)
 				fprintf(stderr, "Input data is zero, check mute switch!\n");
@@ -392,7 +387,7 @@ void AnalyzeIn::Run()
 			NextSamples = Cfg.N;
 		}
 
-		if (Cfg.incremental || addloops)
+		if (addloops || (Cfg.incremental && block))
 		{	if (OvrBuffer[0])
 				InBuffer[0] += OvrBuffer[0];
 			if (OvrBuffer[1])
@@ -419,16 +414,14 @@ void AnalyzeIn::Run()
 				fprintf(out, "%g\t%g\n", *sp1++, *sp2++);
 		}
 
-		if (Cfg.winfn && (Cfg.incremental || addloops))
-		{	// optimization: apply window function later
-			InBuffer[0] *= Window;
+		if (Cfg.winfn)
+		{	InBuffer[0] *= Window;
 			InBuffer[1] *= Window;
 		}
-		addloops = 0;
 
 		// Do the main processing
-		if (Cfg.sweep)
-			sweep->DoSweep();
+		if (sweep)
+			sweep->DoSweep(block);
 		else if (Cfg.mfft & Cfg.mpca)
 			DoFFTPCA();
 		else if (Cfg.mpca)
@@ -440,13 +433,8 @@ void AnalyzeIn::Run()
 
 		Cfg.plot.execute();
 
-		// undo window function because of incremental mode
-		// TODO: this causes a loss of precision!
-		if (Cfg.winfn && Cfg.incremental)
-		{	InBuffer[0] /= Window;
-			InBuffer[1] /= Window;
-		}
-
+		if (++block == Cfg.loops)
+			block = 0;;
 	} while (--loop && !termrq);
 
 	if (Cfg.gainoutfile)
@@ -517,14 +505,23 @@ void AnalyzeIn::DoSync()
 	if (!Cfg.sync)
 	{haveSync:
 		NeedSync = false;
-		NextSamples = (unsigned)(Cfg.N * Cfg.predelay + .5); // The samples should be reused for start of analysis but be aware of predelay
+		NextSamples = Cfg.N;
 		return;
 	}
 
-	// add channels
-	InBuffer[0].slice(Cfg.N - NextSamples, NextSamples) += InBuffer[1].slice(Cfg.N - NextSamples, NextSamples);
+	// select channels
+	fftw_real* in;
+	switch (Cfg.syncch)
+	{default:
+		InBuffer[0].slice(Cfg.N - NextSamples, NextSamples) += InBuffer[1].slice(Cfg.N - NextSamples, NextSamples);
+	 case 1:
+		in = InBuffer[0].get();
+		break;
+	 case 2:
+		in = InBuffer[1].get();
+	}
 	// forward transformation
-	fftwf_execute_r2r(P, InBuffer[0].get(), FFTBuffer[0].get());
+	fftwf_execute_r2r(P, in, FFTBuffer[0].get());
 
 	// append constant zero to FFT result to simplify analysis
 	FFTBuffer[0][Cfg.N] = 0;
@@ -532,14 +529,14 @@ void AnalyzeIn::DoSync()
 	// cross correlate with design function
 	Complex ccv = ExecuteCrossCorrelation(FFTBuffer[0], SD.Design) / SNRAC;
 	double level = abs(ccv);
-	if (!isfinite(level) || level < Cfg.synclevel)
+	if (SyncWeight > 0 && level < abs(SyncPhaseVector) / SyncWeight * Cfg.syncend)
+	{	fprintf(stderr, "End of sync signal after %f cycles.\n", SyncWeight);
+		goto haveSync;
+	} else if (!isfinite(level) || level < Cfg.synclevel)
 	{	if (SyncWeight < Cfg.sync * -1.5)
 			die(29, "Failed to synchronize after %f cycles.\n", 1-SyncWeight);
-		else if (SyncWeight > 1 >> 1)
-		{	fprintf(stderr, "End of sync signal after %f cycles.\n", SyncWeight);
-			goto haveSync;
-		} else
-		{	fprintf(stderr, "Synchronization failed: cross correlation level %f too low.\n", level);
+		else
+		{	fprintf(stderr, "No sync signal: cross correlation level %f too low.\n", level);
 			--SyncWeight;
 			NextSamples = Cfg.N; // try next N samples
 			return;
@@ -767,14 +764,15 @@ AnalyzeIn::SweepWorker::SweepWorker(AnalyzeIn& parent)
 	}
 }
 
-void AnalyzeIn::SweepWorker::DoSweep()
+void AnalyzeIn::SweepWorker::DoSweep(unsigned block)
 {	// find next frequency
 	if (!SweepFrequency)
-		SweepFrequency = (unsigned)ceil(Parent.Cfg.fmin/Parent.N2f) - 1; // start at famin
-	if (++Channel >= Parent.Cfg.stereo)
+		SweepFrequency = (unsigned)ceil(Parent.Cfg.fmin/Parent.N2f); // start at fmin
+	else if (block == 0 && ++Channel > Parent.Cfg.stereo)
 	{	Channel = 0;
 		LastFrequency = SweepFrequency;
-		while (abs(Parent.SD.Harmonics[++SweepFrequency]) != 1); // must not overflow and must not exceed famax
+		while (abs(Parent.SD.Harmonics[++SweepFrequency]) != 1)
+			assert(SweepFrequency * Parent.N2f <= Parent.Cfg.fmax); // must not overflow and must not exceed fmax
 	}
 	fprintf(stderr, "Frequency: %f, bin: %u, channel: %u\n", Parent.N2f * SweepFrequency, SweepFrequency, Channel);
 
@@ -797,9 +795,6 @@ void AnalyzeIn::SweepWorker::DoSweep()
 
 	if (Out)
 		Print();
-
-	// Discard samples for setup of next frequency.
-	Parent.NextSamples += Parent.Cfg.N * (unsigned)ceil(Parent.Cfg.predelay);
 }
 
 void AnalyzeIn::SweepWorker::Print()
@@ -815,7 +810,7 @@ void AnalyzeIn::SweepWorker::Print()
 		// |Hl|/|Hr| phil-phir          re        im
 		abs(Z), delay.Phase * M_180_PI, Z.real(), Z.imag(),
 		// weight                     delay           channel
-		Parent.Cfg.weightfn(U, I, f), delay.Unwrap(arg(Z), M_2PI * (SweepFrequency - LastFrequency) / Parent.Cfg.N), Channel);
+		Parent.Cfg.weightfn(U, I, f), delay.Unwrap(arg(Z), (SweepFrequency - LastFrequency) * Parent.N2f), Channel);
 	Unwrapper* phase = Phase[Channel];
 	for (unsigned h = 2; h <= Parent.Cfg.harmonic; ++h, ++phase)
 	{	Z = Ana[h].Xi / Ana[0].Xi;
@@ -921,7 +916,7 @@ void AnalyzeIn::ExecuteFFT()
 	ApplyCalibration();
 }
 
-Complex AnalyzeIn::ExecuteCrossCorrelation(const unique_fftw_arr<fftw_real>& in1, const unique_fftw_arr<fftw_real>& in2)
+Complex AnalyzeIn::ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in1, const unique_num_array<fftw_real>& in2)
 {	assert(in1.size() == in2.size());
 	// calculate in1[] * conjugate(in2[])
 	// f(0)

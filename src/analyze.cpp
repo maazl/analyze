@@ -85,6 +85,8 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkDOp("stereo", "two channel mode", Cfg.stereo, true)
 ,	MkDOp("symmout","symmetric output", Cfg.symmout, true)
 ,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 2U)
+,	MkOpt("syncch", "synchronization channel", Cfg.syncch, 1U, 3U)
+,	MkOpt("syncend","decrease of cross correlation to identify end of sync", Cfg.syncend, .1, .99)
 ,	MkOpt("synclvl","minimum correlation ratio of successful synchronization", Cfg.synclevel, 0., 1.)
 ,	MkDOp("wd",     "(over)write FFT data file on the fly", Cfg.datafile, "data.dat")
 ,	MkOpt("win",    "select window function [0..5]", Cfg.winfn, 0U, 5U)

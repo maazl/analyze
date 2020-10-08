@@ -93,9 +93,11 @@ struct Config
 	WeightFn    weightfn = &Config::GetWeight;///< weight function
 	// synchronization options
 	unsigned    sync = 0;             ///< synchronize cycles before start of measurement
+	unsigned    syncch = 3;           ///< sync channel 1 = left, 2 = right, 3 = both
 	//bool        syncfall = true;      ///< use all frequencies in the interval [famin, famax] rather than the design function
 	double      synclevel = .2;       ///< minimum SNR ratio of successful synchronization compared to the SNR of the autocorrelation function
-	double      predelay = .99;       ///< gap in sweep mode after a frequency change and before the measurement starts in units of FFT cycles (N).
+	double      syncend = .8;         ///< decrease of cross correlation level that is identified as end of sync.
+	double      predelay = .95;       ///< gap in sweep mode after a frequency change and before the measurement starts in units of FFT cycles (N).
 	// calibration options
 	const char* gaininfile = nullptr; ///< file name for gain calibration data
 	const char* gainoutfile = nullptr;///< file name for differential gain calibration data
@@ -226,7 +228,7 @@ class AnalyzeIn : public ITask
 	/// @return Relative phase vector between first and second input in units of the base frequency.
 	/// The amplitude corresponds to the SNR of the cross correlation. The higher the less noise.
 	/// But keep in mind that the autocorrelation of the reference signal also adds noise.
-	Complex ExecuteCrossCorrelation(const unique_fftw_arr<fftw_real>& in1, const unique_fftw_arr<fftw_real>& in2);
+	Complex ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in1, const unique_num_array<fftw_real>& in2);
 
 	void PrintHdr(FILE* dst);
 
@@ -267,6 +269,9 @@ class AnalyzeIn : public ITask
 		/// @return group delay
 		double Unwrap(double phase, double deltaf)
 		{	double lph = Phase;
+			/*Unwrapper::Unwrap(phase);
+			fprintf(stderr, "lph = %f, ph = %f, df = %f => ph = %f, delay = %f\n", lph, phase, deltaf, Phase, (Phase - lph) / deltaf);
+			return Delay = (Phase - lph) / deltaf;*/
 			return Delay = (Unwrapper::Unwrap(phase) - lph) / deltaf;
 		}
 	};
@@ -358,7 +363,7 @@ class AnalyzeIn : public ITask
 
 	 public:
 		SweepWorker(AnalyzeIn& parent);
-		void DoSweep();
+		void DoSweep(unsigned block);
 	 private:
 		void Print();
 	};

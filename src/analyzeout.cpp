@@ -44,6 +44,9 @@ unsigned AnalyzeOut::CalcLoopCount(const Config& cfg)
 		count += (unsigned)ceil(cfg.predelay);
 	else if (!cfg.sync)
 		count += (cfg.discsamp + cfg.N) / cfg.N + 1;
+	unsigned secs = (unsigned)((uint64_t)count * Cfg.N / Cfg.srate);
+	fprintf(stderr, "Measurement time %u:%02u:%02u (loop count %u)\n",
+		secs / 3600, secs / 60 % 60, secs % 60, count);
 	return count;
 }
 
@@ -55,7 +58,7 @@ AnalyzeOut::AnalyzeOut(const Config& cfg)
 ,	OutLevel(fromdB(cfg.outgain))
 ,	LoopCount(CalcLoopCount(cfg))
 ,	PCMOut(cfg.floatsamp ? Format::F32 : cfg.swapbytes ? Format::I16_SWAP : Format::I16, 1., Cfg.symmout)
-{	Design.reset((cfg.N + 1) << cfg.stereo);
+{	Design.reset(cfg.N + 1);
 	Harmonics.reset(cfg.N/2 + 1);
 	OutBuf.reset(cfg.N * PCMOut.BytesPerSample);
 }
@@ -129,11 +132,6 @@ void AnalyzeOut::CreateDesign()
 			Design[Cfg.N-i] = Design[i] * sin(phi); // b[i]
 			Design[i] *= cos(phi);                  // a[i]
 		}
-		// second channel
-		if (sign < 0)
-		{	Design[2*Cfg.N+1-i] = Design[Cfg.N-i];
-			Design[Cfg.N+1+i] = Design[i];
-		}
 		// next frequency
 		if (Cfg.stereo && !Cfg.sweep)
 			sign = -sign;
@@ -156,7 +154,7 @@ void AnalyzeOut::ReadDesign()
 			die(30, "Design file data does not match the current FFT size or sampling frequency.\n"
 				"Expected frequency: %f, found frequency %f.", bin * N2f, data[0]);
 		fftw_real* design = Design.get();
-		if ((Harmonics[bin] = (int)data[5]) < 0 && Cfg.stereo)
+		if ((Harmonics[bin] = (int)data[5]) < 0 && Cfg.stereo && !Cfg.sweep)
 			design += Cfg.N + 1;
 		if (bin)
 			design[Cfg.N - bin] = data[4];
@@ -168,23 +166,25 @@ void AnalyzeOut::ReadDesign()
 
 void AnalyzeOut::CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& norm, unique_fftwf_plan& plan)
 {
-	if (!Cfg.stereo)
-	{	// IFFT
-		sampbuf.reset(Cfg.N);
+	if (!Cfg.stereo || Cfg.sweep)
+	{	sampbuf.reset(Cfg.N);
 		plan = fftwf_plan_r2r_1d(Cfg.N, Design.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE);
 		fftwf_execute(plan);
-
 	} else // stereo
-	{	// split channels
+	{	sampbuf.reset(2*Cfg.N);
+		unique_fftw_arr<fftw_real> design(Design.size());
+		plan = fftwf_plan_r2r_1d(Cfg.N, design.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE|FFTW_DESTROY_INPUT);
+		// split channels
+		design = Design;
 		for (size_t i = FminI; i <= FmaxI; ++i)
 			if (Harmonics[i] < 0)
 				Design[i] = Design[Cfg.N-i] = 0;
-
-		// IFFT
-		sampbuf.reset(2*Cfg.N);
-		plan = fftwf_plan_r2r_1d(Cfg.N, Design.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE|FFTW_UNALIGNED|FFTW_PRESERVE_INPUT);
-		fftwf_execute_r2r(plan, Design.get(), sampbuf.get());
-		fftwf_execute_r2r(plan, Design.get() + Cfg.N + 1, sampbuf.get() + Cfg.N);
+		fftwf_execute_r2r(plan, design.get(), sampbuf.get());
+		design = Design;
+		for (size_t i = FminI; i <= FmaxI; ++i)
+			if (Harmonics[i] > 0)
+				Design[i] = Design[Cfg.N-i] = 0;
+		fftwf_execute_r2r(plan, design.get(), sampbuf.get() + Cfg.N);
 	}
 
 	// normalize
@@ -193,7 +193,7 @@ void AnalyzeOut::CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& n
 
 void AnalyzeOut::CreatePCM(const unique_num_array<fftw_real>& sampbuf)
 {
-	if (!Cfg.stereo)
+	if (sampbuf.size() == Cfg.N)
 	{	if (Cfg.reffile)
 		{	FILEguard of(Cfg.reffile, Cfg.refmode);
 			for (auto v : sampbuf)
@@ -261,7 +261,7 @@ void AnalyzeOut::DoSweep()
 		sampbuf.clear();
 		double ff = M_2PI * i / Cfg.N;
 		for (size_t j = 0; j < Cfg.N; ++j)
-			sampbuf[j] = cos(ff * j) * level;
+			sampbuf[j] = sin(ff * j) * level;
 
 		for (unsigned ch = 0; ch <= Cfg.stereo; ++ch)
 		{
