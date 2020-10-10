@@ -340,14 +340,16 @@ void AnalyzeIn::Run()
 	// operation loop
 	unsigned loop = Cfg.loops * Cfg.addloop;
 	if (Cfg.sweep)
-		loop *= SD.FCount;
+	{	loop *= SD.FCount;
+		loop <<= Cfg.stereo;
+	}
 	unsigned addloops = 0;
 	unsigned block = 0;
 	do
 	{
 		if (FIn)
 		{resync:
-			fprintf(stderr, "loop block = %u, nsync = %i, nextsamp = %u\n", block, NeedSync, NextSamples);
+			//fprintf(stderr, "loop block = %u, nsync = %i, nextsamp = %u\n", block, NeedSync, NextSamples);
 			if (sweep && !addloops && !NeedSync && !block)
 				// frequency setup delay for sweep mode
 				PCMIn.discard(FIn, Cfg.N * (unsigned)ceil(Cfg.predelay), InBufferTmp);

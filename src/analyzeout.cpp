@@ -44,9 +44,6 @@ unsigned AnalyzeOut::CalcLoopCount(const Config& cfg)
 		count += (unsigned)ceil(cfg.predelay);
 	else if (!cfg.sync)
 		count += (cfg.discsamp + cfg.N) / cfg.N + 1;
-	unsigned secs = (unsigned)((uint64_t)count * Cfg.N / Cfg.srate);
-	fprintf(stderr, "Measurement time %u:%02u:%02u (loop count %u)\n",
-		secs / 3600, secs / 60 % 60, secs % 60, count);
 	return count;
 }
 
@@ -65,11 +62,20 @@ AnalyzeOut::AnalyzeOut(const Config& cfg)
 
 bool AnalyzeOut::Setup()
 {	//fprintf(stderr, "imin=%u imax=%u finc=%f flog=%f\n", FminI, FmaxI, cfg.f_inc, cfg.f_log);
-
+	FCount = 0;
 	if (!Cfg.rspecfile)
 		CreateDesign();
 	else
 		ReadDesign();
+
+	unsigned secs = LoopCount;
+	if (Cfg.sweep)
+	{	secs *= FCount;
+		secs <<= Cfg.stereo;
+	}
+	secs = (unsigned)((uint64_t)secs * Cfg.N / Cfg.srate);
+	fprintf(stderr, "Measurement time %u:%02u:%02u (loop count %u)\n",
+		secs / 3600, secs / 60 % 60, secs % 60, LoopCount);
 
 	// write design result
 	if (Cfg.specfile)
@@ -107,7 +113,6 @@ bool AnalyzeOut::Setup()
 void AnalyzeOut::CreateDesign()
 {	Design.clear(); // all coefficients -> 0
 	Harmonics.clear();
-	FCount = 0;
 	fftw_real maxamp = 0;
 	int sign = 1;
 	for (unsigned i = FminI; i <= FmaxI; ++i)
@@ -154,6 +159,8 @@ void AnalyzeOut::ReadDesign()
 			die(30, "Design file data does not match the current FFT size or sampling frequency.\n"
 				"Expected frequency: %f, found frequency %f.", bin * N2f, data[0]);
 		fftw_real* design = Design.get();
+		if (abs(Harmonics[bin]) == 1)
+			++FCount;
 		if ((Harmonics[bin] = (int)data[5]) < 0 && Cfg.stereo && !Cfg.sweep)
 			design += Cfg.N + 1;
 		if (bin)
