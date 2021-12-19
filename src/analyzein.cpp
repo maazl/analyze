@@ -171,7 +171,7 @@ void AnalyzeIn::ApplyCalibration()
 	fftw_real* a2 = FFTBuffer[1].get();
 	fftw_real* b1 = a1 + Cfg.N;
 	fftw_real* b2 = a2 + Cfg.N;
-	for (int bin = 0; a1 < b1; ++bin, ++a1, ++a2, --b1, --b2)
+	for (int bin = 0; a1 <= b1; ++bin, ++a1, ++a2, --b1, --b2)
 	{	// calc
 		double f = bin * N2f;
 		Complex U(bin != Cfg.N / 2 ? *a1 : 0, bin ? *b1 : 0);
@@ -179,11 +179,14 @@ void AnalyzeIn::ApplyCalibration()
 		//fprintf(stderr, "%g, *a1=%g, *a2=%g, *b1=%g, *b2=%g\n", f, *a1, *a2, *b1, *b2);
 		// calibration
 		if (Cfg.gaininfile && !Cfg.gainoutfile)
-			U /= Gain[bin];
+		{	U /= Gain[bin];
+			I *= Gain[bin];
+		}
 		if (Cfg.gainoutfile)
 		{	double weight = sqrt(Cfg.weightfn(abs(U), abs(I), f));
 			WSums[bin] += weight;
 			U /= Gain[bin];
+			I *= Gain[bin];
 			GainD[bin] += I / U * weight;
 		}
 		if (Cfg.zeroinfile)
@@ -193,7 +196,7 @@ void AnalyzeIn::ApplyCalibration()
 			I = (t * z[0][1] + I * z[1][1]);
 		}
 		if (Cfg.zerooutfile)
-		{	VectorC<2>& z = ZeroD[bin][!ZeroPart2];
+		{	VectorC<2>& z = ZeroD[bin][ZeroPart];
 			z[0] += U;
 			z[1] += I;
 		}
@@ -279,7 +282,7 @@ bool AnalyzeIn::Setup()
 		unsigned i = 0;
 		for (auto& g : Gain)
 		{	auto& row = ip.Get(i++ * N2f);
-			g = Complex(row[1], row[2]);
+			g = sqrt(Complex(row[1], row[2]));
 		}
 	}
 	// read zero file
@@ -335,6 +338,9 @@ void AnalyzeIn::Run()
 	unique_ptr<SweepWorker> sweep;
 	if (Cfg.sweep)
 		sweep.reset(new SweepWorker(*this));
+
+	if (Cfg.zerooutfile)
+		ZeroPart = Cfg.normalize ? 1 : 2; // 2 point or 3 point calibration
 
  restart_zero:
 	// operation loop
@@ -436,7 +442,7 @@ void AnalyzeIn::Run()
 		Cfg.plot.execute();
 
 		if (++block == Cfg.loops)
-			block = 0;;
+			block = 0;
 	} while (--loop && !termrq);
 
 	if (Cfg.gainoutfile)
@@ -450,50 +456,73 @@ void AnalyzeIn::Run()
 		}
 	}
 	if (Cfg.zerooutfile)
-	{	if (!ZeroPart2) // part 1
-		{	ZeroPart2 = true;
-			fputs("Zeromode calibration part one is now complete.\n"
-				"Part 2 will start at the end of the contdown.\n\7", stderr);
+	{	if (ZeroPart) // not the last part
+		{	fprintf(stderr, "Zeromode calibration part %u is now complete.\n"
+				"Part %u will start at the end of the countdown.\n\7", ZeroPart + 1, ZeroPart);
 			for (unsigned loop = Cfg.PauseLoops(); loop; --loop)
 			{	fprintf(stderr, "\r%u ", loop);
 				PCMIn.discard(FIn, Cfg.N, InBufferTmp);
 			}
-			puts("\nNow at part 2.");
+			fprintf(stderr, "\nNow at part %u.", ZeroPart);
+			--ZeroPart;
 			goto restart_zero;
-		} else // part 2
+		} else // matrix calibration completed
 		{	FILEguard fz(Cfg.zerooutfile, "wb");
 			fputs("#f\tU->U re\tU->U im\tU->I re\tU->I im\tI->U re\tI->U im\tI->I re\tI->I im\t" // 0..8
 				"|U->U|\targ U->U\t|U->I|\targ U->I\t|I->U|\targ I->U\t|I->I|\targ I->I\t" // 9..16
-				"|Uo|\targ Uo\t|U0|\targ U0\t|Io|\targ Io\t|I0|\targ I0\n", fz); // 17..24
+				"|Uo|\targ Uo\t|Io|\targ Io\t|U0|\targ U0\t|I0|\targ I0", fz); // 17..24
+			if (Cfg.normalize)
+				fputc('\n', fz);
+			else
+				fputs("\t|Ur|\targ Ur\t|Ir|\targ Ir\n", fz); // 25..28
 			unsigned i = 0;
 			for (const auto& z : ZeroD)
-			{	auto zn = z;
+			{	MatrixC<2,2> zn;
 				if (Cfg.normalize)
-				{	Complex s = 1. / (zn[0][0] + zn[1][0]);
-					zn[0][0] *= s;
-					zn[1][0] *= s;
-					s = 1. / (zn[0][1] + zn[1][1]);
-					zn[0][1] *= s;
-					zn[1][1] *= s;
+				{	// zn[0] := Z = Inf
+					// zn[1] := z = 0
+					// denominator: sqrt(Uo I0 - U0 Io)
+					Complex d = 1. / sqrt(z[0][0] * z[1][1] - z[1][0] * z[0][1]);
+					zn[0][0] = z[0][0] * d;
+					zn[0][1] = z[1][0] * d;
+					zn[1][0] = z[0][1] * d;
+					zn[1][1] = z[1][1] * d;
+				} else
+				{	// zn[0] := Z = 0
+					// zn[1] := z = Inf
+					// zn[2] := z = 1
+					// denominator: sqrt(Uo I0 - U0 Io)
+					Complex d = 1. / sqrt(z[1][0] * z[0][1] - z[0][0] * z[1][1]);
+					// scale: sqrt((U1 I0 - U0 I1) / (Uo I1 - U1 Io) * Rref)
+					Complex c = sqrt((z[2][0] * z[0][1] - z[0][0] * z[2][1]) / (z[1][0] * z[2][1] - z[2][0] * z[1][1]) * Cfg.rref);
+					zn[0][0] = z[1][0] * c * d;
+					zn[0][1] = z[1][1] * c * d;
+					zn[1][0] = z[0][0] / c * d;
+					zn[1][1] = z[0][1] / c * d;
 				}
-				// scale to fit det z == 1
-				Complex sca = 1. / sqrt(det(zn));
-				if (((zn[0][0] + zn[1][1]) * sca).real() < 0)
-					sca = -sca;
-				auto z_ = zn * sca;
-				fprintf(fz, "%f\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n",
+				// Avoid 2nd solution with inverse phase
+				if ((zn[0][0] + z[1][1]).real() < 0.)
+					zn = zn * Complex(-1.);
+				fprintf(fz, "%f\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g",
 					i++ * N2f,
-					z_[0][0].real(), z_[0][0].imag(), z_[0][1].real(), z_[0][1].imag(),
-					z_[1][0].real(), z_[1][0].imag(), z_[1][1].real(), z_[1][1].imag(),
-					abs(z_[0][0]), arg(z_[0][0]) * M_180_PI, abs(z_[0][1]), arg(z_[0][1]) * M_180_PI,
-					abs(z_[1][0]), arg(z_[1][0]) * M_180_PI, abs(z_[1][1]), arg(z_[1][1]) * M_180_PI,
-					abs(z[0][0]), arg(z[0][0]) * M_180_PI, abs(z[0][1]), arg(z[0][1]) * M_180_PI,
-					abs(z[1][0]), arg(z[1][0]) * M_180_PI, abs(z[1][1]), arg(z[1][1]) * M_180_PI);
+					zn[0][0].real(), zn[0][0].imag(), zn[0][1].real(), zn[0][1].imag(),
+					zn[1][0].real(), zn[1][0].imag(), zn[1][1].real(), zn[1][1].imag(),
+					abs(zn[0][0]), arg(zn[0][0]) * M_180_PI, abs(zn[0][1]), arg(zn[0][1]) * M_180_PI,
+					abs(zn[1][0]), arg(zn[1][0]) * M_180_PI, abs(zn[1][1]), arg(zn[1][1]) * M_180_PI);
+				if (Cfg.normalize)
+					fprintf(fz, "\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n",
+						abs(z[0][0]), arg(z[0][0]) * M_180_PI, abs(z[0][1]), arg(z[0][1]) * M_180_PI,
+						abs(z[1][0]), arg(z[1][0]) * M_180_PI, abs(z[1][1]), arg(z[1][1]) * M_180_PI);
+				else
+					fprintf(fz, "\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n",
+						abs(z[1][0]), arg(z[1][0]) * M_180_PI, abs(z[1][1]), arg(z[1][1]) * M_180_PI,
+						abs(z[0][0]), arg(z[0][0]) * M_180_PI, abs(z[0][1]), arg(z[0][1]) * M_180_PI,
+						abs(z[2][0]), arg(z[2][0]) * M_180_PI, abs(z[2][1]), arg(z[2][1]) * M_180_PI);
 			}
 		}
 	}
 
-	fputs("completed.", stderr);
+	fputs("completed.\n", stderr);
 
 	Cfg.post.execute();
 

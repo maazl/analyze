@@ -88,7 +88,6 @@ struct Config
 	double      fbinsc = 0;           ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
 	double      linphase = 0;         ///< linear phase correction [s]
 	bool        crosscorr = false;    ///< Calculate and remove time delay by cross correlation
-	bool        normalize = false;    ///< normalize L+R to 1. for impedance measurements
 	unsigned    harmonic = 1;         ///< analyze up to # harmonics
 	WeightFn    weightfn = &Config::GetWeight;///< weight function
 	// synchronization options
@@ -103,6 +102,7 @@ struct Config
 	const char* gainoutfile = nullptr;///< file name for differential gain calibration data
 	const char* zeroinfile = nullptr; ///< file name for zero calibration data
 	const char* zerooutfile = nullptr;///< file name for differential zero calibration data
+	bool        normalize = false;    ///< normalize L+R to 1. for two point calibration
 	double      lpause = 10;          ///< number of seconds between zero calibration parts
 	unsigned    PauseLoops() const    ///< Number of loops for pause between zero calibration parts.
 	{	return (unsigned)ceil(lpause / N * srate); }
@@ -177,10 +177,10 @@ class AnalyzeIn : public ITask
 	FILEguard FIn;                          ///< Input data stream
 	double LinPhase;                        ///< Delay between signal and reference in seconds/2Pi
 	double SNRAC;                           ///< Signal to noise of autocorrelation function
-	bool ZeroPart2 = false;                 ///< We are in phase 2 of zero calibration
+	unsigned char ZeroPart = 0;             ///< Part of matrix calibration, count down
 
-	unsigned NextSamples;                   ///< Number of samples to read for the next loop. Typically Cfg.N.
 	bool NeedSync;                          ///< True if Synchronization is (still) required before main data processing.
+	unsigned NextSamples;                   ///< Number of samples to read for the next loop. Typically Cfg.N.
 	Complex SyncPhaseVector;                ///< Aggregated result from ExecuteCrossCorrelation
 	double SyncWeight;                      ///< Sync cycle counter, < 0 => not synced since # cycles, > 0 sync since # cycles.
 
@@ -200,7 +200,7 @@ class AnalyzeIn : public ITask
 	unique_num_array<Complex> Gain;         ///< Apply gain correction [N / 2 + 1]
 	unique_num_array<Complex> GainD;        ///< Result of gain calibration [N / 2 + 1]
 	unique_num_array<MatrixC<2,2>> Zero;    ///< Apply matrix correction [N / 2 + 1]
-	unique_num_array<MatrixC<2,2>> ZeroD;   ///< Result matrix calibration [N / 2 + 1]
+	unique_num_array<MatrixC<3,2>> ZeroD;   ///< Result matrix calibration [N / 2 + 1], [ZeroPart]
 
 	unique_fftwf_plan P;                    ///< FFT plan for forward transformation
 	unique_fftwf_plan PI;                   ///< FFT plan for inverse transformation

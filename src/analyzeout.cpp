@@ -38,8 +38,12 @@ unsigned AnalyzeOut::CalcLoopCount(const Config& cfg)
 {	if (!cfg.loops)
 		return 0;
 	unsigned count = cfg.loops * cfg.addloop;
-	if (cfg.zerooutfile) // zero calibration: * 2
-		count = (count << 1) + cfg.PauseLoops();
+	if (cfg.zerooutfile) // zero calibration: * 2 or 3
+	{	if (cfg.normalize)
+			count = (count * 2) + cfg.PauseLoops();
+		else
+			count = (count * 3) + 2 * cfg.PauseLoops();
+	}
 	if (cfg.sweep)
 		count += (unsigned)ceil(cfg.predelay);
 	else if (!cfg.sync)
