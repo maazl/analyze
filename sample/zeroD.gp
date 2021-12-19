@@ -1,3 +1,3 @@
 datafile="zeroD.dat"
-l'zero
+l'zero.gp
 

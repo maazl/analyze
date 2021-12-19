@@ -1,10 +1,10 @@
 #!/bin/bash
 # This file is called by analyze.
-amixer -sq <mixer.in;
+amixer -c SB -sq <mixer.in;
 
-device="-D hw:0,0"
+device="-D hw:2,0"
 #device="-D sysdefault"
-format="-r 48000 -f S16_LE -c 2 --disable-resample"
+format="-r 192000 -f S16_LE -c 2 --disable-resample"
 vumeter="-V stereo"
 #recopt="--buffer-size 65536"
 
