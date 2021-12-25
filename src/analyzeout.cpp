@@ -58,7 +58,7 @@ AnalyzeOut::AnalyzeOut(const Config& cfg)
 ,	FmaxI((unsigned)fmin(floor(cfg.fmax/N2f), cfg.N/2))
 ,	OutLevel(fromdB(cfg.outgain))
 ,	LoopCount(CalcLoopCount(cfg))
-,	PCMOut(cfg.floatsamp ? Format::F32 : cfg.swapbytes ? Format::I16_SWAP : Format::I16, 1., Cfg.symmout)
+,	PCMOut(cfg.format, 1., Cfg.symmout)
 {	Design.reset(cfg.N + 1);
 	Harmonics.reset(cfg.N/2 + 1);
 	OutBuf.reset(cfg.N * PCMOut.BytesPerSample);

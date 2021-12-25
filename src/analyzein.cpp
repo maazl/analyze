@@ -217,7 +217,7 @@ AnalyzeIn::AnalyzeIn(const Config& cfg, const SetupData& sd)
 :	Cfg(cfg)
 ,	SD(sd)
 ,	N2f((double)Cfg.srate / Cfg.N)
-,	PCMIn(Cfg.floatsamp ? Format::F32 : Cfg.swapbytes ? Format::I16_SWAP : Format::I16, Cfg.diffmode, &Cfg.gainadj)
+,	PCMIn(Cfg.format, Cfg.diffmode, &Cfg.gainadj)
 ,	LinPhase(Cfg.linphase * M_2PI)
 {	// allocate buffers
 	InBufferTmp.reset(PCMIn.BytesPerSample * Cfg.N);

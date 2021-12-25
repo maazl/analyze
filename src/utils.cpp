@@ -82,6 +82,8 @@ void fwrite2(const void* buffer, size_t count, FILE* stream)
 	}
 }
 
+const int16_t endian_detect_ = 0x0100;
+
 void execute(const char* cmd)
 {	if (cmd)
 	{	int rc = system(cmd);

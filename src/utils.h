@@ -76,9 +76,31 @@ void fread2(void* data, size_t count, std::FILE* stream);
  */
 void fwrite2(const void* data, size_t count, std::FILE* stream);
 
+
+extern const int16_t endian_detect_;
+static inline bool is_big_endian()
+{	return (bool)*(char*)&endian_detect_;
+}
+
 inline uint16_t bswap(uint16_t v)
 {	//return _srotl(v, 8);
 	return (uint16_t)v >> 8 | v << 8;
+}
+
+template<size_t N>
+inline void cswap(char* cp)
+{	std::swap(cp[0], cp[N-1]);
+	cswap<N-2>(cp+1);
+}
+template<>
+inline void cswap<1>(char*)
+{}
+template<>
+inline void cswap<0>(char*)
+{}
+template<typename T>
+inline void bswap(T* dp)
+{	cswap<sizeof(T)>((char*)dp);
 }
 
 /** Execute shell command or die.

@@ -9,17 +9,18 @@
 #include "unique_array.h"
 
 
-struct Format
-{	enum Enum
-	{	I16
-	,	I16_SWAP
-	,	F32
-	} Value;
-	constexpr Format(Enum val) : Value(val) {}
-	constexpr operator Enum() const { return Value; }
-	constexpr size_t getSize() const { return Value == F32 ? sizeof(float) : sizeof(int16_t); }
-	constexpr float getFSR() const { return Value == F32 ? 1. : 32768.; }
+enum struct Format : char
+{	I16 = 4
+,	I16_SWAP
+,	I24
+,	I24_SWAP
+,	I32
+,	I32_SWAP
+,	F32
+,	F32_SWAP
 };
+constexpr size_t getSize(Format value) { return value >= Format::F32 ? 4 : (size_t)value >> 1; }
+constexpr float getFSR(Format value) { return value >= Format::F32 ? 1.F : ldexp(.5F, ((int)value & -2) << 2); }
 
 typedef float fftw_real;
 
@@ -43,7 +44,11 @@ class PCMIO
 	const Format Fmt;
 	const size_t BytesPerSample;
  protected:
-	PCMIO(Format fmt) : Fmt(fmt), BytesPerSample(2 * fmt.getSize()) {}
+	union endian_conv
+	{	int32_t i;
+		char    c[4];
+	};
+	PCMIO(Format fmt) : Fmt(fmt), BytesPerSample(2 * getSize(fmt)) {}
 };
 
 class PCMinput : public PCMIO
@@ -63,7 +68,14 @@ class PCMinput : public PCMIO
  private: // reader functions
 	void LoadShort();
 	void LoadShortSwap();
+	void Load24();
+	void Load24Swap();
+	void Load24B();
+	void Load24SwapB();
+	void Load32();
+	void Load32Swap();
 	void LoadFloat();
+	void LoadFloatSwap();
  private: // converter function
 	void Store();
 	void StoreAdd();
@@ -75,7 +87,7 @@ class PCMinput : public PCMIO
 	void convert(const unique_num_array<fftw_real>& dst1, const unique_num_array<fftw_real>& dst2, const unique_num_array<char>& src, bool add = false);
 	void discard(FILE* in, size_t count, const unique_num_array<char>& buffer) const;
 	void discard(FILE* in, size_t count);
-	void ASCIIdump(FILE* out, const unique_num_array<char>& src) const;
+	void ASCIIdump(FILE* out, const unique_num_array<char>& src);
 	void read(FILE* in, const unique_num_array<fftw_real>& dst1, const unique_num_array<fftw_real>& dst2, bool add = false, FILE* asciidump = NULL);
 };
 

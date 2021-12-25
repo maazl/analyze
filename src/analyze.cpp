@@ -31,9 +31,11 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("famax",  "upper frequency range for LCR analysis", Cfg.famax)
 ,	MkOpt("famin",  "lower frequency range for LCR analysis", Cfg.famin)
 ,	MkOpt("fbin",   "average FFT channels with logarithmic bandwidth", Cfg.fbinsc)
-,	MkSet("ff32",   "32 bit floating point format", Cfg.floatsamp, true)
+,	MkSet("ff32",   "32 bit floating point format", Cfg.format, Format::F32)
 ,	MkOpt("fftlen", "analysis block size", Cfg.N)
-,	MkSet("fi16",   "16 bit integer format", Cfg.floatsamp, false)
+,	MkSet("fi16",   "16 bit integer format", Cfg.format, Format::I16)
+,	MkSet("fi24",   "24 bit integer format", Cfg.format, Format::I24)
+,	MkSet("fi32",   "24 bit integer format", Cfg.format, Format::I32)
 ,	MkOpt("finc",   "linear increment for used FFT channels", Cfg.f_inc, 1., +std::numeric_limits<double>::infinity())
 ,	MkOpt("flog",   "logarithmic increment for used FFT channels", Cfg.f_log, 1., +std::numeric_limits<double>::infinity())
 ,	MkOpt("fmax",   "upper frequency range for analysis", Cfg.fmax, 1E-16, 1E16)
@@ -140,7 +142,8 @@ int main(int argc, char* argv[])
 			parser.HandleArg(*++argv);
 
 		if (Cfg.help || (!Cfg.infile &&!Cfg.outfile && !Cfg.windowfile && !Cfg.reffile && !Cfg.specfile))
-		{	fputs("usage: analyze <options>  -  see documentation for more details.\n", stderr);
+		{	fputs("Analyze version 0.3\n"
+				"usage: analyze <options>  -  see documentation for more details.\n", stderr);
 			parser.PrintHelp();
 			return 48;
 		}
@@ -176,6 +179,9 @@ int main(int argc, char* argv[])
 
 		if (Cfg.cfgout)
 			parser.WriteConfig(FILEguard(Cfg.cfgout, "wt"));
+
+		if (Cfg.swapbytes)
+			Cfg.format = (Format)((int)Cfg.format | 1);
 	}
 
 	Cfg.setup.execute();
