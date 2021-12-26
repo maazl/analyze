@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html lang="en">
   <head>
-    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <title>Analyze: File formats</title>
     <link href="mm.css" rel="stylesheet" type="text/css">
   </head>
@@ -9,25 +9,19 @@
     <script type="text/javascript" async="" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML">
     </script>
     <h1>Analyze: File formats</h1>
-    <a href="index.html">△ Index</a> <a href="#overview">&rarr;&nbsp;Overview</a>
-    <a href="parameter.html">▷ Parameters</a> <a href="calibration.html">▷
-      Calibration</a>&nbsp;<span class="current"><span class="current">▼</span>
-      File format</span> <a href="index.html#download">&rarr;&nbsp;Download</a>
-    <a href="#history">&rarr;&nbsp;History</a> <a href="#todo">&rarr;&nbsp;Todo</a>
-    <a href="index.html#build">&rarr;&nbsp;Build</a><br>
-    <a href="#data_dat">▾ FFT data</a> <a href="#spectrum_dat">▾ Reference
-      spectrum</a> <a href="#ref_dat">▾ Reference signal</a> <a href="#gain_dat">▾
-      Gain correction</a> <a href="#matrix_dat">▾ Matrix correction</a> <a href="#window_dat">▾
-      Window function</a> <a href="#raw_dat">▾ Raw samples</a><br>
-    <p>All files are <em>ASCII, with tab separated, numeric columns</em>. There
-      is a header line starting with a <span style="font-family: monospace;">#</span>.
+    <a href="index.html">△&nbsp;Index</a> <a href="usage.html">▷&nbsp;Usage</a> <a href="examples.html">▷&nbsp;Examples</a> <a href="parameter.html">▷&nbsp;Parameters</a>
+    <a href="calibration.html">▷&nbsp;Calibration</a>&nbsp;<span class="current">▼&nbsp;File format</span> <a href="measure.html">▷&nbsp;How
+      it works</a><br>
+    <a href="#data_dat">▾&nbsp;FFT data</a> <a href="#spectrum_dat">▾&nbsp;Reference spectrum</a> <a href="#ref_dat">▾&nbsp;Reference
+      signal</a> <a href="#gain_dat">▾&nbsp;Gain correction</a> <a href="#zero_dat">▾&nbsp;Matrix correction</a> <a href="#window_dat">▾&nbsp;Window
+      function</a> <a href="#raw_dat">▾&nbsp;Raw samples</a><br>
+    <p>All files are <em>ASCII, with tab separated, numeric columns</em>. There is a header line starting with a <span style="font-family: monospace;">#</span>.
       This line is ignored on read.<br>
-      Applications like Gnuplot can process this files directly as well as
-      LibreOffice and even Excel can read them out of the box (simply rename to
-      <tt>*.xls</tt>).</p>
-    <h2><tt><a name="data_dat"></a></tt>FFT data &ndash; <tt>data.dat</tt></h2>
+      Applications like Gnuplot can process this files directly as well as LibreOffice and even Excel can read them out of the box
+      (simply rename to <tt>*.xls</tt>).</p>
+    <h2><tt><a name="data_dat"></a></tt>FFT data – <tt>data.dat</tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -42,55 +36,47 @@
           <tr>
             <td>$2</td>
             <td>|<var>U</var>|</td>
-            <td>Amplitude of <var>U</var>(<var>f</var>) or nominator
-              respectively<br>
+            <td>Amplitude of <var>U</var>(<var>f</var>) or nominator respectively<br>
             </td>
           </tr>
           <tr>
             <td>$3</td>
             <td>arg <var>U</var></td>
-            <td>Phase angle of <var>U</var>(<var>f</var>) or nominator
-              respectively in degrees<br>
+            <td>Phase angle of <var>U</var>(<var>f</var>) or nominator respectively in degrees<br>
             </td>
           </tr>
           <tr>
             <td>$4</td>
             <td>|<var>I</var>|</td>
-            <td>Amplitude of <var>I</var>(<var>f</var>) or denominator
-              respectively<br>
+            <td>Amplitude of <var>I</var>(<var>f</var>) or denominator respectively<br>
             </td>
           </tr>
           <tr>
             <td>$5</td>
             <td>arg&nbsp;<var>I</var></td>
-            <td>Phase angle of <var>I</var>(<var>f</var>) or denominator
-              respectively in degrees<br>
+            <td>Phase angle of <var>I</var>(<var>f</var>) or denominator respectively in degrees<br>
             </td>
           </tr>
           <tr>
             <td>$6</td>
-            <td>|<var>U</var>/<var>I</var>|</td>
-            <td>Amplitude of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
-              or transfer function</td>
+            <td>|<var>Z</var>|</td>
+            <td>Amplitude of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>) or transfer function</td>
           </tr>
           <tr>
             <td>$7</td>
-            <td>arg <var>U</var>/<var>I</var></td>
-            <td>Phase angle of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
-              or transfer function in degrees<br>
+            <td>arg Z<var></var></td>
+            <td>Phase angle of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>) or transfer function in degrees<br>
             </td>
           </tr>
           <tr>
             <td>$8</td>
-            <td>re&nbsp;<var>U</var>/<var>I</var></td>
-            <td>Real part of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
-              or transfer function</td>
+            <td>re <var>Z</var><var></var></td>
+            <td>Real part of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>) or transfer function</td>
           </tr>
           <tr>
             <td>$9</td>
-            <td>im <var>U</var>/<var>I</var></td>
-            <td>Imaginary part of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>)
-              or transfer function</td>
+            <td>im <var>Z</var><var></var></td>
+            <td>Imaginary part of the impedance <var>U</var>(<var>f</var>)/<var>I</var>(<var>f</var>) or transfer function</td>
           </tr>
           <tr>
             <td>$10</td>
@@ -100,20 +86,43 @@
           <tr>
             <td>$11</td>
             <td><var>delay</var></td>
-            <td>Group delay d(<var>U</var>/<var>I</var>)/d<var>&omega;</var><br>
+            <td>Group delay d(<var>U</var>/<var>I</var>)/d<var>ω</var><br>
             </td>
           </tr>
           <tr>
             <td>$12</td>
-            <td><var>harmonic</var></td>
-            <td>Ordinal of the harmonic. Negative values indicate the second
-              channel in case <a href="#_mst">two channel mode</a> is activated</td>
+            <td><var>channel</var></td>
+            <td>Channel <tt>0</tt> for first (or the only) channel, 1 for the second channel in <a href="parameter.html#_stereo">stereo
+                mode</a></td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="3">optional for each <a href="parameter.html#_harm">enabled harmonic</a> ...</td>
+          </tr>
+          <tr>
+            <td>$13</td>
+            <td><var><i>|</i>Z2<i>|</i></var></td>
+            <td>Amplitude of the 2nd harmonic</td>
+          </tr>
+          <tr>
+            <td>$14</td>
+            <td>arg <var>Z2</var></td>
+            <td>Phase of the 2nd harmonic in degrees</td>
+          </tr>
+          <tr>
+            <td>$15</td>
+            <td>re <var>Z2</var></td>
+            <td>Real part of the 2nd harmonic</td>
+          </tr>
+          <tr>
+            <td>$16</td>
+            <td>im <var>Z2</var></td>
+            <td>Imaginary part of the 2nd harmonic</td>
           </tr>
         </tbody>
       </table>
-      <p>From the above columns you may calculate the following parameters for
-        one-port measurements:</p>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <p>From the above columns you may calculate the following parameters for one-port measurements. <var>R<sub>ref</sub></var> is
+        the reference resistor used.<sub> </sub></p>
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Symbol</th>
@@ -125,8 +134,8 @@
           <tr>
             <td valign="middle"><var>ESR</var></td>
             <td valign="middle">equivalent series resistor</td>
-            <td valign="middle">$8 &middot; <var>R<sub>ref</sub></var></td>
-            <td valign="middle">&Omega;</td>
+            <td valign="middle">$8 · <var>R<sub>ref</sub></var></td>
+            <td valign="middle">Ω</td>
             <td><br>
             </td>
           </tr>
@@ -141,10 +150,10 @@
                   <mrow>
                     <mn>2</mn>
                     <mo>⁢</mo>
-                    <mi>&pi;</mi>
-                    <mo>&middot;</mo>
+                    <mn>π</mn>
+                    <mo>·</mo>
                     <mi>$9</mi>
-                    <mo>&middot;</mo>
+                    <mo>·</mo>
                     <msub>
                       <mi>R</mi>
                       <mi>ref</mi> </msub> </mrow> </mfrac> </math> </td>
@@ -160,15 +169,15 @@
                 <mfrac>
                   <mrow>
                     <mi>$9</mi>
-                    <mo>&middot;</mo>
+                    <mo>·</mo>
                     <msub>
                       <mi>R</mi>
                       <mi>ref</mi> </msub> </mrow>
                   <mrow>
                     <mn>2</mn>
                     <mo>⁢</mo>
-                    <mi>&pi;</mi>
-                    <mo>&middot;</mo>
+                    <mn>π</mn>
+                    <mo>·</mo>
                     <mi>$1</mi> </mrow> </mfrac> </math> </td>
             <td valign="middle">H</td>
             <td valign="middle">only if $9 &gt; 0</td>
@@ -176,17 +185,17 @@
           <tr>
             <td valign="middle">|<var>Z</var>|</td>
             <td valign="middle">absolute value of the impedance</td>
-            <td valign="middle">$6 &middot; <var>R<sub>ref</sub></var></td>
-            <td valign="middle">&Omega;</td>
+            <td valign="middle">$6 · <var>R<sub>ref</sub></var></td>
+            <td valign="middle">Ω</td>
             <td><br>
             </td>
           </tr>
           <tr>
-            <td valign="middle"><var>Q</var></td>
-            <td valign="middle">quality factor<br>
+            <td valign="middle">tan <var>δ</var></td>
+            <td valign="middle">dissipation factor<br>
             </td>
-            <td valign="middle">|$9| / $8</td>
-            <td>1<br>
+            <td valign="middle">$8 / |$9|</td>
+            <td><br>
             </td>
             <td><br>
             </td>
@@ -194,10 +203,9 @@
         </tbody>
       </table>
     </blockquote>
-    <h2><a name="spectrum_dat"></a> Reference signal (frequency domain) &ndash;
-      <tt>spectrum.dat</tt></h2>
+    <h2><a name="spectrum_dat"></a> Reference signal (frequency domain) – <tt>spectrum.dat</tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -234,17 +242,15 @@
           <tr>
             <td>$6</td>
             <td><var>harmonic</var></td>
-            <td>Ordinal of the harmonic. Negative values indicate the second
-              channel in case <a href="#_mst">two channel mode</a> is
-              activated.</td>
+            <td>Ordinal of the harmonic. Negative values indicate the second channel in case <a href="parameter.html#_stereo">two
+                channel mode</a> is activated.</td>
           </tr>
         </tbody>
       </table>
-      <p></p>
     </blockquote>
-    <h2><a name="ref_dat"></a>Reference signal (time domain) &ndash; <tt>ref.dat</tt></h2>
+    <h2><a name="ref_dat"></a>Reference signal (time domain) – <tt>ref.dat</tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -267,9 +273,9 @@
         </tbody>
       </table>
     </blockquote>
-    <h2><tt><a name="gain_dat"></a></tt>Gain correction file &ndash;&nbsp;<tt>gain.dat</tt></h2>
+    <h2><tt><a name="gain_dat"></a></tt>Gain correction file –&nbsp;<tt>gain.dat</tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -305,12 +311,11 @@
           </tr>
         </tbody>
       </table>
-      <p>On input (option <a href="#_gr"><tt>gr</tt></a><a href="#_gd"><tt></tt></a>)
-        only the first three columns are used.</p>
+      <p>On input (option <a href="parameter.html#_gr"><tt>gr</tt></a>) only the first three columns are used.</p>
     </blockquote>
-    <h2><a name="zero_dat"></a>Matrix correction file &ndash; <tt>matrix.dat</tt></h2>
+    <h2><a name="zero_dat"></a>Matrix correction file – <tt>matrix.dat</tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -365,7 +370,7 @@
           </tr>
           <tr>
             <td>$10</td>
-            <td>abs&nbsp;<var>c<sub>ll</sub></var></td>
+            <td>|<var>c<sub>ll</sub></var>|</td>
             <td>Absolute value of coefficient <var>c<sub>ll</sub></var></td>
           </tr>
           <tr>
@@ -376,7 +381,7 @@
           </tr>
           <tr>
             <td>$12</td>
-            <td>abs <var>c<sub>lr</sub></var></td>
+            <td>|<var>c<sub>lr</sub></var>|</td>
             <td>Absolute value of coefficient <var>c<sub>lr</sub></var></td>
           </tr>
           <tr>
@@ -386,7 +391,7 @@
           </tr>
           <tr>
             <td>$14</td>
-            <td>abs <var>c<sub>rl</sub></var></td>
+            <td>|<var>c<sub>rl</sub></var>|</td>
             <td>Absolute value of coefficient <var>c<sub>rl</sub></var></td>
           </tr>
           <tr>
@@ -396,7 +401,7 @@
           </tr>
           <tr>
             <td>$16</td>
-            <td>abs <var>c<sub>rr</sub></var></td>
+            <td>|<var>c<sub>rr</sub></var>|</td>
             <td>Absolute value of coefficient <var>c<sub>rr</sub></var></td>
           </tr>
           <tr>
@@ -404,9 +409,92 @@
             <td>arg <var>c<sub>rr</sub></var></td>
             <td>Phase angle of coefficient <var>c<sub>rr</sub></var> in degrees</td>
           </tr>
+          <tr>
+            <td>$18</td>
+            <td>|<var>L</var>∞|</td>
+            <td>Amplitude of the 1st channel during calibration with Z&nbsp;=&nbsp;∞</td>
+          </tr>
+          <tr>
+            <td>$19<br>
+            </td>
+            <td>arg <var>L</var><var>∞</var><br>
+            </td>
+            <td>Phase of the 1st channel during calibration with Z&nbsp;=&nbsp;∞ in degrees</td>
+          </tr>
+          <tr>
+            <td>$20<br>
+            </td>
+            <td>|<var>R</var><var>∞</var>|<br>
+            </td>
+            <td>Amplitude of the 2nd channel during calibration with Z&nbsp;=&nbsp;∞</td>
+          </tr>
+          <tr>
+            <td>$21<br>
+            </td>
+            <td>arg <var>R</var><var>∞</var><br>
+            </td>
+            <td>Phase of the 2nd channel during calibration with Z&nbsp;=&nbsp;∞ in degrees </td>
+          </tr>
+          <tr>
+            <td>$22<br>
+            </td>
+            <td>|<var>L0</var>|<br>
+            </td>
+            <td>Amplitude of the 1st channel during calibration with Z&nbsp;=&nbsp;0</td>
+          </tr>
+          <tr>
+            <td>$23<br>
+            </td>
+            <td>arg <var>L0</var><br>
+            </td>
+            <td>Phase of the 1st channel during calibration with Z&nbsp;=&nbsp;0 in degrees</td>
+          </tr>
+          <tr>
+            <td>$24<br>
+            </td>
+            <td>|<var>R0</var>|<br>
+            </td>
+            <td>Amplitude of the 2nd channel during calibration with Z&nbsp;=&nbsp;0 </td>
+          </tr>
+          <tr>
+            <td>$25<br>
+            </td>
+            <td>arg <var>R0</var><br>
+            </td>
+            <td>Phase of the 2nd channel during calibration with Z&nbsp;=&nbsp;0 in degrees </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="3">only for 3 point calibration ...</td>
+          </tr>
+          <tr>
+            <td>$26</td>
+            <td>|<var>L1</var>|</td>
+            <td>Amplitude of the 1st channel during calibration with Z&nbsp;=&nbsp;1</td>
+          </tr>
+          <tr>
+            <td>$27<br>
+            </td>
+            <td>arg <var>L1</var><br>
+            </td>
+            <td>Phase of the 1st channel during calibration with Z&nbsp;=&nbsp;1 in degrees</td>
+          </tr>
+          <tr>
+            <td>$28<br>
+            </td>
+            <td>|<var>R1</var>|<br>
+            </td>
+            <td>Amplitude of the 2nd channel during calibration with Z&nbsp;=&nbsp;1 </td>
+          </tr>
+          <tr>
+            <td>$29<br>
+            </td>
+            <td>arg <var>R1</var><br>
+            </td>
+            <td>Phase of the 2nd channel during calibration with Z&nbsp;=&nbsp;1 in degrees</td>
+          </tr>
         </tbody>
       </table>
-      <p>The file contains an array of complex 2&times;2 matrices
+      <p>The file contains an array of complex 2×2 matrices
         <math>
           <mrow>
             <mo>[</mo>
@@ -429,11 +517,10 @@
                   <msub>
                     <mi>c</mi>
                     <mi>rr</mi> </msub> </mtd> </mtr> </mtable>
-            <mo>]</mo> </mrow> </math>. On input (option <a href="#_zr"><tt>zr</tt></a>)
-        only the first 9 columns are used. <a href="#matrix_cal">&rarr; matrix
-          calibration</a></p>
+            <mo>]</mo> </mrow> </math>. On input (option <a href="parameter.html#_zr"><tt>zr</tt></a>) only the first 9 columns
+        are used. <a href="calibration.html#matrix-cal">→ matrix calibration</a></p>
       <p>The physical meaning of the coefficients is: </p>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Coefficient</th>
@@ -464,7 +551,7 @@
     </blockquote>
     <h2><tt><a name="window_dat"></a>window.dat</tt> - window function<tt> </tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -489,7 +576,7 @@
     </blockquote>
     <h2><tt><a name="raw_dat"></a>raw.dat</tt> - raw data<tt> </tt></h2>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>

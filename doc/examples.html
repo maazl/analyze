@@ -1,0 +1,102 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Analyze examples</title>
+    <link href="mm.css" rel="stylesheet" type="text/css">
+    <script type="text/javascript" async="" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML"></script>
+    <style type="text/css">
+h3,h4 {
+  clear: both;
+}
+
+</style></head>
+  <body>
+    <h1>Analyze: measurement examples</h1>
+    <a href="index.html">△&nbsp;Index</a> <a href="usage.html">▷ Usage</a> <span class="current">▼&nbsp;Examples</span>
+    <a href="parameter.html">▷&nbsp;Parameters</a> <a href="calibration.html">▷&nbsp;Calibration</a> <a href="fileformat.html">▷&nbsp;File
+      format</a> <a href="measure.html">▷&nbsp;How it works</a><br>
+    <a href="#1port">▾&nbsp;Impedance</a> <a href="#2port">▾&nbsp;Transfer functions</a><br>
+    <h2><a name="1port"></a>Impedance (1 port measurements)</h2>
+    <p>All of the following examples are measured with an self made <a href="http://maazl.de/electronic/LCR/LCR-Adapter.html">LCR-Adapter</a>.
+      Unless otherwise noted all examples used an on board AMD HDA device, used an FFT size of 16384, took about one second and used
+      a noise pattern.<br>
+      Note that while the 192&nbsp;kHz of the HD Audio are particularly useful using 24 bit resolution typically adds no value. In
+      my case results were even worse. In fact all measurements are taken with only 16 bit. Up to 20&nbsp;kHz almost any 16/48 sound
+      device would do the job as well.</p>
+    <h3>Capacitors</h3>
+    <h4><img src="images/2200%C2%B56V3.png" class="leftbox">2200&nbsp;µF, 6.3&nbsp;V Panasonic FM</h4>
+    <p>The ESR of this electrolytic capacitor is in the order of 12&nbsp;mΩ. The raise of ESR at lower frequencies is typical for
+      electrolytics.</p>
+    <p>The measurement is done with a reference of <var>R<sub>Ref</sub></var>&nbsp;= 200&nbsp;mΩ.</p>
+    <p>The ESR at 120&nbsp;Hz is by far better than the limit in the data sheet which allows tan&nbsp;δ up to 0.26, the actual value
+      is about 0.06.</p>
+    <p>The deviations above 50&nbsp;kHz are due to restrictions of the setup, especially the wiring.</p>
+    <h4><img src="images/3.3pf.png" class="leftbox"><img src="images/3.3pF.jpg" alt="" style="width: 200px; height: 129.707px;" class="rightbox">3.3
+      pF ceramic capacitor</h4>
+    <p>The measurement is done with a reference of <var>R<sub>Ref</sub></var>&nbsp;= 20&nbsp;kΩ.</p>
+    <p>This drive the impedance measurement to the limits. The capacity of the 3.3&nbsp;pF capacitor is measured quite accurate. I
+      really wonder that the measurement is still possible at a few kHz where reactance is beyond 10&nbsp;MΩ, i.e. 3 orders of
+      magnitude higher than the reference resistor.</p>
+    <p>Of course, ESR measurement is indeterminate. The values in the graph are just noise.</p>
+    <p>It is essential for this kind of measurement that the calibration is done with exactly the same wires. Again above
+      50&nbsp;kHz the setup limits reasonable results.</p>
+    <h4><img src="images/10%C2%B5F16V.png" alt="" class="rightbox leftbox">10&nbsp;µF, 16&nbsp;V electrolytic</h4>
+    <p>This is a "well done" used capacitor with poor performance but not yet defective.</p>
+    <p>The measurement is done with a reference of <var>R<sub>Ref</sub></var>&nbsp;= 20&nbsp;Ω.</p>
+    <p>This capacitor provides the full capacity only at low frequencies. Above 10&nbsp;kHz ESR dominates.</p>
+    <h3>Inductors</h3>
+    <h3><img src="images/1mH%20air.png" alt="" class="leftbox">1&nbsp;mH air-core coil</h3>
+    <p>This is an 1 mH coil for passive crossovers of loudspeakers.</p>
+    <p>The measurement is done with a reference of <var>R<sub>Ref</sub></var>&nbsp;= 20&nbsp;Ω.</p>
+    <p>Noticeable the ESR grows above 1 kHz. This due to stray field dissipation.</p>
+    <h4><img src="images/1mH%20Ferrite.png" class="leftbox">1&nbsp;mH Ferrite core coil</h4>
+    <p>This is also an 1&nbsp;mH coil for passive crossovers but with a small Ferrite core.</p>
+    <p>Again the ESR grows above 1&nbsp;kHz. But it is obvious that this component is superior to the allegedly superior air-core.
+      The hysteresis loss is significantly less than the leakage field and the component is smaller, cheaper and has less DC
+      resistance. (This is a vote not to use air-core coils for speaker crossovers.)</p>
+    <h3><img src="images/220nH.png" class="leftbox"><img src="images/220nH.jpg" alt="" style="width: 200px; height: 158.254px;" class="rightbox">220&nbsp;nH
+      inductor</h3>
+    <p>This small 220&nbsp;µH axial wired coil is measured with a reference of <var>R<sub>Ref</sub></var>&nbsp;= 200&nbsp;mΩ.</p>
+    <p>The graph shows only about 200 µH. This is likely due to the restricted accuracy of the calibration with this reference. It
+      is not that easy to get a low inductance high precision reference resistor in this range.</p>
+    <p>But beyond the limited absolute accuracy even a smaller inductor may be measured. Like with very small capacitors the result
+      at lower frequencies is still sufficient for characterization.</p>
+    <h3>Other impedance</h3>
+    <h4><img src="images/LSStu8M.png" class="leftbox" width="611" height="801" align="left">3&nbsp;way loudspeaker</h4>
+    <p>Complex impedance of an 8&nbsp;Ω studio monitor satellite in a sealed enclosure with passive 3&nbsp;way crossover.<br>
+      Measured with an ALC650 on board audio device and a reference resistor of <var>R<sub>Ref</sub></var>&nbsp;= 20&nbsp;Ω and
+      pink noise (weighted with <var>f</var><sup>−0,5</sup>). FFT size is 65,536.</p>
+    <p>Most obvious is the resonance of the woofer at approx. 120&nbsp;Hz. (An adequate frequency response is achieved by an
+      Linkwitz Transformation filter in the active subwoofer crossover.)</p>
+    <div style="margin-left: 40px;">
+      <p> The real ESR is about 0.5&nbsp;Ω less because of the lack of a 4 point wire to the speaker. <var>R<sub>DC</sub></var> is
+        in real about 6.8&nbsp;Ω.</p>
+      <h4><img src="images/Panasonic%20NiMH%20AA.png" alt="" class="leftbox">NiMH AA accumulator</h4>
+      <p>This is the impedance of a Panasonic Infinium NiMH accumulator. The intrinsic resistance is about 22&nbsp;mΩ which is
+        typical for good NiMH AA cells.</p>
+      <p>The measurement is done with a reference of <var>R<sub>Ref</sub></var>&nbsp;= 200&nbsp;mΩ. Additionally an offset voltage
+        of 1&nbsp;V is applied to avoid excessive discharge current during the measurement.</p>
+      <p>The ESL is probably due to wiring. It likely does not vanish below 1 kHz, it just cannot be measured with this equipment at
+        lower frequencies.</p>
+      <h4><img src="file:///home/mueller/C/analyze/doc/images/Transformer.png" alt="" class="leftbox">Transformer</h4>
+      <p>This is the primary winding of a mains transformer, measured with a reference of <var>R<sub>Ref</sub></var>&nbsp;=
+        20&nbsp;kΩ.</p>
+    </div>
+    <h2><a name="2port"></a>Transfer functions (2&nbsp;port measurements)</h2>
+    <h3>Loudspeaker response</h3>
+    <p>These measurements are done in sweep mode with a Panasonic WM61a measurement microphone and a small <a href="http://maazl.de/electronic/ElectretAmp/index.html">self-made
+        microphone amplifier</a>.</p>
+    <h4> <img src="images/VisatonResponse.png" alt="" class="leftbox">3&nbsp;way loudspeaker</h4>
+    <p>This is the raw response [dB SPL @ 2.83&nbsp;V, 1&nbsp;m] of a 3&nbsp;way hi-fi speaker. The drivers are mounted in an
+      80&nbsp;l vented enclosure and are measured without crossover.</p>
+    <p><span style="color: #ff0000;">Red graph</span>: 10" woofer<br>
+      <span style="color: #33ff33;">Green graph</span>: 2" dome mid range<br>
+      <span style="color: #0000ff;">Blue graph</span>: 1" dome tweeter</p>
+    <p>The setup used the poor people's anechoic room: the garden with the speaker firing upwards. ;-)<br>
+      The analysis uses the lock-in filter of <span style="font-family: monospace;">Analyze</span> that rejects noise to a very
+      high degree. So even a truck passing at the street cause no interference.</p>
+    <p>This measurement has also recorded the <i>relative phase</i> response (not shown). Together with an impedance measurement of
+      each driver this is used to design the passive crossover with phase matching (everything else makes no much sense anyway).</p>
+  </body>
+</html>

@@ -1,1 +1,1 @@
-stdbuf -o1M arecord -f dat -t raw | ../bin/sampledist loop al=1 bn=65536 wd
+stdbuf -o1M arecord -f dat -t raw | ../sampledist loop al=1 bn=65536 wd

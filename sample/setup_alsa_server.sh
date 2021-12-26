@@ -1,5 +1,6 @@
 #!/bin/bash
 # This file is called by analyze.
+pulseaudio -k
 amixer -c SB -sq <mixer.in;
 
 device="-D hw:2,0"

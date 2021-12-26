@@ -2,19 +2,19 @@
 <html lang="en">
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
-    <title>Analyze: Configuration parameters</title>
+    <title>Analyze: Configuration parameter reference</title>
     <link href="mm.css" rel="stylesheet" type="text/css">
   </head>
   <body>
     <script type="text/javascript" async="" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML">
     </script>
-    <h1>Analyze: Configuration parameters</h1>
-    <div class="index"><a href="index.html">△</a><a href="index.html"> Index</a> <span class="current">▼ Parameters</span> <a href="calibration.html">▷
-        Calibration</a> <a href="fileformat.html">▷ File formats</a> <a href="index.html#download">&rarr; Download</a> <a href="#history">&rarr;
-        History</a> <a href="#todo">&rarr; Todo</a> <a href="index.html#build">&rarr; Build</a><br>
-      <a href="#syntax">▾ Syntax</a> <a href="#list">▾ Alphabetic list</a> <a href="#general">▾ General options</a> <a href="#input">▾
-        Input options</a> <a href="#output">▾ Output options</a> <a href="#control">▾ Control options</a> <a href="#FFT">▾ FFT
-        parameter</a> <a href="#calibrate">▾ Calibration options</a></div>
+    <h1>Analyze: Configuration parameter reference</h1>
+    <div class="index"><a href="index.html">△&nbsp;Index</a> <a href="usage.html">▷&nbsp;Usage</a> <a href="examples.html">▷&nbsp;Examples</a>
+      <span class="current"></span><span class="current">▼&nbsp;Parameters</span> <a href="calibration.html">▷ Calibration</a> <a
+        href="fileformat.html">▷&nbsp;File format</a> <a href="measure.html">▷&nbsp;How it works</a><br>
+      <a href="#syntax">▾ Syntax</a> <a href="#list">▾ Alphabetic list</a> <a href="#general">▾&nbsp;General options</a> <a href="#input">▾&nbsp;Input
+        options</a> <a href="#output">▾&nbsp;Output options</a> <a href="#control">▾&nbsp;Control options</a> <a href="#FFT">▾&nbsp;FFT
+        parameter</a> <a href="#calibrate">▾&nbsp;Calibration options</a></div>
     <a href="index.html#build"> </a>
     <h2 class="index"><a name="syntax"></a>General syntax</h2>
     <blockquote>
@@ -35,6 +35,7 @@
         <p>If an argument <em>starts with <tt>@</tt></em> then this is an <em>include directive</em>. In this case all lines in
           the specified file are treated as parameters. Included files may include further files.</p>
       </li>
+      <li>Parameters set in included files can be overridden if they are assigned after the include. The last value wins.</li>
       <li>
         <p>Arguments or <em>lines starting with <tt>#</tt> are ignored</em>.</p>
       </li>
@@ -118,21 +119,21 @@
           <td><tt><a href="#_famin">famin</a> <a href="#_famax">famax</a></tt></td>
           <td>frequency range for LCR analysis</td>
           <td><a href="#_fmin"><tt>fmin</tt></a> .. <a href="#_fmax"><tt>fmax</tt></a></td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a><a href="#FFT"></a></td>
         </tr>
         <tr>
           <td><a href="#_fbin"><tt>fbin</tt></a></td>
           <td>average FFT channels with logarithmic bandwidth<br>
           </td>
           <td><tt>0</tt> (off)</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a><a href="#FFT"></a></td>
         </tr>
         <tr>
           <td><a href="#_ff32"><span style="font-family: monospace;">ff32</span></a></td>
           <td>read/write floating point samples</td>
           <td><br>
           </td>
-          <td><a href="#general">general options</a><a href="#input"></a></td>
+          <td><a href="#general">general options</a></td>
         </tr>
         <tr>
           <td><a href="#_fftlen"><tt>fftlen</tt></a></td>
@@ -144,33 +145,45 @@
           <td><a href="#_fi16"><span style="font-family: monospace;">fi16</span></a></td>
           <td>read/write 16 bit integer samples</td>
           <td>default</td>
-          <td><a href="#general">general options</a><a href="#input"></a></td>
+          <td><a href="#general">general options</a></td>
+        </tr>
+        <tr>
+          <td><a href="#_fi24"><span style="font-family: monospace;">fi24</span></a></td>
+          <td>read/write 24 bit integer samples</td>
+          <td>default</td>
+          <td><a href="#general">general options</a></td>
+        </tr>
+        <tr>
+          <td><a href="#_fi32"><span style="font-family: monospace;">fi32</span></a></td>
+          <td>read/write 32 bit integer samples</td>
+          <td>default</td>
+          <td><a href="#general">general options</a></td>
         </tr>
         <tr>
           <td><a href="#_finc"><tt>finc</tt></a></td>
           <td>linear increment for used FFT channels<br>
           </td>
           <td><tt>1.0</tt></td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_flog"><tt>flog</tt></a></td>
           <td>logarithmic increment for used FFT channels</td>
           <td><tt>1.0</tt> (off)</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><tt><a href="#_fmin">fmin</a> <a href="#_fmax">fmax</a></tt></td>
           <td>frequency range for analysis<br>
           </td>
           <td><tt>0.001</tt> .. Nyquist frequency</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_fsamp"><tt>fsamp</tt></a></td>
           <td>sampling frequency</td>
           <td><tt>48000</tt></td>
-          <td><a href="#general">general options</a><a href="#input"></a></td>
+          <td><a href="#general">general options</a></td>
         </tr>
         <tr>
           <td><a href="#_gain"><tt>gain</tt></a></td>
@@ -180,17 +193,17 @@
         </tr>
         <tr>
           <td><a href="#_gg"><tt>gg</tt></a></td>
-          <td>generate <a href="#gain-cal">gain calibration</a> file</td>
+          <td>generate <a href="calibration.html#gain-cal">gain calibration</a> file</td>
           <td><br>
           </td>
           <td><a href="#calibrate">calibration</a></td>
         </tr>
         <tr>
           <td><a href="#_gr"><tt>gr</tt></a></td>
-          <td>use <a href="#gain-cal">gain calibration</a> file</td>
+          <td>use <a href="calibration.html#gain-cal">gain calibration</a> file</td>
           <td><br>
           </td>
-          <td><a href="#calibrate">calibration</a><a href="#calibrate_options"></a></td>
+          <td><a href="#calibrate">calibration</a></td>
         </tr>
         <tr>
           <td><a href="#_h_f"><tt>h/f</tt></a></td>
@@ -198,21 +211,21 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_harm"><tt>harm</tt></a></td>
-          <td>take harmonics into account<br>
+          <td>take <var>n</var> harmonics into account<br>
           </td>
           <td><tt>1</tt> (off)</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_hd"><tt>hd</tt></a></td>
-          <td>use weight function for differential <a href="#_scm">input mode</a></td>
+          <td>use weight function for differential <a href="#_diff">input mode</a></td>
           <td><br>
           </td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_he"><tt>he</tt></a></td>
@@ -220,7 +233,7 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><tt>help</tt></td>
@@ -233,7 +246,7 @@
         <tr>
           <td><a href="#_in"><tt>in</tt></a></td>
           <td>name of PCM input file, <tt>-</tt> for <tt>stdin</tt></td>
-          <td><span style="font-family: monospace;"></span><br>
+          <td><br>
           </td>
           <td><a href="#input">input data</a></td>
         </tr>
@@ -243,32 +256,32 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_initout"><tt>initout</tt></a></td>
           <td>write command to <span style="font-family: monospace;">stdout</span> before the main analysis</td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a><a href="#control_options"></a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_ln"><tt>ln</tt></a></td>
           <td>number of cycles to process</td>
           <td><tt>1</tt></td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_loop"><tt>loop</tt></a></td>
           <td>infinite number of cycles</td>
           <td>off</td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_lp"><tt>lp</tt></a></td>
-          <td>pause in seconds between measurements (at <a href="#matrix-cal">matrix calibration</a>)<a href="#matrix-cal"> </a></td>
+          <td>pause in seconds between measurements (at <a href="calibration.html#matrix-cal">matrix calibration</a>)</td>
           <td><tt>10</tt></td>
-          <td><a href="#calibrate">calibration</a><a href="#calibrate_options"></a></td>
+          <td><a href="#calibrate">calibration</a></td>
         </tr>
         <tr>
           <td><tt><a href="#_mfft">mfft</a> <a href="#_mpca">mpca</a></tt></td>
@@ -276,14 +289,14 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a><a href="#control_options"></a><a href="#control_options"></a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_msweep"><tt>msweep</tt></a></td>
           <td>use <a href="measure.html#sweep">sweep mode</a></td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><tt><a href="#_olf">olf</a> <a href="#_olc">olc</a></tt></td>
@@ -297,7 +310,7 @@
           <td>file name and column to overwrite denominator (reference)<br>
           </td>
           <td>none / <tt>1</tt></td>
-          <td><a href="#input">input data</a><a href="#input_options"></a></td>
+          <td><a href="#input">input data</a></td>
         </tr>
         <tr>
           <td><a href="#_out"><tt>out</tt></a></td>
@@ -310,7 +323,7 @@
           <td><a href="#_pch"><tt>pch</tt></a></td>
           <td>purge first frequency channels</td>
           <td><tt>1</tt> (purge DC)<tt> </tt></td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_phcc"><tt>phcc</tt></a></td>
@@ -318,13 +331,13 @@
           </td>
           <td>off<br>
           </td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_phl"><tt>phl</tt></a></td>
           <td>subtract constant group delay</td>
           <td><tt>0.0</tt> (off)</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_plotcmd"><tt>plotcmd</tt></a></td>
@@ -332,14 +345,14 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_plotout"><tt>plotout</tt></a></td>
           <td>write command to <span style="font-family: monospace;">stdout</span> after new data available</td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a><a href="#control_options"></a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_postcmd"><tt>postcmd</tt></a></td>
@@ -347,41 +360,41 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_postout"><tt>postout</tt></a></td>
           <td>write command to <span style="font-family: monospace;">stdout</span> after all analysis has completed</td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a><a href="#control_options"></a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_predelay"><tt>predelay</tt></a></td>
           <td>time to setup in FFT cycles</td>
           <td><tt>0.95</tt></td>
-          <td><a href="#synchronize">synchronization options</a><a href="#input"></a><a href="#synchronize"></a></td>
+          <td><a href="#synchronize">synchronization options</a></td>
         </tr>
         <tr>
           <td><a href="#_psa"><tt>psa</tt></a></td>
           <td>discard first input samples<br>
           </td>
           <td><tt>0</tt> (off)</td>
-          <td><a href="#input">input data</a><a href="#input_options"></a></td>
+          <td><a href="#input">input data</a></td>
         </tr>
         <tr>
           <td><a href="#_pte"><tt>pte</tt></a></td>
           <td>read input data till the end<br>
           </td>
           <td>off</td>
-          <td><a href="#input">input data</a><a href="#input_options"></a></td>
+          <td><a href="#input">input data</a></td>
         </tr>
         <tr>
           <td><a href="#_rref"><tt>rref</tt></a></td>
           <td>reference resistor<br>
           </td>
           <td><tt>1.0</tt></td>
-          <td><a href="#general">general options</a><a href="#param_options"></a></td>
+          <td><a href="#general">general options</a></td>
         </tr>
         <tr>
           <td><a href="#_rspec"><tt>rspec</tt></a></td>
@@ -392,7 +405,7 @@
         </tr>
         <tr>
           <td><a href="#_scale"><tt>scale</tt></a></td>
-          <td>noise type, <a href="noise.html#method">energy distribution</a></td>
+          <td>noise type, <a href="measure.html#noise">energy distribution</a></td>
           <td><tt>0</tt> (white noise)</td>
           <td><a href="#output">output data</a></td>
         </tr>
@@ -402,20 +415,20 @@
           </td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_setupout"><tt>setupout</tt></a></td>
           <td>write command to <span style="font-family: monospace;">stdout</span> at program start</td>
           <td><br>
           </td>
-          <td><a href="#control_options">control options</a><a href="#control_options"></a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_stereo"><tt>stereo</tt></a></td>
           <td>two channel mode</td>
           <td>off</td>
-          <td><a href="#control_options">control options</a><a href="#general"></a></td>
+          <td><a href="#control">control options</a></td>
         </tr>
         <tr>
           <td><a href="#_symmout"><tt>symmout</tt></a></td>
@@ -430,7 +443,7 @@
           <td><a href="#synchronize">synchronization options</a></td>
         </tr>
         <tr>
-          <td><a href="#_synend"><tt>synend</tt></a></td>
+          <td><a href="#_syncend"><tt>syncend</tt></a></td>
           <td>decrease of cross correlation for end of synchronisation</td>
           <td><tt>0.8</tt></td>
           <td><a href="#synchronize">synchronization options</a></td>
@@ -452,20 +465,20 @@
           <td>(over)write FFT data file on the fly<br>
           </td>
           <td>off</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_win"><tt>win</tt></a></td>
           <td>select window function</td>
           <td>off (rectangular)<br>
           </td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_wraw"><tt>wraw</tt></a></td>
           <td>write raw data</td>
           <td>off</td>
-          <td><a href="#input">input data</a><a href="#input_options"></a></td>
+          <td><a href="#input">input data</a></td>
         </tr>
         <tr>
           <td><tt><a href="#_wref">wref</a></tt></td>
@@ -483,39 +496,40 @@
         </tr>
         <tr>
           <td><a href="#_wwin"><tt>wwin</tt></a></td>
-          <td>write window function</td>
-          <td>off</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td>write window function to file</td>
+          <td><br>
+          </td>
+          <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
           <td><a href="#_xch"><span style="font-family: monospace;">xch</span></a></td>
-          <td>swap input channels (L &harr; R)</td>
+          <td>swap input channels (L ↔ R)</td>
           <td>off</td>
-          <td><a href="#input">input data</a><a href="#input_options"></a></td>
+          <td><a href="#input">input data</a></td>
         </tr>
         <tr>
           <td><a href="#_xb"><span style="font-family: monospace;">xb</span></a></td>
           <td>swap bytes of PCM data (change endianess)</td>
           <td>off</td>
-          <td><a href="#general">general options</a><a href="#input"></a><a href="#input_options"></a></td>
+          <td><a href="#general">general options</a></td>
         </tr>
         <tr>
           <td><a href="#_zg"><tt>zg</tt></a></td>
-          <td>generate <a href="#matrix-cal">matrix calibration</a> file</td>
+          <td>generate <a href="calibration.html#matrix-cal">matrix calibration</a> file</td>
           <td>off</td>
-          <td><a href="#calibrate">calibration</a><a href="#calibrate_options"></a></td>
+          <td><a href="#calibrate">calibration</a></td>
         </tr>
         <tr>
           <td><a href="#_zn"><tt>zn</tt></a></td>
-          <td>normalize amplitudes</td>
+          <td>use 2 point matrix calibration</td>
           <td>off</td>
-          <td><a href="#FFT">FFT parameter</a><a href="#fft_options"></a></td>
+          <td><a href="#calibrate">calibration</a></td>
         </tr>
         <tr>
           <td><a href="#_zr"><tt>zr</tt></a></td>
-          <td>use <a href="#matrix-cal">matrix calibration</a> file</td>
+          <td>use <a href="calibration.html#matrix-cal">matrix calibration</a> file</td>
           <td>off</td>
-          <td><a href="#calibrate">calibration</a><a href="#calibrate_options"></a></td>
+          <td><a href="#calibrate">calibration</a></td>
         </tr>
       </tbody>
     </table>
@@ -527,15 +541,15 @@
       <dt><tt><a name="_ff32"></a><b>ff32</b></tt> - read/write floating point samples</dt>
       <dd>Read input (option <a href="#_in"><tt>in</tt></a>) and write output (option <a href="#_out"><tt>out</tt></a>) samples in
         32 bit floating point format (rather than 16 bit integer).</dd>
-      <dt><tt><a name="_fi16"></a><b>fi16</b></tt> - read/write integer samples</dt>
-      <dd>Read input (option <a href="#_in"><tt>in</tt></a>) and write output (option <a href="#_out"><tt>out</tt></a>) as 16 bit
-        signed integers (default) in the platform's native byte order (unless <a href="#_xb"><tt>xb</tt></a> is used).</dd>
+      <dt><tt><a name="_fi16"></a><b>fi16</b></tt>, <tt><a name="_fi24"></a><b>fi24</b></tt>, <tt><a name="_fi32"></a><b>fi32</b></tt>
+        - read/write integer samples</dt>
+      <dd>Read input (option <a href="#_in"><tt>in</tt></a>) and write output (option <a href="#_out"><tt>out</tt></a>) as signed
+        integers in the platform's native byte order (unless <a href="#_xb"><tt>xb</tt></a> is used).</dd>
       <dt><tt><a name="_xb"></a><b>xb</b></tt> - swap bytes of PCM data</dt>
       <dd>Change endianess of PCM input and output data.</dd>
       <dt><tt><a name="_fftlen"></a><b>fftlen</b>=<var>num</var></tt> - analysis block length </dt>
       <dd>Number of samples for one analysis cycle. This is also the length of the FFT. It is strongly recommended to use a power of
-        2 if you activated the <a href="#_mfft">FFT mode</a>. The number of samples here counts after an options averaging with
-        option <a href="#_ca"><tt>ca</tt></a>.<br>
+        2 if you activated the <a href="#_mfft">FFT mode</a>.<br>
         The default values is 8192.</dd>
       <dt><tt><a name="_rref"></a><b>rref</b>=<var>res</var></tt> - reference resistor </dt>
       <dd>Scale the denominator by <var><tt>res</tt></var> before any further processing. By default no scaling takes place.<br>
@@ -556,7 +570,7 @@
       <dt><tt><a name="_wraw"></a><b>wraw</b></tt>[<tt>=<var>filename</var></tt>] -<tt> </tt>write raw data</dt>
       <dd>Write raw data to <var><tt>filename</tt></var>. If the filename is omitted the data is written to <tt>raw.dat</tt>.
         These is the raw input data without any processing so far, except for option <tt><a href="#_psa">psa</a></tt>. It is
-        intended for diagnostics only. <a href="#raw_dat">&rarr; file format</a></dd>
+        intended for diagnostics only. <a href="fileformat.html#raw_dat">→ file format</a></dd>
       <dt><tt><a name="_psa"></a><b>psa</b>=<var>num</var></tt> - discard first <tt><var>num</var></tt> samples</dt>
       <dd>Use this to discard spikes at the starting or to reach a steady state. You may also use this option to discard headers
         from PCM files like RIFF wave format.</dd>
@@ -568,7 +582,7 @@
       <dd> normally: nominator or <var>U</var>(<var>t</var>) := channel 1 (L), denominator or <var>I</var>(<var>t</var>) :=
         channel 2 (R)<br>
         differential mode: nominator or <var>U</var>(<var>t</var>) := channel 1 (L), denominator or <var>I</var>(<var>t</var>) :=
-        channel 2 &minus; channel 1 (R-L)<br>
+        channel 2 − channel 1 (R-L)<br>
         Differential mode is useful if you want to do impedance measurements without a differential instrumentation amplifier. You
         could simply use a series of a reference resistor with the unknown impedance. But note that the difference of similar
         numbers may become very sensitive to channel differences for low currents. It is recommended to use at least the <a href="#_hd">differential
@@ -607,19 +621,19 @@
       <dt><a name="_symmout"></a><b><tt>symmout</tt></b> - symmetric stereo output</dt>
       <dd>Invert the output of the second channel of single channel reference. This cannot be combined with <a href="#_stereo"><tt>stereo</tt></a>.</dd>
       <dt><a name="_scale"></a><tt><b>scale</b>=<var>power</var></tt> - noise type</dt>
-      <dd>Exponent of the <a href="noise.html#method">energy distribution</a>. <tt>0</tt> := white noise, <tt>-1</tt> := pink
+      <dd>Exponent of the <a href="measure.html#noise">energy distribution</a>. <tt>0</tt> := white noise, <tt>-1</tt> := pink
         noise. <tt>0</tt> by default.</dd>
-      <dt><b><tt><a name="#_wspec"></a>rspec</tt></b>[<tt>=<var>filename</var></tt>] - read design spectrum of the reference signal</dt>
+      <dt><b><tt><a name="_rspec"></a>rspec</tt></b>[<tt>=<var>filename</var></tt>] - read design spectrum of the reference signal</dt>
       <dd>Read the frequency domain reference signal from <var><tt>filename</tt></var> or <tt>spectrum.dat</tt> if <var><tt>filename</tt></var>
-        is omitted. See <a href="fileformat.html#spectrum_dat">&rarr;&nbsp;file format</a>.<br>
+        is omitted. See <a href="fileformat.html#spectrum_dat">→&nbsp;file format</a>.<br>
         Using this option effectively disables all options related to the design spectrum creation, first of all <a href="#_fmin"><tt>fmin</tt></a>
         and <a href="#_fmax"><tt>fmax</tt></a>.</dd>
-      <dt><b><tt><a name="#_wspec"></a>wspec</tt></b>[<tt>=<var>filename</var></tt>] - write design spectrum of the reference signal</dt>
+      <dt><b><tt><a name="_wspec"></a>wspec</tt></b>[<tt>=<var>filename</var></tt>] - write design spectrum of the reference signal</dt>
       <dd>Writes the frequency domain reference signal to <var><tt>filename</tt></var> or <tt>spectrum.dat</tt> if <var><tt>filename</tt></var>
-        is omitted. See <a href="fileformat.html#spectrum_dat">&rarr;&nbsp;file format</a>.</dd>
-      <dt><tt><a name="#_wref"></a><b>wref</b></tt>[<tt>=<var>filename</var></tt>] - write time domain reference data</dt>
+        is omitted. See <a href="fileformat.html#spectrum_dat">→&nbsp;file format</a>.</dd>
+      <dt><tt><a name="_wref"></a><b>wref</b></tt>[<tt>=<var>filename</var></tt>] - write time domain reference data</dt>
       <dd>Writes one cycle of the reference signal to <var><tt>filename</tt></var>. If the filename is omitted <tt>ref.dat</tt> is
-        used. See <a href="fileformat.html#ref_dat">&rarr;&nbsp;file format</a>.<br>
+        used. See <a href="fileformat.html#ref_dat">→&nbsp;file format</a>.<br>
         The file is written only at setup once unless sweep mode is used.</dd>
       <dt><a name="_aref"></a><b><tt>aref</tt></b><var> - </var>append reference data file</dt>
       <dd>Append the reference data file instead of overwriting it. This is useful in sweep mode to get not only the latest
@@ -648,21 +662,19 @@
       <dt><a name="_stereo"></a><b><tt>stereo</tt></b> - two channel mode</dt>
       <dd>In two channel mode (<u>st</u>ereo) the used FFT frequencies are associated with two distinct channels alternatingly. This
         applies to the reference generator as well as to any averaging operation. A column in the result files indicates the channel
-        association. Note that this doubles the measurement time in sweep mode. See multi <a href="#multichannel">multi channel
+        association. Note that this doubles the measurement time in sweep mode. See multi <a href="measure.html#multichannel">multi channel
           measurements</a>.</dd>
       <dt><tt><a name="_setupcmd"></a><b>setupcmd</b>=<var>command</var></tt> - execute shell command at program start</dt>
       <dd>After parameter parsing but before any other action <var><tt>command</tt></var> is passed to <tt>system()</tt>.<br>
         Note that <tt>analyze</tt> waits for the command to complete. So you may setup some things that are used by other
         parameters here.</dd>
-      <dt><tt><a name="_plot" id="_setupout"></a><b>setupout</b>=<var>command</var></tt> - pipe command before start at program
-        start</dt>
+      <dt><tt><a name="_setupout"></a><b>setupout</b>=<var>command</var></tt> - pipe command before start at program start</dt>
       <dd>Write <var><tt>command</tt></var> to <tt>stdout</tt> after parameter parsing but before any other action.</dd>
       <dt><tt><a name="_initcmd"></a><b>initcmd</b>=<var>command</var></tt> - execute shell command before start of data processing</dt>
       <dd>Before the first input samples are processed <var><tt>command</tt></var> is passed to <tt>system()</tt>. At this point
         global output files like the <a href="#_wspec">reference design spectrum</a> have been written already.<br>
         Note that <tt>analyze</tt> waits for the command to complete. This gives you exclusive access to the data files. </dd>
-      <dt><tt><a name="_plot" id="_initout"></a><b>initout</b>=<var>command</var></tt> - pipe command before start of data
-        processing</dt>
+      <dt><tt><a name="_initout"></a><b>initout</b>=<var>command</var></tt> - pipe command before start of data processing</dt>
       <dd>Write <var><tt>command</tt></var> to <tt>stdout</tt> before the first input samples are processed<span style="font-family: monospace;"></span>.
         At this point global output files like the <a href="#_wspec">reference design spectrum</a> have been written already.</dd>
       <dt><tt><a name="_plotcmd"></a><b>plotcmd</b>=<var>command</var></tt> - execute shell command when new data is available</dt>
@@ -671,7 +683,7 @@
         access to the data files but it may also interfere with the real time processing of the input data. You may alternatively
         consider to pipe the command to <tt>stdout</tt> instead (option <a href="#_plotout"><tt>plotout</tt></a>), if you do not
         need this kind of synchronization. </dd>
-      <dt><tt><a name="_plot" id="_plotout"></a><b>plotout</b>=<var>command</var></tt> - pipe command when new data is available</dt>
+      <dt><tt><a name="_plotout"></a><b>plotout</b>=<var>command</var></tt> - pipe command when new data is available</dt>
       <dd>Write <var><tt>command</tt></var> to <tt>stdout</tt> each time an analysis has completed. You can use this to
         synchronize plot programs when new data arrives.</dd>
       <dt><tt><a name="_postcmd"></a><b>postcmd</b>=<var>command</var></tt> - execute shell command after analysis has completed</dt>
@@ -679,7 +691,7 @@
           style="font-family: monospace;">analyze</span> waits for the command to complete. You may alternatively consider to pipe
         the command to <tt>stdout</tt> instead (option <a href="#_postout"><tt>postout</tt></a>), if you do not need this kind of
         synchronization. </dd>
-      <dt><tt><a name="_plot" id="_postout"></a><b>postout</b>=<var>command</var></tt> - pipe command after analysis has completed</dt>
+      <dt><tt><a name="_postout"></a><b>postout</b>=<var>command</var></tt> - pipe command after analysis has completed</dt>
       <dd>When all analysis steps have been completed write <var><tt>command</tt></var> to <tt>stdout</tt>.</dd>
     </dl>
     <dl compact="compact">
@@ -710,20 +722,20 @@
       </dd>
       <dt><tt><a name="_fbin"></a><b>fbin</b>=<var>factor</var></tt> - average FFT channels logarithmically</dt>
       <dd>Calculates the average over <var><tt>size</tt></var> subsequent frequency channels to get approximately logarithmic
-        frequency bins. The channels are averaged as long as they fit into the interval [<var>f</var>,&nbsp;<var>f</var>&nbsp;&middot;&nbsp;(<tt><var>factor</var></tt>&nbsp;+&nbsp;1)].
+        frequency bins. The channels are averaged as long as they fit into the interval [<var>f</var>,&nbsp;<var>f</var>&nbsp;·&nbsp;(<tt><var>factor</var></tt>&nbsp;+&nbsp;1)].
 This
         option is particularly useful if the properties of the object tend to change over log&nbsp;<var>f</var> rather than <var>f</var>.
         In other words if the result is shown with logarithmic frequency axis.</dd>
       <dt><tt><a name="_finc"></a><b>finc</b>=<var>channels</var></tt>, <tt><a name="_flog"></a><b>flog</b>=<var>factor</var></tt>
         - linear and logarithmic increment for used frequencies </dt>
       <dd>This is intended to be used with custom, discrete energy distributions. Subsequent used frequencies have at least the
-        distance <var>f<sub>n+1</sub>&nbsp;= f<sub>n</sub></var>&nbsp;&middot; <tt><var>factor</var> + <var>channels</var></tt>
-        rounded to the closest frequency in the FFT result. Any channels in between are ignored.</dd>
+        distance <var>f<sub>n+1</sub>&nbsp;= f<sub>n</sub></var>&nbsp;· <tt><var>factor</var> + <var>channels</var></tt> rounded
+        to the closest frequency in the FFT result. Any channels in between are ignored.</dd>
       <dt><tt><a name="_harm"></a><b>harm</b>=<var>n</var></tt> - use harmonics</dt>
       <dd>With this option the first <i><tt>n</tt></i> harmonics of any used frequency is reserved. In fact it is assumed that the
         reference signal does not contain energy at these frequencies and any response is the result of harmonic distortion. This
         could be used to do very fast measurements of harmonics of loudspeakers.<br>
-        The setting must be chosen to <a href="noise.html#_finc">match the reference signal</a>. See <a href="#harmonics">analysis
+        The setting must be chosen to <i>match the reference signal</i>. See <a href="measure.html#harmonics">analysis
           of harmonics</a>.</dd>
       <dt><tt><a name="_pch"></a><b>pch</b>=<var>num</var></tt> - purge low FFT channels</dt>
       <dd>This assigns zero to the first <var><tt>num</tt></var> channels of the FFT result. It is alternative to <a href="#_fmin"><tt>fmin</tt></a>
@@ -738,28 +750,25 @@ This
         may occur, because of errors in phase unwrapping. With this option activated the result is written to <tt>stderr</tt>
         additionally. The fitted group delay is removed from the output file in this case.</dd>
       <dt><tt><a name="_phl"></a><b>phl</b>=<var>delay</var></tt> - subtract group delay</dt>
-      <dd>Adjusts the phase data by exp(i <var>&omega; <tt>delay</tt></var>). <var><tt>delay</tt></var> is in seconds.</dd>
+      <dd>Adjusts the phase data by exp(i <var>ω <tt>delay</tt></var>). <var><tt>delay</tt></var> is in seconds.</dd>
       <dt><tt><a name="_wd"></a><b>wd</b></tt>[<tt>=<var>filename</var></tt>] - write FFT data<tt> </tt></dt>
       <dd>Write detailed result of FFT analysis to <var><tt>filename</tt></var>. If <tt>=<var>filename</var></tt> is omitted the
-        data is written to file <tt>data.dat</tt>. <a href="fileformat.html#data_dat">&rarr; file format</a></dd>
+        data is written to file <tt>data.dat</tt>. <a href="fileformat.html#data_dat">→ file format</a></dd>
       <dt><tt><a name="_win"></a><b>win</b>=<var>typ</var></tt> - window function</dt>
       <dd>Apply window function to data before FFT. The following window functions are implemented:<br>
-        <tt>win=0</tt> &ndash; rectangular = none (default)<br>
-        <tt>win=1</tt> &ndash; Bartlett window = triangular, abs(2&nbsp;<var>i</var>/<var>n</var> 1)<br>
-        <tt>win=2</tt> &ndash; Hanning window, .5 + .5&nbsp;cos(2&pi; <var>i</var>/<var>n</var>)<br>
-        <tt>win=3</tt> &ndash; Hamming window, .54 + .46&nbsp;cos(2 <var>i</var>/<var>n</var>)<br>
-        <tt>win=4</tt> &ndash; Blackman window, .42 + .5&nbsp;cos(2&pi; <var>i</var>/<var>n</var>) +&nbsp;.08&nbsp;cos(4&pi; <var>i</var>/<var>n</var>)<br>
-        <tt>win=5</tt> &ndash; Blackman Harris window, .35875 + .48829&nbsp;cos(2&pi; <var>i</var>/<var>n</var>)
-        +&nbsp;.14128&nbsp;cos(4&pi; <var>i</var>/<var>n</var>) + .01168&nbsp;cos(2&pi; <var>i</var>/<var>n</var>)<br>
+        <tt>win=0</tt> – rectangular = none (default)<br>
+        <tt>win=1</tt> – Bartlett window = triangular, abs(2&nbsp;<var>i</var>/<var>n</var> 1)<br>
+        <tt>win=2</tt> – Hanning window, .5 + .5&nbsp;cos(2π <var>i</var>/<var>n</var>)<br>
+        <tt>win=3</tt> – Hamming window, .54 + .46&nbsp;cos(2 <var>i</var>/<var>n</var>)<br>
+        <tt>win=4</tt> – Blackman window, .42 + .5&nbsp;cos(2π <var>i</var>/<var>n</var>) +&nbsp;.08&nbsp;cos(4π <var>i</var>/<var>n</var>)<br>
+        <tt>win=5</tt> – Blackman Harris window, .35875 + .48829&nbsp;cos(2π <var>i</var>/<var>n</var>) +&nbsp;.14128&nbsp;cos(4π <var>i</var>/<var>n</var>)
+        + .01168&nbsp;cos(2π <var>i</var>/<var>n</var>)<br>
         A window function is only recommended if the reference signal cannot be made cyclic or the DAC and ADC do not operate
         coherent.</dd>
       <dt><tt><a name="_wwin"></a><b>wwin</b></tt>[<tt>=<var>filename</var></tt>] - write window function</dt>
       <dd>This option writes the selected window function (option <a href="#_win"><tt>win</tt></a>) to&nbsp;<tt><var>filename</var></tt>.
-        If <tt>=<var>filename</var></tt> is omitted the window data is written to file <tt>window.dat</tt>. <a href="fileformat.html#window_dat">&rarr;
+        If <tt>=<var>filename</var></tt> is omitted the window data is written to file <tt>window.dat</tt>. <a href="fileformat.html#window_dat">→
           file format</a></dd>
-      <dt><a name="_zn"></a><b><tt>zn</tt></b> - normalize amplitudes</dt>
-      <dd>Adjust the sum of the complex amplitudes of nominator and denominator to 1. This has no effect on impedance or transfer
-        function, but it gets important if you relate data of different measurements as e.g. the matrix calibration does.</dd>
     </dl>
     <h2><a name="synchronize"></a>Synchronization options</h2>
     <dl>
@@ -778,8 +787,7 @@ This
         compared to the auto correlation of the sync reference</dt>
       <dd>This level controls when input samples are considered to be a valid synchronization signal. It is a relative value.</dd>
       <dt><a name="_syncend"></a><b><tt>syncend</tt></b><tt>=<var>factor</var></tt> - decrease of cross correlation for end of sync</dt>
-      <dd>If the cross correlation decreases at least to this factor this is the end of the synchronization preamble signal.<br>
-      </dd>
+      <dd>If the cross correlation decreases at least to this factor this is the end of the synchronization preamble signal. </dd>
       <dt><a name="_predelay"></a><tt><b>predelay</b>=cycles<var></var></tt> - time to setup in FFT cycles</dt>
       <dd>Number of FFT cycles used for setup. This is a fractional number. Since the total time used must be a multiple of the FFT
         length an additional gap is inserted at the <i>end</i> of the measurement to match the next whole number. Example:<br>
@@ -795,32 +803,36 @@ This
       <dt><tt><a name="_gg"></a><b>gg</b></tt>[<tt>=<var>filename</var></tt>] - do <a href="calibration.html#gain-cal">gain
           calibration</a></dt>
       <dd>The left and right channel is assumed to sample the same signal. The difference in the transfer functions is written to <tt><var>filename</var></tt>.
-        If <tt>=<var>filename</var></tt> is omitted the calibration data is written to file <tt>gain.dat</tt>. <a href="fileformat.html#gain_dat">&rarr;
+        If <tt>=<var>filename</var></tt> is omitted the calibration data is written to file <tt>gain.dat</tt>. <a href="fileformat.html#gain_dat">→
           file format</a></dd>
       <dt><tt><a name="_gr"></a><b>gr</b></tt>[<tt>=<var>filename</var></tt>] - apply gain calibration</dt>
       <dd>The result from an earlier <a href="calibration.html#gain-cal">gain calibration</a> is read from <tt><var>filename</var></tt>
         and applied to the data before any further processing. If <tt>=<var>filename</var></tt> is omitted the calibration data is
-        read from <tt>gain.dat</tt>. <a href="fileformat.html#gain.dat">&rarr; file format</a><br>
+        read from <tt>gain.dat</tt>. <a href="fileformat.html#gain_dat">→ file format</a><br>
         The calibration is arbitrarily applied to the nominator signal. So you should not abuse the gain calibration to compensate
         for complex transfer functions, because the weight functions would be affected too.<br>
         If you combine this option with <a href="#_gg"><tt>gg</tt></a> the result from an earlier <a href="calibration.html#gain-cal">gain
           calibration</a> is applied to the data before another gain calibration is done. The residual result is written to the gain
         calibration file.</dd>
-      <dt><tt><a name="_zg"></a><b>zg</b></tt>[<tt>=<var>filename</var></tt>] - do <a href="#matrix-cal">matrix calibration</a></dt>
+      <dt><tt><a name="_zg"></a><b>zg</b></tt>[<tt>=<var>filename</var></tt>] - do <a href="calibration.html#matrix-cal">matrix calibration</a></dt>
       <dd>Generate the matrix calibration file. The Matrix calibration operates in two steps. In the first step the reference signal
         should be zero, in the second step the wanted signal should be zero. Between the steps there is a <a href="#_lp">configured
-          pause</a> to adjust the setup. See <a href="#matrix-cal">documentation</a> for further details.<br>
+          pause</a> to adjust the setup. See <a href="calibration.html#matrix-cal">documentation</a> for further details.<br>
         If <tt>=<var>filename</var></tt> is omitted the calibration data is written to file <tt>zero.dat</tt>.</dd>
       <dt><tt><a name="_zr"></a><b>zr</b></tt>[<tt>=<var>filename</var></tt>] - apply matrix calibration</dt>
-      <dd>Use the <a href="#matrix-cal">matrix calibration</a> from <tt><var>filename</var></tt> and apply it to the input data. <br>
-        If <tt>=<var>filename</var></tt> is omitted the calibration data is read from <tt>zero.dat</tt>. <a href="fileformat.html#gain_dat">&rarr;
+      <dd>Use the <a href="calibration.html#matrix-cal">matrix calibration</a> from <tt><var>filename</var></tt> and apply it to the input data. <br>
+        If <tt>=<var>filename</var></tt> is omitted the calibration data is read from <tt>zero.dat</tt>. <a href="fileformat.html#gain_dat">→
           file format</a><br>
-        If this option is combined with <a href="#_zg"><tt>zg</tt></a> then the result from an earlier <a href="#matrix-cal">matrix
+        If this option is combined with <a href="#_zg"><tt>zg</tt></a> then the result from an earlier <a href="calibration.html#matrix-cal">matrix
           calibration</a> is applied to the input data while another matrix calibration is done. The residuals are written to the
         matrix calibration file.</dd>
+      <dt><a name="_zn"></a><b><tt>zn</tt></b> - use 2 point calibration</dt>
+      <dd>Adjust the sum of the complex amplitudes of nominator and denominator to 1. This has no effect on impedance or transfer
+        function, but it gets important if you relate data of different measurements as e.g. the matrix calibration does.</dd>
       <dt><tt><a name="_lp"></a><b>lp</b>=<var>secs</var></tt> - pause between matrix calibration steps</dt>
       <dd>Number of seconds between the two steps of the matrix calibration (option <tt><a href="#_zg">zg</a></tt>). The time is
-        rounded up to full <a href="#_n">blocks</a>.</dd>
+        rounded up to full <a href="#_fftlen">blocks</a>.</dd>
     </dl>
+    
   </body>
 </html>

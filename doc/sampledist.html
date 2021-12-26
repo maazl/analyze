@@ -1,18 +1,18 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html lang="en">
   <head>
-    <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <title>Sample value distribution statistics</title>
     <link href="mm.css" rel="stylesheet" type="text/css">
-    <meta content="Marcel M&uuml;ller" name="author">
+    <meta content="Marcel Müller" name="author">
   </head>
   <body>
     <h1>Sample value distribution statistics </h1>
     <p>Release: 0.2</p>
-    <a href="index.html">&rarr;&nbsp;Index</a> <a href="#reference">&rarr;&nbsp;Parameters</a>
-    <a href="#result">&rarr;&nbsp;Result</a> <a href="#format">&rarr;&nbsp;File&nbsp;formats</a>
-    <a href="index.html#download">&rarr;&nbsp;Download</a> <a href="#history">&rarr;&nbsp;History</a>
-    <a href="#todo">&rarr;&nbsp;Todo</a> <a href="index.html#build">&rarr;&nbsp;Build</a>
+    <a href="index.html">△&nbsp;Index</a> <span class="current">▼&nbsp;Sample value distribution</span> <a href="index.html#download">▷&nbsp;Download</a>
+    <a href="index.html#build">▷&nbsp;Build</a><br>
+    <a href="#options">▾&nbsp;Options</a> <a href="#result">▾&nbsp;Result</a> <a href="#format">▾&nbsp;File&nbsp;formats</a>
+    <a href="#history">▾&nbsp;History</a> <a href="#todo">▾&nbsp;Todo</a>
     <h2><a name="overview"></a>Overview</h2>
     <tt>sampledist</tt> is intended to analyze audio data statistically.<br>
     <h3>Use cases</h3>
@@ -25,8 +25,8 @@
     <ul>
     </ul>
     <ol>
-      <li>The program reads <b>16-Bit PCM encoded audio data with two channels</b>
-        from <tt><b>stdin</b></tt> or a file in RIFF wave format.</li>
+      <li>The program reads <b>16-Bit PCM encoded audio data with two channels</b> from <tt><b>stdin</b></tt> or a file in RIFF
+        wave format.</li>
       <li>The data is cut into <a href="#_bn">chunks of N samples</a>.</li>
       <li>Each block is analyzed.</li>
       <li>The <b>results</b> are written to <b><tt>stderr</tt></b>.</li>
@@ -39,67 +39,43 @@
     <blockquote> </blockquote>
     <h2><a name="options"></a>Command line options </h2>
     <dl compact="compact">
-      <dt><tt><a name="_in"></a><b>in</b></tt><var><tt>filename</tt> - </var>name
-        of input file - default <tt>stdin</tt><kbd><var></var></kbd></dt>
-      <dd>Read PCM data from <var><kbd>filename</kbd></var> (instead of <tt>stdin</tt>).
-The
-        file name could be a transient source like a fifo or a character device.</dd>
-      <dt><a name="_bn"></a><tt><b>bn</b><var>samples</var></tt> - block length
-        - <tt>32768</tt> by default</dt>
-      <dd>This is the number of samples read in one block. Each time this number
-        of samples are received the result is analyzed and written to console or
-        file. Less samples do not produce any output.</dd>
-      <dt><a name="_ln"></a><tt><b>ln</b><var>count</var></tt> - number of
-        cycles - <tt>1</tt> by default</dt>
+      <dt><tt><a name="_in"></a><b>in</b></tt><var><tt>filename</tt> - </var>name of input file - default <tt>stdin</tt><kbd><var></var></kbd></dt>
+      <dd>Read PCM data from <var><kbd>filename</kbd></var> (instead of <tt>stdin</tt>). The file name could be a transient source
+        like a fifo or a character device.</dd>
+      <dt><a name="_bn"></a><tt><b>bn</b><var>samples</var></tt> - block length - <tt>32768</tt> by default</dt>
+      <dd>This is the number of samples read in one block. Each time this number of samples are received the result is analyzed and
+        written to console or file. Less samples do not produce any output.</dd>
+      <dt><a name="_ln"></a><tt><b>ln</b><var>count</var></tt> - number of cycles - <tt>1</tt> by default</dt>
       <dd>Number of blocks to process until the program completes.</dd>
       <dt><kbd><a name="_loop"></a><b>loop</b></kbd> - infinite input<kbd><var></var></kbd></dt>
-      <dd>Switches the program to continuous mode. It can only be terminated by
-        either sending a interrupt signal or when the input stream gets closed.</dd>
-      <dt><tt><a name="_fsamp"></a><b>al</b><var>count</var></tt> - add blocks -
-        infinite by default<tt><var> </var></tt></dt>
-      <dd>Add the results of <tt><var>count</var></tt> blocks before the
-        statistic is cleared. By default the results are <i>cumulative</i>,
-        i.e. the statistics apply to all samples analyzed so far rather than the
-        last block. Use <tt>al1</tt> to provide only statistics for the last
-        block read.</dd>
-      <dt><tt><a name="_psa"></a><b>psa</b></tt><var><tt>num</tt> - </var>discard
-first
-        <kbd><var>num</var></kbd> samples<kbd><var></var></kbd></dt>
-      <dd>Use this to discard spikes at the starting or to reach a steady state.
-        You may also use this option to discard headers from PCM fileslike RIFF
-        wave format.</dd>
-      <dt><tt><a name="_df"></a><b>df</b><var>filename</var></tt> - write
-        histogram data to file</dt>
-      <dd>Writes the sample value distribution to <var><tt>filename</tt></var>.
-        See <a href="#hist_dat">&rarr; file format</a></dd>
-      <dt><a name="_wr"></a><tt><b>wd</b><var></var></tt> - write histogram data
-        to <tt>hist.dat</tt> - shortcut for <tt>dfhist.dat</tt>.</dt>
+      <dd>Switches the program to continuous mode. It can only be terminated by either sending a interrupt signal or when the input
+        stream gets closed.</dd>
+      <dt><tt><a name="_fsamp"></a><b>al</b><var>count</var></tt> - add blocks - infinite by default<tt><var> </var></tt></dt>
+      <dd>Add the results of <tt><var>count</var></tt> blocks before the statistic is cleared. By default the results are <i>cumulative</i>,
+        i.e. the statistics apply to all samples analyzed so far rather than the last block. Use <tt>al1</tt> to provide only
+        statistics for the last block read.</dd>
+      <dt><tt><a name="_psa"></a><b>psa</b></tt><var><tt>num</tt> - </var>discard first <kbd><var>num</var></kbd> samples<kbd><var></var></kbd></dt>
+      <dd>Use this to discard spikes at the starting or to reach a steady state. You may also use this option to discard headers
+        from PCM fileslike RIFF wave format.</dd>
+      <dt><tt><a name="_df"></a><b>df</b><var>filename</var></tt> - write histogram data to file</dt>
+      <dd>Writes the sample value distribution to <var><tt>filename</tt></var>. See <a href="#hist_dat">? file format</a></dd>
+      <dt><a name="_wr"></a><tt><b>wd</b><var></var></tt> - write histogram data to <tt>hist.dat</tt> - shortcut for <tt>dfhist.dat</tt>.</dt>
       <dd>Writes the sample value distribution to <tt>hist.dat</tt>.</dd>
-      <dt><kbd><a name="_rf"></a><b>rf</b><var>filename</var></kbd> - raw data
-        file</dt>
-      <dd>Write raw data to <var><tt>filename</tt></var>. These is the raw
-        input data without any processing so far, except for option <tt><a href="#_psa"><tt>psa</tt></a></tt>.
-        It is intended for diagnostics only. <a href="#raw_dat">&rarr; file
-          format</a></dd>
+      <dt><kbd><a name="_rf"></a><b>rf</b><var>filename</var></kbd> - raw data file</dt>
+      <dd>Write raw data to <var><tt>filename</tt></var>. These is the raw input data without any processing so far, except for
+        option <tt><a href="#_psa"><tt>psa</tt></a></tt>. It is intended for diagnostics only. <a href="#raw_dat">? file format</a></dd>
       <dt><kbd><a name="_wr"></a><b>wr</b> - </kbd>write raw data<kbd> </kbd></dt>
-      <dd>Write raw data to default file <tt>raw.dat</tt> - shortcut for <tt>rfraw.dat</tt>.<a
-          href="#raw_dat"></a></dd>
-      <dt><kbd><a name="_exec"></a><b>exec</b><var>command</var></kbd> - execute
-        shell command<kbd><var> </var></kbd></dt>
-      <dd>Each time a block has completed and the data has been written <var><kbd>command</kbd></var>
-        is passed to <span style="font-family: monospace;">system()</span>.
-        Note that <span style="font-family: monospace;">sampledist</span> waits
-        for the command to complete. This gives you exclusive access to the data
-        files but it may also interfere with the real time processing of the
-        input data. You may alternatively consider to pipe the command to <span
-          style="font-family: monospace;">stdout</span> instead (option <a href="#_plot"><kbd>plot</kbd></a>),
+      <dd>Write raw data to default file <tt>raw.dat</tt> - shortcut for <tt>rfraw.dat</tt>.<a href="#raw_dat"></a></dd>
+      <dt><kbd><a name="_exec"></a><b>exec</b><var>command</var></kbd> - execute shell command<kbd><var> </var></kbd></dt>
+      <dd>Each time a block has completed and the data has been written <var><kbd>command</kbd></var> is passed to <span style="font-family: monospace;">system()</span>.
+        Note that <span style="font-family: monospace;">sampledist</span> waits for the command to complete. This gives you
+        exclusive access to the data files but it may also interfere with the real time processing of the input data. You may
+        alternatively consider to pipe the command to <span style="font-family: monospace;">stdout</span> instead (option <a href="#_plot"><kbd>plot</kbd></a>),
         if you do not need this kind of synchronization.</dd>
-      <dt><kbd><a name="_plot" id="_plot"></a><b>plot</b><var>command</var></kbd>
-        - pipe command<kbd><var> </var></kbd></dt>
-      <dd>Write command to <tt>stdout</tt> each time a block has completed. You
-        can use this to synchronize plot programs when new data arrives. Note
-        that <span style="font-family: monospace;">sampledist</span> will <i>not</i>
-        wait for any command completion.</dd>
+      <dt><kbd><a name="_plot" id="_plot"></a><b>plot</b><var>command</var></kbd> - pipe command<kbd><var> </var></kbd></dt>
+      <dd>Write command to <tt>stdout</tt> each time a block has completed. You can use this to synchronize plot programs when new
+        data arrives. Note that <span style="font-family: monospace;">sampledist</span> will <i>not</i> wait for any command
+        completion.</dd>
     </dl>
     <h3><a name="examples"></a>Examples</h3>
     <p>@@TODO</p>
@@ -117,38 +93,31 @@ crest	0.19506	0.15920	-14.2	-16.0</pre>
     </blockquote>
     <dl>
       <dt><b><tt>min</tt>, <tt>max</tt></b></dt>
-      <dd>Minimum and maximum sample value of left and right channel as absolute
-        value and as dBFSR.</dd>
+      <dd>Minimum and maximum sample value of left and right channel as absolute value and as dBFSR.</dd>
       <dt><b><tt>mean</tt></b></dt>
-      <dd>Average sample value of left and right channel. A larger non-zero
-        value indicates a DC bias in the audio data.</dd>
+      <dd>Average sample value of left and right channel. A larger non-zero value indicates a DC bias in the audio data.</dd>
       <dt><b><tt>stddev</tt></b></dt>
-      <dd>Standard deviation of sample value of left and right channel. The unit
-        is digits. This is related to the RMS power in the audio data, but it
-        should not be confused with the psychoacoustic loudness.</dd>
+      <dd>Standard deviation of sample value of left and right channel. The unit is digits. This is related to the RMS power in the
+        audio data, but it should not be confused with the psychoacoustic loudness.</dd>
       <dt><b><tt>skew</tt></b></dt>
-      <dd>Bias corrected <a href="https://en.wikipedia.org/wiki/Skewness">Skewness</a>
-        of deviation of sample value of left and right channel.<br>
-        This value should be close to zero indicating symmetric distributions.
-        Everything else likely indicates a significant non-linearity.</dd>
+      <dd>Bias corrected <a href="https://en.wikipedia.org/wiki/Skewness">Skewness</a> of deviation of sample value of left and
+        right channel.<br>
+        This value should be close to zero indicating symmetric distributions. Everything else likely indicates a significant
+        non-linearity.</dd>
       <dt><b><tt>kurtos.</tt></b></dt>
-      <dd>Bias corrected <a href="https://en.wikipedia.org/wiki/Kurtosis">Kurtosis
-          excess</a> of deviation of sample value of left and right channel.<br>
-        This value is small for deviations close to the standard deviation, e.g.
-        white noise. However, it increases as the audio data contain high
-        dynamic. On the other side negative values indicate highly compressed
-        audio data, e.g. <a href="https://en.wikipedia.org/wiki/Loudness_war">loudness
+      <dd>Bias corrected <a href="https://en.wikipedia.org/wiki/Kurtosis">Kurtosis excess</a> of deviation of sample value of left
+        and right channel.<br>
+        This value is small for deviations close to the standard deviation, e.g. white noise. However, it increases as the audio
+        data contain high dynamic. On the other side negative values indicate highly compressed audio data, e.g. <a href="https://en.wikipedia.org/wiki/Loudness_war">loudness
           war</a>.</dd>
       <dt><b><tt>crest</tt></b></dt>
-      <dd><a href="https://en.wikipedia.org/wiki/Crest_factor">Crest factor</a>
-        of the audio data, i.e. ratio of the peak value to the RMS value.
-        &radic;2 for sinusoidal, &asymp;4 for noise, even more for typical
-        audio.</dd>
+      <dd><a href="https://en.wikipedia.org/wiki/Crest_factor">Crest factor</a> of the audio data, i.e. ratio of the peak value to
+        the RMS value. ?2 for sinusoidal, ?4 for noise, even more for typical audio.</dd>
     </dl>
     <h2><a name="format"></a>File formats</h2>
     <h3><a name="hist_dat"></a><tt>hist.dat</tt> - value distribution</h3>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -163,34 +132,30 @@ crest	0.19506	0.15920	-14.2	-16.0</pre>
           <tr>
             <td>[2]</td>
             <td><var>h<sub>L</sub></var></td>
-            <td><b>relative frequency</b> of sample value at the <b>left</b>
-              channel<var></var></td>
+            <td><b>relative frequency</b> of sample value at the <b>left</b> channel<var></var></td>
           </tr>
           <tr>
             <td>[3]</td>
             <td><var>h<sub>R</sub></var><br>
               <var></var></td>
-            <td><b>relative frequency</b> of sample value at the <b>right</b>
-              channel</td>
+            <td><b>relative frequency</b> of sample value at the <b>right</b> channel</td>
           </tr>
           <tr>
             <td>[4]</td>
             <td><var>H<sub>L</sub></var><var></var></td>
-            <td><b>absolute frequency</b> of sample value at the <b>left</b>
-              channel<var></var> </td>
+            <td><b>absolute frequency</b> of sample value at the <b>left</b> channel<var></var> </td>
           </tr>
           <tr>
             <td>[5]</td>
             <td><var>H<sub>R</sub></var></td>
-            <td><b>absolute frequency</b> of sample value at the <b>right</b>
-              channel<var></var></td>
+            <td><b>absolute frequency</b> of sample value at the <b>right</b> channel<var></var></td>
           </tr>
         </tbody>
       </table>
     </blockquote>
     <h3><tt><a name="raw_dat"></a>raw.dat</tt> - raw data<tt> </tt></h3>
     <blockquote>
-      <table border="1" cellpadding="3" cellspacing="0">
+      <table cellspacing="0" cellpadding="3" border="1">
         <tbody>
           <tr>
             <th>Column</th>
@@ -231,10 +196,8 @@ crest	0.19506	0.15920	-14.2	-16.0</pre>
     <h2><a name="todo"></a>TODOs, known issues</h2>
     <dl>
       <dt><b>Input formats </b></dt>
-      <dd>Currently only 16 bit PCM data is supported. Indeed it does not make
-        too much sense to analyze the frequency of sample values for 24 or 32
-        bit data. But the moment analysis of the value distribution <i>does</i>
-        make sense.</dd>
+      <dd>Currently only 16 bit PCM data is supported. Indeed it does not make too much sense to analyze the frequency of sample
+        values for 24 or 32 bit data. But the moment analysis of the value distribution <i>does</i> make sense.</dd>
     </dl>
   </body>
 </html>

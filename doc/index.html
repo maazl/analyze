@@ -6,12 +6,23 @@
     <link type="text/css" rel="stylesheet" href="mm.css">
   </head>
   <body>
-    <h1>Software to do 1-port or 2-port measurements</h1>
-    <p class="abstract">This is a set of programs and scripts to do <b>impedance measurements</b> and <b>transfer function
-        measurements</b> (network analyzer) with PC sound devices.</p>
-    <a href="#software">&rarr;&nbsp;Components</a> <a href="#setup">&rarr;&nbsp;Setup</a> <a href="#download">&rarr;&nbsp;Download</a>
-    <a href="#build">&rarr;&nbsp;Build</a> <a href="#contact">&rarr;&nbsp;Contact</a>
-    <h2><a name="software"></a>Software components </h2>
+    <h1>Analyze: Software for 1-port or 2-port measurements</h1>
+    <div class="leftbox"> <img src="images/1000%C2%B563V-thumb.png" alt="Impedance plot of 1000µ 63V electrolytic"></div>
+    <div class="rightbox"><img src="images/VisatonResponse-thumb.png" alt="Response of 3 way Visaton loudspeaker"></div>
+    <p class="abstract">Release: 0.3</p>
+    <p class="abstract">This is a set of programs and scripts to do <b>high precision impedance and transfer function measurements</b>
+      (network analyzer) with PC sound devices.</p>
+    <p class="abstract">With an external amplifier and an instrumentation amplifier you will be able to characterize capacitors in
+      the range from 1&nbsp;pF to 10&nbsp;mF and inductors in the range from 100&nbsp;nH to 10 H.</p>
+    <p class="abstract">It will also enable you to measure the <b>response of loudspeakers</b> or a listening room. Limited by the
+      maximum frequency your sound device can handle it will also work as <b>network analyzer</b>. The latter may also be used to
+      determine the length of a coaxial cable by measuring the delay.</p>
+    <p style="clear: both;"><span class="current">▼&nbsp;Index</span> <a href="usage.html">▷&nbsp;Usage</a> <a href="examples.html">▷&nbsp;Examples</a>
+      <a href="parameter.html">▷&nbsp;Parameters</a> <a href="calibration.html">▷&nbsp;Calibration</a> <a href="fileformat.html">▷&nbsp;File
+        format</a> <a href="measure.html">▷&nbsp;How it works</a><br>
+      <a href="#software">▾&nbsp;Components</a> <a href="#download">▾&nbsp;Download</a> <a href="#build">▾&nbsp;Build</a> <a href="#history">▾&nbsp;History</a>
+      <a href="#contact">▾&nbsp;Contact</a></p>
+    <h2><a name="software"></a>Software components</h2>
     <table cellspacing="0" cellpadding="3" border="1">
       <tbody>
         <tr>
@@ -27,42 +38,37 @@
           <td>platform dependent, <em>external tool required</em></td>
           <td>You need a platform dependent way to record and play 16 bit two channel audio data via a pipe or provide an
             appropriate character device.<br>
-            On Linux <tt>arecord</tt> and <tt>aplay</tt> will fit your needs. OS/2 has the application <tt>Playrec</tt> 0.20b21.
-            Win*: don't know.<br>
+            On Linux <tt>arecord</tt> and <tt>aplay</tt> will fit your needs.<br>
+            OS/2 has the application <tt>Playrec</tt> 0.20b21.<br>
+            Windows: don't know.<br>
           </td>
         </tr>
         <tr>
-          <td calss="tl">Generation of noise reference<br>
+          <td calss="tl">Generation of reference signal and FFT analysis<br>
           </td>
-          <td><a href="noise.html">noise</a></td>
-          <td>C++ application<br>
-          </td>
-          <td colspan="1" rowspan="2">Wide band measurements<br>
-          </td>
-        </tr>
-        <tr>
-          <td calss="tl">FFT analysis<br>
-          </td>
-          <td><a href="analyze.html">analyze</a></td>
+          <td><b><a href="usage.html">analyze</a></b></td>
           <td>C++ application</td>
+          <td>The <em>core application</em></td>
         </tr>
         <tr>
-          <td calss="tl">Generation of sine wave reference<br>
-          </td>
-          <td colspan="1" rowspan="2">@TODO<br>
-          </td>
-          <td colspan="1" rowspan="2">C++ application</td>
-          <td colspan="1" rowspan="2">Sweep measurements (frequency scan)<br>
-          </td>
+          <td>Sample configuration</td>
+          <td><a href="usage.html#scripts"><var>sample/*.cfg<br>
+              </var></a></td>
+          <td>Configuration files for analyze</td>
+          <td>Here are some sample files for different measurement scenarios including calibration.</td>
         </tr>
         <tr>
-          <td calss="tl">Analysis of frequency scans<br>
-          </td>
+          <td>Helper scripts</td>
+          <td><a href="usage.html#scripts"><var>sample/*.sh<br>
+              </var></a></td>
+          <td>Unix shell scripts</td>
+          <td>These are scripts to invoke the above sample configurations and setup the sound device. They are only available for
+            bash or sh.</td>
         </tr>
         <tr>
           <td calss="tl">Show the result<br>
           </td>
-          <td><var>sample/* </var></td>
+          <td><a href="usage.html#scripts"><var>sample/*.gp</var></a></td>
           <td>Gnuplot 3.x macros</td>
           <td>In general you can use any graphics application to show the results. But only macros for <a href="http://www.gnuplot.info/">Gnuplot</a>
             are part of this package.<br>
@@ -77,23 +83,46 @@
       </tbody>
     </table>
     <h2><a name="download"></a>Download</h2>
-    <p>The program is licensed under <a href="gpl.txt"><i>GNU GENERAL PUBLIC LICENSE</i></a>.</p>
-    <p>Source code and scripts: <a href="../analyze-src.zip">repository snapshot</a></p>
-    <p><a href="https://github.com/maazl/analyze">Repository at github<br>
+    <p>Source code and scripts: <a href="https://github.com/maazl/analyze">Repository at github<br>
       </a></p>
-    <h2><a name="build"></a>Build the package </h2>
+    <p><span class="abstract"></span>The program is licensed under <a href="gpl.txt"><i>GNU GENERAL PUBLIC LICENSE</i></a>. </p>
+    <p><a href="https://github.com/maazl/analyze"> </a> </p>
+    <h2><a name="build"></a>Build the package</h2>
     <h3>Preconditions</h3>
     <ul>
       <li>A <b>C++11</b> compatible compiler like gcc.</li>
       <li>The library <b><a href="http://www.fftw.org/">FFTW</a>, version 3.x</b> is required. This must be available as shared or
         static library including the header files. E.g. package <tt>libfftw3-dev</tt> on Debian based Linux distributions.</li>
+      <li><b><a href="https://cmake.org/">Cmake</a></b> version 2.6 or newer. This is usually available as package <tt>cmake</tt>
+        in most Linux distributions.</li>
     </ul>
     <h3>Build</h3>
     <pre style="margin-left: 40px;"><b><kbd>cmake .</kbd><br><kbd>make</kbd></b></pre>
     If everything is fine the executables are built in the current folder. Feel free to <a href="#contact">contact me</a> if you
     don't succeed.<br>
+    <h2><a name="history"></a>Version history</h2>
+    <h4>Version 0.3</h4>
+    <ul>
+      <li>Added 3 point calibration for high precision impedance measurements.</li>
+    </ul>
+    <h4>Version 0.2</h4>
+    <ul>
+      <li>Port to Linux</li>
+      <li>Reworked command line options, breaks compatibility to 0.1x at several places.</li>
+    </ul>
+    <h4>Version 0.11</h4>
+    <ul>
+      <li>Source tree reorganized.</li>
+      <li>Fit of the delay. </li>
+      <li>English translation. </li>
+    </ul>
+    <h4>Version 0.1</h4>
+    <ul>
+      <li>Internal revision.</li>
+    </ul>
     <h2><a name="contact"></a>Contact</h2>
     <p>Suggestions, help, complaints (but not too much:-): <img style="width: 131px; height: 14px; vertical-align: middle;" alt="Email: mueller Klammeraffe maazl Punkt de"
-        src="m.png" align="middle"></p>
+        src="m.png" align="middle"><br>
+      Or use the <a href="https://github.com/maazl/analyze">github</a> for bug reports.</p>
   </body>
 </html>

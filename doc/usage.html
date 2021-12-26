@@ -1,0 +1,292 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Analyze: Usage</title>
+    <link href="mm.css" rel="stylesheet" type="text/css">
+    <script type="text/javascript" async="" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=MML_HTMLorMML"></script>
+  </head>
+  <body>
+    <h1>Analyze: Usage</h1>
+    <a href="index.html">△&nbsp;Index</a> <span class="current">▼ Usage </span><a href="examples.html">▷&nbsp;Examples</a> <a href="parameter.html">▷&nbsp;Parameters</a>
+    <a href="calibration.html">▷&nbsp;Calibration</a> <a href="fileformat.html">▷&nbsp;File formats</a> <a href="measure.html">▷&nbsp;How
+      it works</a><br>
+    <a href="#overview">▾&nbsp;Overview</a> <a href="#software">▾&nbsp;Software</a> <a href="#hardware">▾&nbsp;Hardware</a> <a href="#scripts">▾&nbsp;Scripts</a>
+    <h2><a name="overview"></a>Overview</h2>
+    <p>This program analyzes incoming PCM data on the fly and passes the results to files. The C++ source code is available and
+      should be portable to other platforms at reasonable effort. The open source library <a href="http://www.fftw.org/">FFTW</a>
+      version 3.x is utilized for fast operation. <tt>Analyze</tt> is optimized to use sound devices for the A/D and D/A
+      conversion. </p>
+    <h3>Use cases</h3>
+    <ul>
+      <li><b>LCR</b> measurements, e.g. frequency dependent <b>ESR of electrolytic capacitors</b>.</li>
+      <li>Mearuring <b>loudspeaker response</b>.</li>
+      <li>General <b>impedance</b> or <b>transfer function</b> with noise reference or in sweep mode.</li>
+      <li>Measure <b>cable length</b>.</li>
+      <li>Measure <b>harmonic distortion</b>.</li>
+      <!--li>Messure <strong>hysteresis</strong>.</li-->
+    </ul>
+    <h2><a name="software"></a>Software setup</h2>
+    <p><img src="images/software.svg" alt="Software setup" class="rightbox" style="width: 540px; height: 214px;"><tt>Analyze</tt> is
+      just the core application without any platform dependent stuff.</p>
+    <p>The recording and the playback of the PCM stream as well as some buffering, to handle real time operation, must be provided
+      with <em>other platform specific tools</em> like <span style="font-family: monospace;">arecord</span>/<tt>aplay</tt> (Linux)
+      or <a style="font-family: monospace;" href="http://www.ca-arnold.de/">playrec</a> (OS/2). AFAIK nothing simple like that is
+      available for Windows - sorry guys, so I do not recommend that OS for this purpose.</p>
+    <p><strong>It is absolutely essential to use the same sound device for input and output.</strong> <tt>Analyze</tt> makes heavy
+      use of the very high time correlation of input and output samples when the A/D and D/A converters are controlled by the same
+      crystal oscillator for the sampling frequency. If different devices are used results of higher frequencies will derate after
+      less than one second.</p>
+    <p>The graphic output is also not part of <tt>Analyze</tt>. I recommend <a href="http://www.gnuplot.info/">Gnuplot</a> but any
+      other application that can deal with ASCII files will do the job as well.</p>
+    <p>See the <a href="#scripts">example scripts</a> for suggestions for the software setup including parameter files for <tt>Analyze</tt>.</p>
+    <h3>Sampling rate and sample format</h3>
+    <p>In general it is a good advice to use <b>the maximum</b> native <b>sample rate</b> supported by your sound device. Only for
+      audio only you might prefer 48 kHz even if you have an HD audio device. This will save some computing power and reduce the
+      risk of sample drops. You definitely must avoid sample rate conversions.</p>
+    <p>Independent of your hardware I recommend <b>16 bits per sample</b>. Using more usually adds no value. But it might make
+      things worse because some sound devices do not perform well when choosing the maximum bit depth at the maximum sample rate.</p>
+    <h3>PulseAudio</h3>
+    <p>Although the entire process will work with PulseAudio in principle <em>I recommend not to use it</em>. The chance to get
+      unexpected resampling artifacts or stray sounds from other applications is significantly higher with PulseAudio. You can
+      simply bypass PulseAudio by choosing the appropriate sound device for <tt>arecord</tt> and <tt>aplay</tt>. Young might need
+      to terminate the PulseAudio daemon by <tt>pulseaudio -k</tt> before to get the device unlocked.</p>
+    <h2><a name="hardware"></a>External hardware setup</h2>
+    <p>While the software setup is always basically the same the hardware varies with the desired measurements.</p>
+    <p>Channel map:</p>
+    <table cellspacing="0" cellpadding="3" border="1">
+      <tbody>
+        <tr>
+          <th>input<br>
+            channel</th>
+          <th>two port<br>
+            measurement</th>
+          <th>impedance<br>
+            measurement</th>
+        </tr>
+        <tr>
+          <td class="tl"><var>L</var>(<var>t</var>)</td>
+          <td>response signal<br>
+          </td>
+          <td>voltage <var>U</var>(<var>t</var>)<br>
+          </td>
+        </tr>
+        <tr>
+          <td class="tl"><var>R</var>(<var>t</var>)</td>
+          <td>reference signal<br>
+          </td>
+          <td>current <var>I</var>(<var>t</var>)<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3><img src="images/impedance2.svg" class="rightbox" style="width: 364px; height: 366px;">Impedance measurement - LCR meter</h3>
+    <p>For high precision impedance measurements you need 4 wire connections and high impedance differential amplifiers. And to
+      drive higher current you need an additional amplifier. The latter can be almost any audio amplifier, but the differential
+      probes need some electronics. Two INA105 with an TL074 as impedance converter at its inputs will do the job.</p>
+    <p>Depending on the impedance to measure the reference resistor might be chosen from the range 100 mΩ to 50 kΩ roughly.</p>
+    <p>I furthermore recommend a <a href="calibration.html#matrix-cal3">3 point calibration</a> with a known impedance. This will
+      also compensate for the properties of the reference resistor with respect to its frequency response, e.g. because of parasitic
+      inductance.<br>
+      If you do so you will be able to measure really low and high impedance from about 1 mΩ up to 10 MΩ, including the reactance of
+      capacitors and inductors.</p>
+    <h4><img src="images/impedance1.svg" class="leftbox" style="width: 189px; height: 203px;">Poor man's impedance measurement</h4>
+    <p>There is a very simple variant that requires only one external reference resistor. Of course, you get only restricted
+      accuracy, but the most limiting factor is the <em>maximum output current of the sound device</em>. While old sound cards
+      often had a small built-in amplifier new ones sometimes do not even have enough power to drive a 32&nbsp;Ω headphone.<br>
+      You may overcome this limit by using an audio amplifier. But be careful, not all amplifiers have one terminal of the speaker
+      output connected to ground. And even if so it might introduce some stray current from its power supply.</p>
+    <p>Reasonable values for R<sub>ref</sub> are only between 33 Ω and 3,3 kΩ roughly.</p>
+    <p>In this configuration the voltage over the reference resistor cannot be sampled directly. Only the sum with the voltage over
+      the test impedance is available. You need to tell <tt>Analyze</tt> by the <a href="parameter.html#_diff"><tt>diff</tt></a>
+      option to use differential sampling mode. This causes the current (denominator) to be calculated by</p>
+    <blockquote>I = (Right - Left) / R<sub>ref</sub></blockquote>
+    <p>I recommend to use <a href="calibration.html#matrix-cal3">3 point calibration</a> even in this simple configuration.
+      Although you cannot use a 4 wire connection it will significantly improve the accuracy.</p>
+    <h3><img src="images/two-port.svg" alt="wire diagram for two port network" class="rightbox" style="width: 288px; height: 172px;">
+      2 port measurement - transfer function</h3>
+    <p>If you two-port network can directly deal with the line level of the sound device, e.g. an audio equalizer, it can be
+      directly connected like shown in the image. The only special thing needed is an Y-cable to get the reference feedback.</p>
+    <h4><img src="images/speaker-response2.svg" alt="" style="width: 546px; height: 324px;" class="leftbox">Loudspeaker response</h4>
+    <p>To the left is the typical setup for speaker measurements. The properties of the audio amplifier (and sound device) have no
+      relevant influence on the result. <em>The microphone and its corresponding amplifier is the critical part.</em> There are
+      calibration services available for these combinations at reasonable charge.</p>
+    <p><b>You cannot use USB microphones</b> calibrated by the manufacturer. They use a different crystal oscillator for the
+      sampling rate than the sound card used for playback of the reference. This results in slightly different speed of playback and
+      recording destroying the phase coherence used by <tt>Analyze</tt> to get high precision results. At least this is untested.</p>
+    <p>You should chose a sweep mode to reduce systematic errors due to harmonic distortion, intermodulation or non minimum phase
+      responses.</p>
+    <p>Of course, there are more things to respect to get a reasonable speaker measurement, first of all some kind of anechoic
+      location. But this is by far beyond the scope of this document.<br>
+      If your intention is to characterize the room and the speakers together for doing digital room correction, things are easier.</p>
+    <h4><img src="images/speaker-response1.svg" alt="" class="rightbox" style="width: 489px; height: 324px;">Linear amplifier</h4>
+    <p><em>If you trust your amplifier</em> to be linear or you want to compensate for its properties you can use a more simple
+      setup. A sufficiently linear amplifier must satisfy the following properties:</p>
+    <ul>
+      <li><b>Loudness</b> correction must be <b>disabled</b> or not existing.</li>
+      <li>The <b>tone controls</b> must be <b>disabled</b> by a "direct CD" switch or something like that. Putting all controls in
+        their neutral position is usually not sufficient.</li>
+      <li>Any <b>bass boost</b> feature must be <b>disabled</b>.</li>
+      <li>You should <b>no</b>t use a <b>Class D amplifier</b> because they tend to have deviations at high frequencies. The build
+        in compensation only works correctly for a certain load impedance which typically not satisfied by your loudspeaker.<br>
+        Of course, this does not count if you only want to characterize woofers e.g. for a sub-woofer crossover.</li>
+    </ul>
+    <h2><a name="examples"></a><a name="scripts"></a>Helper Scripts</h2>
+    <p>In the <b><tt>sample</tt> folder</b> there are a bunch of scripts to set up scenarios as mentioned above. They are all
+      intended to be used with Ubuntu Linux, but you may use them as blueprint for other platforms too. See <a href="examples.html">examples</a>
+      for some results created by these sample files.</p>
+    <p>The sample files assume that your sound card can deal with 192 kHz sampling rate (HD audio) which is quite common for modern
+      PCs. If not you should adjust the sampling rate to 48 kHz and set the maximum frequency in <tt>fft.cfg</tt> to 20 kHz.</p>
+    <p>All file names mentioned here are in the same directory. The analyze executable have to be build before the scrips can be
+      used. The <tt>Analyze</tt> executable is expected in the parent folder. If you have chosen a different build directory you
+      should put a symbolic link there.</p>
+    <h3>Configuration files for <tt>Analyze</tt></h3>
+    <p>The <b><tt>*.cfg</tt></b> files are configuration files for <tt>Analyze</tt>. They are only slightly platform dependent.
+      The files have an inheritance hierarchy by including the parent configuration file.</p>
+    <ul>
+      <li>
+        <p><b><tt>setup.cfg</tt></b> - root configuration used by <i>all</i> other configurations</p>
+        <p>It sets sampling rate, sample format and other global options. Furthermore is sets up the <b>sample input/output</b> to
+          the fixed names <tt>rec.pipe</tt> and <tt>play.pipe</tt> respectively. As the name suggests this should be pipes (also
+          called fifos) that receive or play raw samples from or to the sound device. The script <b><tt>setup_alsa_server.sh</tt></b>
+          is <b>invoked at program start</b>. It creates the pipes and spawns the <tt>arecord</tt> and <tt>aplay</tt> processes
+          to feed or consume the pipe data respectively.</p>
+        <p>It also writes the <b>effective configuration</b> to <b><tt>current.cfg</tt></b> which is used to extract some
+          parameters for plots (<a href="parameter.html#_fmin"><tt>fmin</tt></a>, <a href="parameter.html#_fmax"><tt>fmax</tt></a>,
+          <a href="parameter.html#_fftlen"><tt>fftlen</tt></a> and <a href="parameter.html#_rref"><tt>rref</tt></a>) into the file
+          <tt>gpenv.gp</tt> intended to be included by Gnuplot.</p>
+        <p>Last but not least the file for the (last) FFT analysis results is set to <tt>data.dat</tt>.</p>
+        <ul>
+          <li>
+            <p><b><tt>fft.cfg</tt></b> - configuration file for FFT based real time impedance measurements</p>
+            <p>It selects an FFT length of 16,384, infinite loop mode and slightly pink noise as reference. To reduce measurement
+              noise and analysis overhead it averages always 16 chunks of the FFT length before the results are passed to Gnuplot
+              which should listen at <tt>stdout</tt> of <tt>analyze</tt> for plot commands. See <tt>measure.sh</tt> for an
+              appropriate setup. This first command passed to Gnuplot is always <tt>l'gpenv.gp'</tt> to inject current
+              configuration values into Gnuplot.</p>
+            <p>The sound output is set to <a href="parameter.html#_symmout">symmetric mode</a> because my amplifier has a symmetric
+              input. You need not to change that unless you rely on the same phase to be present at the left and right sound
+              channel.</p>
+            <ul>
+              <li>
+                <p><b><tt>fft-.2.cfg</tt></b>, <b><tt>fft-2.cfg</tt></b>, <b><tt>fft-20.cfg</tt></b>, <b><tt>fft-200.cfg</tt></b>,
+                  <b><tt>fft-2k.cfg</tt></b>, <b><tt>fft20k.cfg</tt></b> - files for selected reference resistors</p>
+                <p>These files just refine a few parameters for a bunch of different reference resistors used for impedance
+                  measurements. They also select the appropriate calibration file which must be named <tt>zero-<var>RRR</var>.dat</tt>.
+                  <em>The calibration files must be created before the measurement can start.</em> Use the <tt>calibrate?.sh</tt>
+                  scripts for this purpose.</p>
+                <p>You probably need to adjust this files for your reference resistors.</p>
+                <ul>
+                  <li><b><tt>fft-<var>RRR</var>-l.cfg</tt></b> - refinement for measuring inductors<br>
+                    This changes the energy distribution of the noise reference slightly to prefer lower frequencies which performs
+                    better for inductive loads.</li>
+                  <li><b><tt>fft-<var>RRR</var>-c.cfg</tt></b> - refinement for measuring capacitors<br>
+                    This changes the energy distribution of the noise reference slightly to prefer higher frequencies which performs
+                    better for capacitive loads.</li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <p><b><tt>calibrate.cfg</tt></b> - calibration for impedance measurements</p>
+            <p>This instructs Analyze to perform a <a href="calibration.html#matrix-cal">matrix calibration</a> and write the result
+              to the file <tt>zero.dat</tt>. <em>You need to rename the resulting file matching the used reference resistor</em>
+              once the calibration has completed successfully.</p>
+            <ul>
+              <li><b><tt>calibrate2.cfg</tt></b> - perform 2 point calibration<br>
+                Perform a (simple) calibration with impedance 0 (short cut) and impedance ∞ (open).</li>
+              <li><b><tt>calibrate3.cfg</tt></b> - perform 3 point calibration<br>
+                Perform a full calibration with impedance 1 (a resistor ideally identical to the reference resistor), impedance ∞
+                (open) and 0 (short cut).</li>
+            </ul>
+          </li>
+          <li>
+            <p><b><tt>room.cfg</tt></b> - record the loudspeaker response in the room<br>
+              Currently not well tested.</p>
+          </li>
+          <li>
+            <p><b><tt>roomscan.cfg</tt></b> - fast scan of the loudspeaker response in the current room</p>
+            <p>This activates <a href="parameter.html#_stereo">two channel mode</a> to record the response of both stereo channels at
+              the same time. The scan is done with an FFT length of 65,536 in the range 20 Hz ... 20 kHz. Only frequencies separated
+              approximately by halftone are used for analysis. You will not be able to extract reasonable values for the group delay
+              with this coarse pattern. Furthermore some the frequencies of the 2nd and 3rd harmonic are unused to get a rough idea
+              of distortion.</p>
+            <p>A sampling rate of 48 kHz is recommended for this type of measurement. Higher frequencies just add overhead and
+              reduce accuracy.</p>
+            <p>Every 4 cycles of FFT length the result file <tt>data.dat</tt> is updated. The <tt>stdout</tt> of <tt>analyze</tt>
+              is intended to be piped to Gnuplot. See <tt>measure.sh</tt> for an appropriate setup. This first command passed to
+              Gnuplot is always <tt>l'gpenv.gp'</tt> to inject current configuration values into Gnuplot. Each time an FFT
+              completed <tt>l'viewH.gp'</tt> is sent to Gnuplot to view the transfer function.</p>
+            <p>All measurement data since start is aggregated to get less noisy results. The longer you run the more precise you
+              get. But due to systematic errors like non minimum phase system or intermodulation you will not get high accuracy.
+              Simply stop when the result becomes stable.</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <h3>Shell scripts</h3>
+    <p>The <b><tt>*.sh</tt></b> scripts are intended for Bash.</p>
+    <dl>
+      <dt><b><tt>measure.sh</tt></b> - invoke one of the above configuration files</dt>
+      <dd>
+        <p>This script is intended for all measurements except for calibration. Use <b><tt>./measure @<var>filename</var>.cfg</tt></b>
+          with the appropriate configuration file name to start a measurement.</p>
+        <p>You can also pass additional command line parameters to <tt>Analyze</tt>. In fact <tt>@<var>filename</var>.cfg</tt> is
+          also just an include directive for <tt>Analyze</tt>.</p>
+      </dd>
+      <dt><b><tt>calibrate2.sh</tt></b>, <b><tt>calibrate3.sh</tt></b> - perform <a href="calibration.html#matrix-cal">2 point or 3
+          point calibration</a></dt>
+      <dd>
+        <p>Just start the script and follow the instructions. The result is shown with Gnuplot after completion. Whenever possible
+          you should prefer the 3 point calibration.<br>
+          After the calibration completed you probably want to copy the result file <tt>zero.dat</tt> to a more descriptive file
+          name matching your current setup. These files are also included by the impedance measurement configuration files.</p>
+      </dd>
+      <dt><b><tt>calibrate2-verify.sh</tt></b>, <b><tt>calibrate3-verify.sh</tt></b> - verify calibration</dt>
+      <dd>
+        <p>After calibration a second verification step is recommended. It performs the same calibration but with the previously
+          perfromed calibration result in <tt>zero.dat</tt> applied. The result is now written to <tt>zeroD.dat</tt>. At this
+          point you should see a significantly improved result.</p>
+      </dd>
+      <dt><b><tt>setup_alsa_server.sh</tt></b> - start recording and playback pipeline - <em>do not invoke directly!</em></dt>
+      <dd>
+        <p>This script creates a record.pipe and play.pipe fifo and tries to start <tt>arecord</tt> and <tt>aplay</tt> in
+          different terminals to feed and consume the pipe data respectively. The script is automatically invoked by <tt>Analyze</tt>
+          if you use the sample configuration files above.</p>
+        <p>The setup also passes the content of the file <tt>mixer.in</tt> to <tt>amixer</tt>. You should use this to set defined
+          mixer levels.</p>
+        <p><em>You likely need to adjust this file</em> matching your sound hardware.</p>
+      </dd>
+    </dl>
+    <h3>Gnuplot macros</h3>
+    <p>The macro files are named <b><tt>*.gp</tt></b> and used by the above scripts to visualize data. Feel free to adjust the
+      according your needs.</p>
+    <dl>
+      <dt><b><tt>setup.gp</tt></b> - global Gnuplot options</dt>
+      <dd>
+        <p>This file is invoked by all sample scripts. Put general Gnuplot settings here.</p>
+      </dd>
+      <dt><b><tt>viewlcr.*.gp</tt></b> - view impedance measurement result</dt>
+      <dd>
+        <p>This is invoked by the <tt>fft-*.cfg</tt> files to show the results of the data.dat file.</p>
+      </dd>
+      <dt><b><tt>zero.gp</tt></b> - view the result of a calibration</dt>
+      <dd>
+        <p>Show the amplitude of the diagonal and non-diagonal calibration matrix elements, the phase of the diagonal matrix
+          elements and the absolute frequency dependent amplitude of voltage at both input channels.</p>
+      </dd>
+      <dt><b><tt>zero3.gp</tt></b> - view the result of a 3 point calibration</dt>
+      <dd>
+        <p>This is the same as <tt>zero.gp</tt> but with slightly different scale for 3 point calibration.</p>
+      </dd>
+      <dt><b><tt>zeroD.gp</tt></b> - view the result of a calibration verification</dt>
+      <dd>
+        <p>Same as <tt>zero.gp</tt>, but for the file <tt>zeroD.dat</tt>.</p>
+      </dd>
+      <dt><b><tt>viewH.gp</tt></b> - view stereo loudspeaker response</dt>
+      <dd>
+        <p>This will show the speaker level and the group delay of a two channel measurement.</p>
+      </dd>
+    </dl>
+  </body>
+</html>
