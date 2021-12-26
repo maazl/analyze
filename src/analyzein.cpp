@@ -93,7 +93,7 @@ void AnalyzeIn::PrintHdr(FILE* dst)
 {
   //     1   2    3      4    5      6    7      8       9       10      11     12
 	fputs("#f\t|U|\targ U\t|I|\targ I\t|Z|\targ Z\tZ real\tZ imag\tweight\tdelay\tchan", dst);
-	for (unsigned h = 1; h < Cfg.harmonic; ++h)
+	for (unsigned h = 2; h <= Cfg.harmonic; ++h)
 		fprintf(dst, "\t|Z%u|\targ Z%u\tZ%u real\tZ%u imag", h,h,h,h);
 	fputc('\n', dst);
 }
