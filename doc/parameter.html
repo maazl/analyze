@@ -103,6 +103,12 @@
           <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
+          <td><a href="#_chirp"><tt>chirp</tt></a></td>
+          <td>use chirp </td>
+          <td><tt>0</tt> (off)</td>
+          <td><a href="#output">output data</a></td>
+        </tr>
+        <tr>
           <td><a href="#_dcfg"><tt>dcfg</tt></a></td>
           <td>dump effective configuration to a file</td>
           <td><br>
@@ -623,6 +629,12 @@
       <dt><a name="_scale"></a><tt><b>scale</b>=<var>power</var></tt> - noise type</dt>
       <dd>Exponent of the <a href="measure.html#noise">energy distribution</a>. <tt>0</tt> := white noise, <tt>-1</tt> := pink
         noise. <tt>0</tt> by default.</dd>
+      <dt><b><tt><a name="_chrip"></a>chirp</tt></b>[<tt>=<var>scale</var></tt>] - use chirp reference</dt>
+      <dd>This option enables (if not 0) and controls chirp reference. Values between 0 and 1 approximately use this part of the <a
+          href="#_fftlen">FFT length</a> for the chirp signal. More exactly the group delay of all used frequencies is spread over
+        this range. Values larger than 1 will cause multiple frequencies measured at the same time. E.g. a value of 3 will measure 3
+        frequencies at the same time. Negative values will reverse the chirp, i.e. start at <tt><a href="#_fmax">fmax</a></tt>. A
+        value of 0 disables chirp and uses random phase, the default. If you omit <tt><var>scale</var></tt> a value of 1 is used.</dd>
       <dt><b><tt><a name="_rspec"></a>rspec</tt></b>[<tt>=<var>filename</var></tt>] - read design spectrum of the reference signal</dt>
       <dd>Read the frequency domain reference signal from <var><tt>filename</tt></var> or <tt>spectrum.dat</tt> if <var><tt>filename</tt></var>
         is omitted. See <a href="fileformat.html#spectrum_dat">→&nbsp;file format</a>.<br>
@@ -655,15 +667,15 @@
       <dd>Activate FFT mode for analysis.</dd>
       <dt><tt><a name="_mpca"></a><b>mpca</b></tt> - PCA mode</dt>
       <dd>Activate PCA mode for analysis.</dd>
-      <dt><tt><a name="_msweep"></a><b>msweep</b></tt> - enable sweep mode</dt>
+      <dt><tt><a name="_msweep"></a><b>msweep</b></tt> - enable step sweep mode</dt>
       <dd>In sweep mode the distinct frequencies are measured one after each other. This takes considerably longer than the fast FFT
-        mode but it is also more robust against non-linearities and ambient noise. See <a href="measure.html#sweep">documentation</a>
+        mode but it is also much more robust against non-linearities and ambient noise. See <a href="measure.html#sweep">documentation</a>
         for further details.</dd>
       <dt><a name="_stereo"></a><b><tt>stereo</tt></b> - two channel mode</dt>
       <dd>In two channel mode (<u>st</u>ereo) the used FFT frequencies are associated with two distinct channels alternatingly. This
         applies to the reference generator as well as to any averaging operation. A column in the result files indicates the channel
-        association. Note that this doubles the measurement time in sweep mode. See multi <a href="measure.html#multichannel">multi channel
-          measurements</a>.</dd>
+        association. Note that this doubles the measurement time in step sweep mode. See multi <a href="measure.html#multichannel">multi
+          channel measurements</a>.</dd>
       <dt><tt><a name="_setupcmd"></a><b>setupcmd</b>=<var>command</var></tt> - execute shell command at program start</dt>
       <dd>After parameter parsing but before any other action <var><tt>command</tt></var> is passed to <tt>system()</tt>.<br>
         Note that <tt>analyze</tt> waits for the command to complete. So you may setup some things that are used by other
@@ -735,8 +747,8 @@ This
       <dd>With this option the first <i><tt>n</tt></i> harmonics of any used frequency is reserved. In fact it is assumed that the
         reference signal does not contain energy at these frequencies and any response is the result of harmonic distortion. This
         could be used to do very fast measurements of harmonics of loudspeakers.<br>
-        The setting must be chosen to <i>match the reference signal</i>. See <a href="measure.html#harmonics">analysis
-          of harmonics</a>.</dd>
+        The setting must be chosen to <i>match the reference signal</i>. See <a href="measure.html#harmonics">analysis of
+          harmonics</a>.</dd>
       <dt><tt><a name="_pch"></a><b>pch</b>=<var>num</var></tt> - purge low FFT channels</dt>
       <dd>This assigns zero to the first <var><tt>num</tt></var> channels of the FFT result. It is alternative to <a href="#_fmin"><tt>fmin</tt></a>
         that does not remove the lines from the data file and avoids uninitialized values in calibration files. But be careful not
@@ -814,13 +826,15 @@ This
         If you combine this option with <a href="#_gg"><tt>gg</tt></a> the result from an earlier <a href="calibration.html#gain-cal">gain
           calibration</a> is applied to the data before another gain calibration is done. The residual result is written to the gain
         calibration file.</dd>
-      <dt><tt><a name="_zg"></a><b>zg</b></tt>[<tt>=<var>filename</var></tt>] - do <a href="calibration.html#matrix-cal">matrix calibration</a></dt>
+      <dt><tt><a name="_zg"></a><b>zg</b></tt>[<tt>=<var>filename</var></tt>] - do <a href="calibration.html#matrix-cal">matrix
+          calibration</a></dt>
       <dd>Generate the matrix calibration file. The Matrix calibration operates in two steps. In the first step the reference signal
         should be zero, in the second step the wanted signal should be zero. Between the steps there is a <a href="#_lp">configured
           pause</a> to adjust the setup. See <a href="calibration.html#matrix-cal">documentation</a> for further details.<br>
         If <tt>=<var>filename</var></tt> is omitted the calibration data is written to file <tt>zero.dat</tt>.</dd>
       <dt><tt><a name="_zr"></a><b>zr</b></tt>[<tt>=<var>filename</var></tt>] - apply matrix calibration</dt>
-      <dd>Use the <a href="calibration.html#matrix-cal">matrix calibration</a> from <tt><var>filename</var></tt> and apply it to the input data. <br>
+      <dd>Use the <a href="calibration.html#matrix-cal">matrix calibration</a> from <tt><var>filename</var></tt> and apply it to
+        the input data. <br>
         If <tt>=<var>filename</var></tt> is omitted the calibration data is read from <tt>zero.dat</tt>. <a href="fileformat.html#gain_dat">→
           file format</a><br>
         If this option is combined with <a href="#_zg"><tt>zg</tt></a> then the result from an earlier <a href="calibration.html#matrix-cal">matrix
@@ -833,6 +847,5 @@ This
       <dd>Number of seconds between the two steps of the matrix calibration (option <tt><a href="#_zg">zg</a></tt>). The time is
         rounded up to full <a href="#_fftlen">blocks</a>.</dd>
     </dl>
-    
   </body>
 </html>

@@ -61,7 +61,8 @@ struct Config
 	const char* specfile = nullptr;   ///< file name for frequency domain reference data output
 	const char* reffile = nullptr;    ///< file name for time domain reference data
 	const char* refmode = "w";        ///< open mode for time domain reference data
-	double      scalepow = 0;
+	double      scalepow = 0;         ///< exponent of f for power distribution
+	double      chirp = 0;            ///< Use chirp phase with given duty cycle; 0 = random phase
 	// control options
 	unsigned    loops = 1;            ///< number of analysis loops, 0 = infinite
 	bool        mpca = false;         ///< analysis method PCA
@@ -385,6 +386,7 @@ class AnalyzeOut final : public ITask, public SetupData
  private:
 	static fftw_real MaxAbs(const unique_fftw_arr<fftw_real>& dst);
 	static unsigned CalcLoopCount(const Config& cfg);
+	double ChirpDelay(unsigned fi);
 	void CreateDesign();
 	void ReadDesign();
 	void CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& norm, unique_fftwf_plan& plan);

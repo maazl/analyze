@@ -25,6 +25,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkSet("aref",   "append reference data file (instead of overwriting)", Cfg.refmode, "a")
 ,	MkOpt("bin",    "average FFT channels", Cfg.binsz)
 ,	MkOpt("bn",     nullptr, Cfg.N) // for compatibility
+,	MkDOp("chirp",  "use chirp reference", Cfg.chirp, 1.)
 ,	MkDOp("dcfg",   "dump effective configuration to file", Cfg.cfgout, "current.cfg")
 ,	MkDOp("diff",   "differential mode, i.e. I(t) = ch.2 - ch.1", Cfg.diffmode, true)
 ,	MkOpt("exec",   nullptr, Cfg.plot.shell)

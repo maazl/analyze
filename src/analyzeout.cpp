@@ -114,13 +114,27 @@ bool AnalyzeOut::Setup()
 	return Cfg.outfile || (Cfg.reffile && Cfg.sweep);
 }
 
+double AnalyzeOut::ChirpDelay(unsigned fi)
+{	if (Cfg.scalepow == -.5)
+		return log(fi);
+	return pow(fi, 1 + 2 * Cfg.scalepow);
+}
+
 void AnalyzeOut::CreateDesign()
 {	Design.clear(); // all coefficients -> 0
 	Harmonics.clear();
 	fftw_real maxamp = 0;
 	int sign = 1;
+	double phi = 0;
+	double mindelay;
+	double delayscale;
+	if (Cfg.chirp)
+	{	mindelay = ChirpDelay(FminI - 1); // make exclusive border
+		double maxdelay = ChirpDelay(FmaxI);
+		delayscale = -1 / (maxdelay - mindelay) * Cfg.chirp * M_2PI;
+	}
 	for (unsigned i = FminI; i <= FmaxI; ++i)
-	{	if (!Cfg.sweep)
+	{	if (!Cfg.sweep && !Cfg.chirp)
 		{	// skip used harmonics
 			for (unsigned j = 2; j < Cfg.harmonic && i*j <= Cfg.N/2; ++j)
 				if (Harmonics[i*j])
@@ -132,12 +146,16 @@ void AnalyzeOut::CreateDesign()
 		Harmonics[i] = sign;
 		// calculate coefficients
 		++FCount;
+		// amplitude
 		Design[i] = pow(i, Cfg.scalepow);
 		if (Design[i] > maxamp)
 			maxamp = Design[i];
+		// phase
 		if (i && i != Cfg.N/2)
-		{	// apply random phase
-			double phi = 2*M_PI * myrand();
+		{	if (!Cfg.chirp)
+				phi = M_2PI * myrand();
+			else
+				phi += (ChirpDelay(i) - mindelay) * delayscale;
 			Design[Cfg.N-i] = Design[i] * sin(phi); // b[i]
 			Design[i] *= cos(phi);                  // a[i]
 		}

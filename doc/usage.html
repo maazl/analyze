@@ -41,7 +41,7 @@
       other application that can deal with ASCII files will do the job as well.</p>
     <p>See the <a href="#scripts">example scripts</a> for suggestions for the software setup including parameter files for <tt>Analyze</tt>.</p>
     <h3>Sampling rate and sample format</h3>
-    <p>In general it is a good advice to use <b>the maximum</b> native <b>sample rate</b> supported by your sound device. Only for
+    <p>In general it is a good advice to use <b>the maximum</b> native <b>sample rate</b> supported by your sound device. For
       audio only you might prefer 48 kHz even if you have an HD audio device. This will save some computing power and reduce the
       risk of sample drops. You definitely must avoid sample rate conversions.</p>
     <p>Independent of your hardware I recommend <b>16 bits per sample</b>. Using more usually adds no value. But it might make
@@ -82,8 +82,11 @@
     </table>
     <h3><img src="images/impedance2.svg" class="rightbox" style="width: 364px; height: 366px;">Impedance measurement - LCR meter</h3>
     <p>For high precision impedance measurements you need 4 wire connections and high impedance differential amplifiers. And to
-      drive higher current you need an additional amplifier. The latter can be almost any audio amplifier, but the differential
-      probes need some electronics. Two INA105 with an TL074 as impedance converter at its inputs will do the job.</p>
+      drive higher current you need an additional amplifier. The latter can be almost any audio amplifier, but be aware that it must
+      be able to drive very low impedance if you use small reference resistor.</p>
+    <p>The differential probes need some electronics. Two INA105 with an TL074 as impedance converter at its inputs will do the job.
+      If you have high precision resistors (0,1%) you can build your own differential amplifier with an audio operational amplifier
+      which is much cheaper than INA105.</p>
     <p>Depending on the impedance to measure the reference resistor might be chosen from the range 100 mΩ to 50 kΩ roughly.</p>
     <p>I furthermore recommend a <a href="calibration.html#matrix-cal3">3 point calibration</a> with a known impedance. This will
       also compensate for the properties of the reference resistor with respect to its frequency response, e.g. because of parasitic
@@ -91,11 +94,11 @@
       If you do so you will be able to measure really low and high impedance from about 1 mΩ up to 10 MΩ, including the reactance of
       capacitors and inductors.</p>
     <h4><img src="images/impedance1.svg" class="leftbox" style="width: 189px; height: 203px;">Poor man's impedance measurement</h4>
-    <p>There is a very simple variant that requires only one external reference resistor. Of course, you get only restricted
-      accuracy, but the most limiting factor is the <em>maximum output current of the sound device</em>. While old sound cards
-      often had a small built-in amplifier new ones sometimes do not even have enough power to drive a 32&nbsp;Ω headphone.<br>
+    <p>There is a very simple variant that requires <em>only one external reference resistor</em>. Of course, you get only
+      restricted accuracy, but the most limiting factor is the <em>maximum output current of the sound device</em>. While old sound
+      cards often had a small built-in amplifier new ones sometimes do not even have enough power to drive a 32&nbsp;Ω headphone.<br>
       You may overcome this limit by using an audio amplifier. But be careful, not all amplifiers have one terminal of the speaker
-      output connected to ground. And even if so it might introduce some stray current from its power supply.</p>
+      output connected to ground. And even if so it might add some stray current from its power supply.</p>
     <p>Reasonable values for R<sub>ref</sub> are only between 33 Ω and 3,3 kΩ roughly.</p>
     <p>In this configuration the voltage over the reference resistor cannot be sampled directly. Only the sum with the voltage over
       the test impedance is available. You need to tell <tt>Analyze</tt> by the <a href="parameter.html#_diff"><tt>diff</tt></a>
@@ -105,20 +108,25 @@
       Although you cannot use a 4 wire connection it will significantly improve the accuracy.</p>
     <h3><img src="images/two-port.svg" alt="wire diagram for two port network" class="rightbox" style="width: 288px; height: 172px;">
       2 port measurement - transfer function</h3>
-    <p>If you two-port network can directly deal with the line level of the sound device, e.g. an audio equalizer, it can be
-      directly connected like shown in the image. The only special thing needed is an Y-cable to get the reference feedback.</p>
+    <p>If your two-port network can deal with the line level of the sound device, e.g. an audio equalizer, it can be directly
+      connected like shown in the image at right. The only special thing needed is an Y-cable to get the reference feedback.</p>
     <h4><img src="images/speaker-response2.svg" alt="" style="width: 546px; height: 324px;" class="leftbox">Loudspeaker response</h4>
     <p>To the left is the typical setup for speaker measurements. The properties of the audio amplifier (and sound device) have no
       relevant influence on the result. <em>The microphone and its corresponding amplifier is the critical part.</em> There are
-      calibration services available for these combinations at reasonable charge.</p>
+      calibration services available for these combinations at reasonable charge. But be sure that they also return a (relative)
+      phase calibration, otherwise the results are of very limited use.</p>
     <p><b>You cannot use USB microphones</b> calibrated by the manufacturer. They use a different crystal oscillator for the
       sampling rate than the sound card used for playback of the reference. This results in slightly different speed of playback and
-      recording destroying the phase coherence used by <tt>Analyze</tt> to get high precision results. At least this is untested.</p>
-    <p>You should chose a sweep mode to reduce systematic errors due to harmonic distortion, intermodulation or non minimum phase
-      responses.</p>
-    <p>Of course, there are more things to respect to get a reasonable speaker measurement, first of all some kind of anechoic
-      location. But this is by far beyond the scope of this document.<br>
-      If your intention is to characterize the room and the speakers together for doing digital room correction, things are easier.</p>
+      recording destroying the phase coherence used by <tt>Analyze</tt> to get high precision results. At least this is untested
+      and likely to produce wrong results.</p>
+    <p>You should chose a sweep mode and a large FFT size to reduce systematic errors due to harmonic distortion, intermodulation or
+      non minimum phase responses. For fast measurements the <a href="measure.html#chirp">chirp mode</a> is sufficient. For high
+      precision measurements or in noisy environments the <a href="parameter.html#_msweep">step sweep mode</a> should be chosen.</p>
+    <p>Of course, there are more things to care to get a reasonable speaker measurement, first of all some kind of anechoic
+      location. But this is by far beyond the scope of this document. Just one hint: lying the speaker at least 0,5m over the grass
+      in the garden and fire upwards at a location where you have no orthogonal view to a house wall is a good choice.<br>
+      If your intention is to characterize the room and the speakers together for doing digital room correction, things are easier.
+      Simply take your listening position. The critical part in this case is the very long impulse response of your room.</p>
     <h4><img src="images/speaker-response1.svg" alt="" class="rightbox" style="width: 489px; height: 324px;">Linear amplifier</h4>
     <p><em>If you trust your amplifier</em> to be linear or you want to compensate for its properties you can use a more simple
       setup. A sufficiently linear amplifier must satisfy the following properties:</p>
@@ -151,10 +159,10 @@
           called fifos) that receive or play raw samples from or to the sound device. The script <b><tt>setup_alsa_server.sh</tt></b>
           is <b>invoked at program start</b>. It creates the pipes and spawns the <tt>arecord</tt> and <tt>aplay</tt> processes
           to feed or consume the pipe data respectively.</p>
-        <p>It also writes the <b>effective configuration</b> to <b><tt>current.cfg</tt></b> which is used to extract some
-          parameters for plots (<a href="parameter.html#_fmin"><tt>fmin</tt></a>, <a href="parameter.html#_fmax"><tt>fmax</tt></a>,
-          <a href="parameter.html#_fftlen"><tt>fftlen</tt></a> and <a href="parameter.html#_rref"><tt>rref</tt></a>) into the file
-          <tt>gpenv.gp</tt> intended to be included by Gnuplot.</p>
+        <p>The <b>effective configuration</b> is written to <b><tt>current.cfg</tt></b> which is used to extract some parameters
+          for plots (<a href="parameter.html#_fmin"><tt>fmin</tt></a>, <a href="parameter.html#_fmax"><tt>fmax</tt></a>, <a href="parameter.html#_fftlen"><tt>fftlen</tt></a>
+          and <a href="parameter.html#_rref"><tt>rref</tt></a>) into the file <tt>gpenv.gp</tt> intended to be included by
+          Gnuplot.</p>
         <p>Last but not least the file for the (last) FFT analysis results is set to <tt>data.dat</tt>.</p>
         <ul>
           <li>
@@ -189,8 +197,8 @@
           </li>
           <li>
             <p><b><tt>calibrate.cfg</tt></b> - calibration for impedance measurements</p>
-            <p>This instructs Analyze to perform a <a href="calibration.html#matrix-cal">matrix calibration</a> and write the result
-              to the file <tt>zero.dat</tt>. <em>You need to rename the resulting file matching the used reference resistor</em>
+            <p>This instructs Analyze to perform a <a href="calibration.html#matrix-cal">matrix calibration</a> and write the
+              result to the file <tt>zero.dat</tt>. <em>You need to rename the resulting file matching the used reference resistor</em>
               once the calibration has completed successfully.</p>
             <ul>
               <li><b><tt>calibrate2.cfg</tt></b> - perform 2 point calibration<br>
@@ -206,11 +214,11 @@
           </li>
           <li>
             <p><b><tt>roomscan.cfg</tt></b> - fast scan of the loudspeaker response in the current room</p>
-            <p>This activates <a href="parameter.html#_stereo">two channel mode</a> to record the response of both stereo channels at
-              the same time. The scan is done with an FFT length of 65,536 in the range 20 Hz ... 20 kHz. Only frequencies separated
-              approximately by halftone are used for analysis. You will not be able to extract reasonable values for the group delay
-              with this coarse pattern. Furthermore some the frequencies of the 2nd and 3rd harmonic are unused to get a rough idea
-              of distortion.</p>
+            <p>This activates <a href="parameter.html#_stereo">two channel mode</a> to record the response of both stereo channels
+              at the same time. The scan is done with an FFT length of 65,536 in the range 20 Hz ... 20 kHz. Only frequencies
+              separated approximately by halftone are used for analysis. You will not be able to extract reasonable values for the
+              group delay with this coarse pattern. Furthermore some the frequencies of the 2nd and 3rd harmonic are unused to get a
+              rough idea of distortion.</p>
             <p>A sampling rate of 48 kHz is recommended for this type of measurement. Higher frequencies just add overhead and
               reduce accuracy.</p>
             <p>Every 4 cycles of FFT length the result file <tt>data.dat</tt> is updated. The <tt>stdout</tt> of <tt>analyze</tt>
@@ -234,8 +242,8 @@
         <p>You can also pass additional command line parameters to <tt>Analyze</tt>. In fact <tt>@<var>filename</var>.cfg</tt> is
           also just an include directive for <tt>Analyze</tt>.</p>
       </dd>
-      <dt><b><tt>calibrate2.sh</tt></b>, <b><tt>calibrate3.sh</tt></b> - perform <a href="calibration.html#matrix-cal">2 point or 3
-          point calibration</a></dt>
+      <dt><b><tt>calibrate2.sh</tt></b>, <b><tt>calibrate3.sh</tt></b> - perform <a href="calibration.html#matrix-cal">2 point or
+          3 point calibration</a></dt>
       <dd>
         <p>Just start the script and follow the instructions. The result is shown with Gnuplot after completion. Whenever possible
           you should prefer the 3 point calibration.<br>

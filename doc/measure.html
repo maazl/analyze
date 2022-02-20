@@ -13,7 +13,7 @@
     <a href="calibration.html">▷&nbsp;Calibration</a> <a href="fileformat.html">▷&nbsp;File format</a> <span class="current">▼&nbsp;How
       it works</span><br>
     <a href="#sequence">▾&nbsp;Operation sequence</a> <a href="#PCA">▾&nbsp;PCA analysis</a> <a href="#FFT">▾&nbsp;FFT analysis</a>
-    <a href="#noise">▾&nbsp;Noise reference</a>
+    <a href="#reference">▾ Reference</a>
     <h2><a name="sequence"></a>Operation sequence</h2>
     <img src="images/Analyze-flow.svg" alt="program flow diagram" class="rightbox">
     <p><tt>Analyze </tt>generates a <b>reference signal</b> and writes it as <b>PCM Data </b>to <b><tt>stdout</tt></b>, a <b>file</b>
@@ -30,10 +30,10 @@
     <h3><a name="modes"></a>Modes of operation</h3>
     <p>Analyze currently supports two operation modes</p>
     <ol>
-      <li><a href="#noise"><b>Noise mode</b></a> (default)<br>
+      <li><b><a href="#noise">Noise</a> mode</b> (default) or <b><a href="#chirp">chirp</a> mode</b> (option <a href="parameter.html#_chirp"><tt>chirp</tt></a>)<br>
         <p>In this mode a reference with a well defined spectrum is used as reference.</p>
       </li>
-      <li><b><a name="sweep"></a>Sweep mode</b> (option <a href="parameter.html#_msweep">msweep</a>)<br>
+      <li><b><a name="sweep"></a>Step sweep mode</b> (option <tt><a href="parameter.html#_msweep">msweep</a></tt>)<br>
         <p>In sweep mode all frequencies are measured after each other. The measurement terminates when the last frequency has
           completed.</p>
         <p>Each frequency measurement consists of a setup time (<a href="parameter.html#_predelay"><tt>predelay</tt></a>) typically
@@ -145,24 +145,26 @@
     <p>You will not get reasonable results when the impedance contains components that change with frequency. In this case you
       should view the <a href="parameter.html#_wd">frequency dependent results</a> in the data file. Electrolytic capacitors tend
       to show such behavior.</p>
-    <h2><a name="noise"></a>Noise Reference</h2>
-    <p>This program <tt>analyze</tt> generates cyclic noise patterns with adjustable properties, like energy distribution and
-      relatively prime frequencies. The cyclic nature of the patterns makes the spectrum discrete which is ideal for FFT analysis
-      without the need of a window function.</p>
-    <h3>Energy distribution</h3>
-    <p>The program creates the noise reference by inverse Discrete Fourier Transform. The <b>amplitudes</b> of the Fourier
-      coefficients are calculated by:</p>
+    <h2><a name="reference"></a>Reference signal</h2>
+    <p>The program creates the reference by inverse Discrete Fourier Transform. This generates <i>cyclic</i> patterns with
+      adjustable properties, like energy distribution and relatively prime frequencies. The cyclic nature of the patterns makes the
+      spectrum discrete which is ideal for FFT analysis without the need of a window function.</p>
+    <h3><a name="energy"></a>Energy distribution</h3>
+    <p>The <b>amplitudes</b> of the Fourier coefficients are calculated by: </p>
     <blockquote>
       <p><var>r<sub>i</sub></var> = <var>f<sub>i</sub><sup>κ</sup></var></p>
     </blockquote>
-    <p>The phase angles are chosen randomly.</p>
-    <p>The exponent κ controls the <b>energy distribution</b>. An homogeneous distribution (κ&nbsp;=&nbsp;0) represents white
-      noise. Positive values prefer high frequencies, negative values prefer low frequencies. κ&nbsp;= -1 creates pink noise.</p>
+    <p>The exponent κ (option <a href="parameter.html#_scale"><tt>scale</tt></a>) controls the <b>energy distribution</b>. An
+      homogeneous distribution (κ&nbsp;=&nbsp;0) represents white noise. Positive values prefer high frequencies, negative values
+      prefer low frequencies. κ&nbsp;= -1 creates pink noise.</p>
     <p>All coefficients, outside the <b>frequency range [<var>f<sub>min</sub></var>, <var>f<sub>max</sub></var>]</b>, are purged.
       This is particularly required when κ &lt; 0, because otherwise the amplitude of the DC component becomes singular. </p>
-    <p>After the Inverse Fourier Transform the wave form is normalized to <b>0dB FSR</b> unless another level is selected by option
-      <a href="parameter.html#_gain"><tt>gain</tt></a>.</p>
-    <h3><a name="harmonics"></a>Dealing with harmonics</h3>
+    After the Inverse Fourier Transform the wave form is normalized to <b>0dB FSR</b> unless another level is selected by option <a
+      href="parameter.html#_gain"><tt>gain</tt></a>.
+    <h3><a name="noise"></a>Noise Reference</h3>
+    <p>For a noise reference the phase angles are chosen randomly. The result is still cyclic in the FFT length, so still no window
+      function is required for analysis.</p>
+    <h4><a name="harmonics"></a>Dealing with harmonics</h4>
     <p>The harmonics option excludes frequencies from the resulting spectrum if </p>
     <ul>
       <li>the current frequency is a harmonic of another used frequency or </li>
@@ -176,7 +178,7 @@
     <blockquote>
       <p><samp>analyze fftlen=64 fsamp=64 fmin=3 fmax=32 harm3 wspec=noise.dat</samp></p>
     </blockquote>
-    <h4>Rationale<samp></samp></h4>
+    <h5>Rationale<samp></samp></h5>
     <ul>
       <li>Frequency 4 is the first after <a href="parameter.html#_fmin"><tt>fmin</tt></a>. This is always used.</li>
       <li>Frequency 6 has a collision at its 2nd harmonic with the 3rd harmonic of frequency 4 at frequency 12 and therefore cannot
@@ -189,12 +191,23 @@
     </ul>
     <p> In effect the noise pattern contains only energy at the frequencies with red circles. While all the frequencies with red <em>or</em>
       pink circles are used for analysis.</p>
-    <h3><a name="stereo"></a><a name="multichannel"></a>Two channel mode</h3>
+    <h4><a name="stereo"></a><a name="multichannel"></a>Two channel mode</h4>
     <p>In <a href="parameter.html#_stereo">two channel mode</a> <tt>Analyze</tt> generates distinct reference signals for the left
       and the right output. In fact every second usable frequency is sent to the 2nd channel while the other frequencies are sent to
       the left channel.</p>
     <p>This is intended for fast room measurements. You can get the frequency response of both speakers at once. Since the
       references are orthogonal you can simply plot left and right channel data in a different graph. Of course, you loose some
       accuracy but for a coarse characterization e.g. to adjust an equalizer this is enough. </p>
+    <h3><a name="chirp"></a>Chirp reference</h3>
+    <p>For a chirp references the phase is calculated as follows:</p>
+    <ul>
+      <li>The result is <em>optimized for a low crest factor</em>. I.e. the group delay of each energy is proportional to the group
+        delay of the previous frequency plus the fraction corresponding to the chosen energy distribution.</li>
+      <li>The absolute group delay starts at 0 (before the <a href="parameter.html#_fmin">start frequency</a>) and increase up to
+        the maximum specified with the <a href="parameter.html#_chirp">chirp option</a> in units of the FFT length at the <a href="Chirp%20referenceparameter.html#_fmax">maximum
+          used frequency</a>.</li>
+      <li>Using a whole number for chirp will result in a small crest factor.</li>
+    </ul>
+    <p>Using chirp mode combined with a pink spectrum will result in a <em>log sweep</em>.</p>
   </body>
 </html>
