@@ -54,8 +54,12 @@ unsigned AnalyzeOut::CalcLoopCount(const Config& cfg)
 AnalyzeOut::AnalyzeOut(const Config& cfg)
 :	Cfg(cfg)
 ,	N2f((double)cfg.srate / cfg.N)
-,	FminI((unsigned)ceil(cfg.fmin/N2f))
-,	FmaxI((unsigned)fmin(floor(cfg.fmax/N2f), cfg.N/2))
+,	MinQuant(Freq2EnergyQuantile(cfg.fmin))
+,	MaxQuant(Freq2EnergyQuantile(cfg.fmax))
+,	FminSmo(cfg.smooth ? EnergyQuantile2Freq(MinQuant + cfg.smooth * (MaxQuant-MinQuant) / 2.) : cfg.fmin)
+,	FmaxSmo(cfg.smooth ? EnergyQuantile2Freq(MaxQuant - cfg.smooth * (MaxQuant-MinQuant) / 2.) : cfg.fmax)
+,	FminI((unsigned)fmax(ceil((2*cfg.fmin - FminSmo)/N2f), 0.))
+,	FmaxI(min((unsigned)floor((2*cfg.fmax - FmaxSmo)/N2f), cfg.N/2))
 ,	OutLevel(fromdB(cfg.outgain))
 ,	LoopCount(CalcLoopCount(cfg))
 ,	PCMOut(cfg.format, 1., Cfg.symmout)
@@ -86,7 +90,7 @@ bool AnalyzeOut::Setup()
 	{	FILEguard of(Cfg.specfile, "w");
 		fputs("#f\t|A|\targ A\tA real\tA imag\tharmon.\n", of);
 		for (size_t i = 0; i <= Cfg.N/2; ++i)
-		{	Complex ci(i != Cfg.N/2 ? Design[i] : 0, i ? Design[Cfg.N-i] : 0);
+		{	Complex ci(Design[i], i && i != Cfg.N/2 ? Design[Cfg.N-i] : 0);
 			//          f     |A|  arg A ai  bi   harm
 			fprintf(of, "%g\t%g\t%g\t%g\t%g\t%i\n",
 				i*N2f, abs(ci), arg(ci)*M_180_PI, ci.real(), ci.imag(), Harmonics[i]);
@@ -114,27 +118,31 @@ bool AnalyzeOut::Setup()
 	return Cfg.outfile || (Cfg.reffile && Cfg.sweep);
 }
 
-double AnalyzeOut::ChirpDelay(unsigned fi)
-{	if (Cfg.scalepow == -.5)
-		return log(fi);
-	return pow(fi, 1 + 2 * Cfg.scalepow);
+double AnalyzeOut::Freq2EnergyQuantile(double f)
+{	double xp = 1 + Cfg.scalepow / 2;
+	if (xp == 0.)
+		return log(f);
+	return pow(f, xp) / xp;
+}
+
+double AnalyzeOut::EnergyQuantile2Freq(double q)
+{	double xp = 1 + Cfg.scalepow / 2;
+	if (xp == 0.)
+		return exp(q);
+	return pow(q * xp, 1 / xp);
 }
 
 void AnalyzeOut::CreateDesign()
 {	Design.clear(); // all coefficients -> 0
 	Harmonics.clear();
+
+	// amplitude
 	fftw_real maxamp = 0;
 	int sign = 1;
-	double phi = 0;
-	double mindelay;
-	double delayscale;
-	if (Cfg.chirp)
-	{	mindelay = ChirpDelay(FminI - 1); // make exclusive border
-		double maxdelay = ChirpDelay(FmaxI);
-		delayscale = -1 / (maxdelay - mindelay) * Cfg.chirp * M_2PI;
-	}
+	double sumamp = 0;
 	for (unsigned i = FminI; i <= FmaxI; ++i)
-	{	if (!Cfg.sweep && !Cfg.chirp)
+	{	double f = i * N2f;
+		if (!Cfg.sweep && !Cfg.chirp)
 		{	// skip used harmonics
 			for (unsigned j = 2; j < Cfg.harmonic && i*j <= Cfg.N/2; ++j)
 				if (Harmonics[i*j])
@@ -144,21 +152,22 @@ void AnalyzeOut::CreateDesign()
 				Harmonics[i*j] = j * sign;
 		}
 		Harmonics[i] = sign;
-		// calculate coefficients
 		++FCount;
-		// amplitude
-		Design[i] = pow(i, Cfg.scalepow);
+
+		if (f < Cfg.fmin)
+			f = 2 * Cfg.fmin - f;
+		else if (f > Cfg.fmax)
+			f = 2 * Cfg.fmax - f;
+		Design[i] = pow(f, Cfg.scalepow / 2);
+		//fprintf(stderr, "%i\t%g\t%g\t%g\t%g\t%g\n", i, i * N2f, f, Design[i], FminSmo, FmaxSmo);
+		if (f < FminSmo)
+			Design[i] *= .5 + .5 * sin(M_PI_2 * (i * N2f - Cfg.fmin) / (FminSmo - Cfg.fmin));
+		else if (f > FmaxSmo)
+			Design[i] *= .5 + .5 * sin(M_PI_2 * (i * N2f - Cfg.fmax) / (FmaxSmo - Cfg.fmax));
+		sumamp += sqr(Design[i]);
 		if (Design[i] > maxamp)
 			maxamp = Design[i];
-		// phase
-		if (i && i != Cfg.N/2)
-		{	if (!Cfg.chirp)
-				phi = M_2PI * myrand();
-			else
-				phi += (ChirpDelay(i) - mindelay) * delayscale;
-			Design[Cfg.N-i] = Design[i] * sin(phi); // b[i]
-			Design[i] *= cos(phi);                  // a[i]
-		}
+
 		// next frequency
 		if (Cfg.stereo && !Cfg.sweep)
 			sign = -sign;
@@ -166,6 +175,20 @@ void AnalyzeOut::CreateDesign()
 		i = (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5);
 	 next_f:;
 	}
+
+	// phase
+	double phi = 0;
+	double quantil = 0;
+	for (unsigned i = max(FminI, 1U); i <= min(FmaxI, Cfg.N/2 - 1); ++i)
+	{	quantil += sqr(Design[i]);
+		if (!Cfg.chirp)
+			phi = M_2PI * myrand();
+		else
+			phi += -M_2PI * quantil / sumamp * Cfg.chirp;
+		Design[Cfg.N-i] = Design[i] * sin(phi); // b[i]
+		Design[i] *= cos(phi);                  // a[i]
+	}
+
 	// normalize
 	Design /= maxamp;
 }
@@ -207,12 +230,18 @@ void AnalyzeOut::CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& n
 		design = Design;
 		for (size_t i = FminI; i <= FmaxI; ++i)
 			if (Harmonics[i] < 0)
-				Design[i] = Design[Cfg.N-i] = 0;
+			{	design[i] = 0;
+				if (i && i < Cfg.N/2)
+					design[Cfg.N-i] = 0;
+			}
 		fftwf_execute_r2r(plan, design.get(), sampbuf.get());
 		design = Design;
 		for (size_t i = FminI; i <= FmaxI; ++i)
 			if (Harmonics[i] > 0)
-				Design[i] = Design[Cfg.N-i] = 0;
+			{	design[i] = 0;
+				if (i && i < Cfg.N/2)
+					design[Cfg.N-i] = 0;
+			}
 		fftwf_execute_r2r(plan, design.get(), sampbuf.get() + Cfg.N);
 	}
 

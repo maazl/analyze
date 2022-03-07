@@ -627,14 +627,21 @@
       <dt><a name="_symmout"></a><b><tt>symmout</tt></b> - symmetric stereo output</dt>
       <dd>Invert the output of the second channel of single channel reference. This cannot be combined with <a href="#_stereo"><tt>stereo</tt></a>.</dd>
       <dt><a name="_scale"></a><tt><b>scale</b>=<var>power</var></tt> - noise type</dt>
-      <dd>Exponent of the <a href="measure.html#noise">energy distribution</a>. <tt>0</tt> := white noise, <tt>-1</tt> := pink
-        noise. <tt>0</tt> by default.</dd>
+      <dd>Exponent of the <a href="measure.html#noise">energy distribution</a>. <tt>0</tt> = white noise (default), <tt>-1</tt> =
+        pink noise, <tt>-2</tt> = brown noise.</dd>
       <dt><b><tt><a name="_chrip"></a>chirp</tt></b>[<tt>=<var>scale</var></tt>] - use chirp reference</dt>
       <dd>This option enables (if not 0) and controls chirp reference. Values between 0 and 1 approximately use this part of the <a
           href="#_fftlen">FFT length</a> for the chirp signal. More exactly the group delay of all used frequencies is spread over
         this range. Values larger than 1 will cause multiple frequencies measured at the same time. E.g. a value of 3 will measure 3
         frequencies at the same time. Negative values will reverse the chirp, i.e. start at <tt><a href="#_fmax">fmax</a></tt>. A
         value of 0 disables chirp and uses random phase, the default. If you omit <tt><var>scale</var></tt> a value of 1 is used.</dd>
+      <dt><tt><b><a name="smooth"></a>smooth</b>=<var>width</var></tt> - smoothen frequency spectrum</dt>
+      <dd>This option will apply a cosine window to the frequency response at <a href="#_fmin"><tt>fmin</tt></a> and <a href="#_fmax"><tt>fmax</tt></a>.
+        <var><tt>width</tt></var> is the full width of the window relative to the total energy distribution. So if you used the <a
+          href="#_scale"><tt>scale</tt></a> option, i.e anything but a white spectrum, the width will be different at <tt>fmin</tt>
+        and <tt>fmax</tt> in the frequency domain. Reasonable values are below 0.1.<br>
+        The primary purpose of this option is to create chirp references that are limited in the time domain, but it will work with
+        noise references too.</dd>
       <dt><b><tt><a name="_rspec"></a>rspec</tt></b>[<tt>=<var>filename</var></tt>] - read design spectrum of the reference signal</dt>
       <dd>Read the frequency domain reference signal from <var><tt>filename</tt></var> or <tt>spectrum.dat</tt> if <var><tt>filename</tt></var>
         is omitted. See <a href="fileformat.html#spectrum_dat">→&nbsp;file format</a>.<br>

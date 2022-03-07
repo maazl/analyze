@@ -85,6 +85,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("scale",  "noise type", Cfg.scalepow)
 ,	MkOpt("setupcmd","execute shell command at program start", Cfg.setup.shell)
 ,	MkOpt("setupout","print string to stdout at program start", Cfg.setup.out)
+,	MkOpt("smooth", "smoothen frequency limits (relative)", Cfg.smooth, 0., 1.)
 ,	MkDOp("stereo", "two channel mode", Cfg.stereo, true)
 ,	MkDOp("symmout","symmetric output", Cfg.symmout, true)
 ,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 2U)

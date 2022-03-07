@@ -152,13 +152,14 @@
     <h3><a name="energy"></a>Energy distribution</h3>
     <p>The <b>amplitudes</b> of the Fourier coefficients are calculated by: </p>
     <blockquote>
-      <p><var>r<sub>i</sub></var> = <var>f<sub>i</sub><sup>κ</sup></var></p>
+      <p><var>r<sub>i</sub></var> = <var>f<sub>i</sub><sup>κ</sup></var><sup>/2</sup></p>
     </blockquote>
     <p>The exponent κ (option <a href="parameter.html#_scale"><tt>scale</tt></a>) controls the <b>energy distribution</b>. An
-      homogeneous distribution (κ&nbsp;=&nbsp;0) represents white noise. Positive values prefer high frequencies, negative values
-      prefer low frequencies. κ&nbsp;= -1 creates pink noise.</p>
-    <p>All coefficients, outside the <b>frequency range [<var>f<sub>min</sub></var>, <var>f<sub>max</sub></var>]</b>, are purged.
-      This is particularly required when κ &lt; 0, because otherwise the amplitude of the DC component becomes singular. </p>
+      homogeneous distribution (κ&nbsp;=&nbsp;0) represents a whilespectrum. Positive values prefer high frequencies, negative
+      values prefer low frequencies. κ&nbsp;= -1 creates a pink spectrum.</p>
+    <p>All coefficients, outside the <b>frequency range [<var>f<sub>min</sub></var>, <var>f<sub>max</sub></var>]</b>, are set to
+      zero. This can be weakened by the <a href="parameter.html#_smooth"><tt>smooth</tt></a> option. Restricting the frequency
+      range is particularly required when κ &lt; 0, because otherwise the amplitude of the DC component becomes singular.</p>
     After the Inverse Fourier Transform the wave form is normalized to <b>0dB FSR</b> unless another level is selected by option <a
       href="parameter.html#_gain"><tt>gain</tt></a>.
     <h3><a name="noise"></a>Noise Reference</h3>
