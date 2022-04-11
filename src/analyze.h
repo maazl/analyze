@@ -98,7 +98,7 @@ struct Config
 	//bool        syncfall = true;      ///< use all frequencies in the interval [famin, famax] rather than the design function
 	double      synclevel = .2;       ///< minimum SNR ratio of successful synchronization compared to the SNR of the autocorrelation function
 	double      syncend = .8;         ///< decrease of cross correlation level that is identified as end of sync.
-	double      predelay = .95;       ///< gap in sweep mode after a frequency change and before the measurement starts in units of FFT cycles (N).
+	double      predelay = .95;       ///< gap before a measurement starts or after a frequency change in units of FFT cycles (N).
 	// calibration options
 	const char* gaininfile = nullptr; ///< file name for gain calibration data
 	const char* gainoutfile = nullptr;///< file name for differential gain calibration data
@@ -153,8 +153,8 @@ struct ITask
 
 struct SetupData
 {
-	/// Design spectrum in packed half complex format, i.e [a(0), a(1) ... a(N/2-1), b(N/2) ... b(1)].
-	/// a(N/2) and b(0) are zero by definition of half complex FFT.
+	/// Design spectrum in packed half complex format, i.e [a(0), a(1) ... a(N/2), b(N/2-1) ... b(1)].
+	/// b(N/2) and b(0) are zero by definition of half complex FFT.
 	unique_fftw_arr<fftw_real> Design;
 	/// Used frequencies and harmonics.
 	/// @details The table is of size N/2+1. Each entry corresponds to the matching FFT frequency bin
@@ -180,6 +180,7 @@ class AnalyzeIn : public ITask
 	double LinPhase;                        ///< Delay between signal and reference in seconds/2Pi
 	double SNRAC;                           ///< Signal to noise of autocorrelation function
 	unsigned char ZeroPart = 0;             ///< Part of matrix calibration, count down
+	long FileStart = 0;
 
 	bool NeedSync;                          ///< True if Synchronization is (still) required before main data processing.
 	unsigned NextSamples;                   ///< Number of samples to read for the next loop. Typically Cfg.N.
@@ -207,6 +208,8 @@ class AnalyzeIn : public ITask
 	unique_fftwf_plan P;                    ///< FFT plan for forward transformation
 	unique_fftwf_plan PI;                   ///< FFT plan for inverse transformation
 
+	class FFTWorker;
+
  private:
 	/// Do the main work
 	void Run();
@@ -218,9 +221,9 @@ class AnalyzeIn : public ITask
 	/// Analyze samples in InBuffer by PCA analysis
 	void DoPCA();
 	/// Analyze samples in InBuffer by FFT analysis
-	void DoFFT();
+	void DoFFT(bool ch2);
 	/// Analyze samples in InBuffer by FFT & PCA analysis
-	void DoFFTPCA();
+	void DoFFTPCA(bool ch2);
 	/// Analyze samples in InBuffer by hysteresis analysis
 	void DoXY();
 	void ExecuteFFT();
@@ -232,7 +235,8 @@ class AnalyzeIn : public ITask
 	/// But keep in mind that the autocorrelation of the reference signal also adds noise.
 	Complex ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in1, const unique_num_array<fftw_real>& in2);
 
-	void PrintHdr(FILE* dst);
+	void PrintHdr(FILE* dst) const;
+	void PrintBin(FILE* dst, const FFTWorker& fft) const;
 
 	static void ReadColumn(const filecolumn& src, const unique_fftw_arr<fftw_real>& dst);
 	static void CreateWindow(const unique_num_array<fftw_real>& dst, int type);
@@ -324,10 +328,9 @@ class AnalyzeIn : public ITask
 
 	 public:
 		FFTWorker(AnalyzeIn& parent) : Parent(parent) {}
-		StoreRet StoreBin(unsigned bin);
-
-		void PrintBin(FILE* dst) const;
-
+		StoreRet StoreBin(unsigned bin, int ch);
+		/// Current channel
+		int ch() const { return Ch; }
 		/// Retrieve aggregated information for harmonic of current frequency and channel
 		const AggEntry& ret() const { return Agg[Ch]; }
 	};
@@ -402,6 +405,8 @@ class AnalyzeOut final : public ITask, public SetupData
 	/// Play OutBuf loopcount times or unless termrq.
 	void PlayNoise(unsigned loopcount);
 	void PlaySilence(unsigned loopcount);
+	/// Move samples in OutBuf to the next channel.
+	void NextChannel();
  public:
 	/// Create output worker
 	/// @param cfg global configuration.

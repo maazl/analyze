@@ -94,6 +94,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("synclvl","minimum correlation ratio of successful synchronization", Cfg.synclevel, 0., 1.)
 ,	MkDOp("wd",     "(over)write FFT data file on the fly", Cfg.datafile, "data.dat")
 ,	MkOpt("win",    "select window function [0..5]", Cfg.winfn, 0U, 5U)
+,	MkDOp("wir",    "(over)write impulse response data file on the fly", Cfg.irfile, "ir.dat")
 ,	MkDOp("wraw",   "write raw input data to file", Cfg.rawfile, "raw.dat")
 ,	MkDOp("wref",   "write time domain reference data to file", Cfg.reffile, "ref.dat")
 ,	MkDOp("wspec",  "write frequency domain reference data to file", Cfg.specfile, "spectrum.dat")

@@ -44,9 +44,8 @@ unsigned AnalyzeOut::CalcLoopCount(const Config& cfg)
 		else
 			count = (count * 3) + 2 * cfg.PauseLoops();
 	}
-	if (cfg.sweep)
-		count += (unsigned)ceil(cfg.predelay);
-	else if (!cfg.sync)
+	count += (unsigned)ceil(cfg.predelay);
+	if (!cfg.sweep && !cfg.sync)
 		count += (cfg.discsamp + cfg.N) / cfg.N + 1;
 	return count;
 }
@@ -62,7 +61,7 @@ AnalyzeOut::AnalyzeOut(const Config& cfg)
 ,	FmaxI(min((unsigned)floor((2*cfg.fmax - FmaxSmo)/N2f), cfg.N/2))
 ,	OutLevel(fromdB(cfg.outgain))
 ,	LoopCount(CalcLoopCount(cfg))
-,	PCMOut(cfg.format, 1., Cfg.symmout)
+,	PCMOut(cfg.format, 1., !(Cfg.stereo && (Cfg.sweep || Cfg.chirp)) - Cfg.symmout)
 {	Design.reset(cfg.N + 1);
 	Harmonics.reset(cfg.N/2 + 1);
 	OutBuf.reset(cfg.N * PCMOut.BytesPerSample);
@@ -78,9 +77,9 @@ bool AnalyzeOut::Setup()
 
 	unsigned secs = LoopCount;
 	if (Cfg.sweep)
-	{	secs *= FCount;
+		secs *= FCount;
+	if (Cfg.sweep || Cfg.chirp)
 		secs <<= Cfg.stereo;
-	}
 	secs = (unsigned)((uint64_t)secs * Cfg.N / Cfg.srate);
 	fprintf(stderr, "Measurement time %u:%02u:%02u (loop count %u)\n",
 		secs / 3600, secs / 60 % 60, secs % 60, LoopCount);
@@ -169,7 +168,7 @@ void AnalyzeOut::CreateDesign()
 			maxamp = Design[i];
 
 		// next frequency
-		if (Cfg.stereo && !Cfg.sweep)
+		if (Cfg.stereo & !Cfg.sweep & !Cfg.chirp)
 			sign = -sign;
 		//fprintf(stderr, "f %i %i\n", i, (int)floor(i * f_log + f_inc));
 		i = (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5);
@@ -218,7 +217,7 @@ void AnalyzeOut::ReadDesign()
 
 void AnalyzeOut::CreateTimeDomain(unique_fftw_arr<fftw_real>& sampbuf, double& norm, unique_fftwf_plan& plan)
 {
-	if (!Cfg.stereo || Cfg.sweep)
+	if (!Cfg.stereo || Cfg.sweep || Cfg.chirp)
 	{	sampbuf.reset(Cfg.N);
 		plan = fftwf_plan_r2r_1d(Cfg.N, Design.get(), sampbuf.get(), FFTW_HC2R, FFTW_ESTIMATE);
 		fftwf_execute(plan);
@@ -299,15 +298,20 @@ void AnalyzeOut::Run()
 		// Sweep mode
 		DoSweep();
 	else
-		// noise mode
+	{	// noise or chirp mode
 		PlayNoise(LoopCount);
+		if (Cfg.stereo && Cfg.chirp)
+		{	NextChannel();
+			PlayNoise(LoopCount);
+		}
+	}
 
 	if (FOut)
 		fflush(FOut);
 }
 
 void AnalyzeOut::DoSweep()
-{	unique_num_array<fftw_real> sampbuf(Cfg.N * (Cfg.stereo + 1));
+{	unique_num_array<fftw_real> sampbuf(Cfg.N);
 
 	// for each frequency
 	for (size_t i = FminI; i <= FmaxI && !termrq; ++i)
@@ -321,30 +325,16 @@ void AnalyzeOut::DoSweep()
 		for (size_t j = 0; j < Cfg.N; ++j)
 			sampbuf[j] = sin(ff * j) * level;
 
-		for (unsigned ch = 0; ch <= Cfg.stereo; ++ch)
-		{
-			if (ch)
-			{	sampbuf.slice(Cfg.N, Cfg.N) = sampbuf.slice(0, Cfg.N);
-				sampbuf.slice(0, Cfg.N).clear();
-			}
+		CreatePCM(sampbuf);
 
-			// write result
-			if (Cfg.reffile)
-			{	FILEguard of(Cfg.reffile, Cfg.refmode);
-				if (!Cfg.stereo)
-					for (auto v : sampbuf)
-						fprintf(of, "%12g\n", v);
-				else
-					for (unsigned i = 0; i < Cfg.N; ++i)
-						fprintf(of, "%12g\t%12g\n", sampbuf[i], sampbuf[i+Cfg.N]);
-			}
-
-			// and play
-			if (FOut)
-			{	CreatePCM(sampbuf);
+		if (FOut)
+		{	PlayNoise(LoopCount);
+			// 2nd channel
+			if (Cfg.stereo)
+			{ NextChannel();
 				PlayNoise(LoopCount);
 			}
-		} // for each channel
+		}
 	} // for each frequency
 }
 
@@ -355,12 +345,17 @@ void AnalyzeOut::PlayNoise(unsigned loopcount)
 }
 
 void AnalyzeOut::PlaySilence(unsigned loopcount)
-{
-	loopcount *= OutBuf.size();
+{	loopcount *= OutBuf.size();
 	char buf[1024] = {0};
 	while (loopcount > 1024 && !termrq)
 	{	fwrite2(buf, sizeof buf, FOut);
 		loopcount -= 1024;
 	}
 	fwrite2(buf, loopcount, FOut);
+}
+
+void AnalyzeOut::NextChannel()
+{	size_t shift = PCMOut.BytesPerSample >> 1;
+	memmove(OutBuf.get() + shift, OutBuf.get(), OutBuf.size() - shift);
+	memset(OutBuf.get(), 0, shift);
 }

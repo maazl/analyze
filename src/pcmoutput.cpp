@@ -9,11 +9,11 @@ using namespace std;
 
 #define BUFFERSIZE 65536
 
-PCMoutput::PCMoutput(Format fmt, fftw_real gain, bool symmetric)
+PCMoutput::PCMoutput(Format fmt, fftw_real gain, signed char signch2)
 :	PCMIO(fmt)
 ,	Gain(fmt >= Format::F32 ? gain : gain * (getFSR(fmt) - 1))
-,	Symmetric(symmetric)
-{	fprintf(stderr, "G: %g\t%g\t%g\t%i\n", Gain, gain, getFSR(fmt), (int)fmt);
+,	SignCh2(signch2)
+{	//fprintf(stderr, "G: %g\t%g\t%g\t%i\t%i\n", Gain, gain, getFSR(fmt), (int)fmt, signch2);
 }
 
 void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num_array<char>& dst)
@@ -26,20 +26,26 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 			while (sp != spe)
 			{	float s = *sp++ * Gain;
 				*dp++ = s;
-				*dp++ = Symmetric ? -s : s;
+				*dp++ = SignCh2 * s;
 		}	}
 		break;
 	 case Format::F32_SWAP:
 		{	float* dp = (float*)dst.begin();
 			while (sp != spe)
 			{	dp[0] = *sp++ * Gain;
-				if (Symmetric)
-				{	dp[1] = -dp[0];
+				switch (SignCh2)
+				{case -1:
+					dp[1] = -dp[0];
 					bswap(dp);
 					bswap(dp + 1);
-				} else
-				{	bswap(dp);
+					break;
+				 case 1:
+					bswap(dp);
 					dp[1] = dp[0];
+					break;
+				 case 0:
+					bswap(dp);
+					dp[1] = 0;
 				}
 				dp += 2;
 		}	}
@@ -48,7 +54,7 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 		{	int32_t* dp = (int32_t*)dst.begin();
 			while (sp != spe)
 			{	dp[0] = (int32_t)round(*sp++ * Gain);
-				dp[1] = Symmetric ? -dp[0] : dp[0];
+				dp[1] = SignCh2 * dp[0];
 				dp += 2;
 		}	}
 		break;
@@ -56,13 +62,19 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 		{	int32_t* dp = (int32_t*)dst.begin();
 			while (sp != spe)
 			{	dp[0] = round(*sp++ * Gain);
-				if (Symmetric)
-				{	dp[1] = -dp[0];
+				switch (SignCh2)
+				{case -1:
+					dp[1] = -dp[0];
 					bswap(dp);
 					bswap(dp + 1);
-				} else
-				{	bswap(dp);
+					break;
+				 case 1:
+					bswap(dp);
 					dp[1] = dp[0];
+					break;
+				 case 0:
+					bswap(dp);
+					dp[1] = 0;
 				}
 				dp += 2;
 		}	}
@@ -76,8 +88,13 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 				dp[0] = cp[0];
 				dp[1] = cp[1];
 				dp[2] = cp[2];
-				if (Symmetric)
+				switch (SignCh2)
+				{case -1:
 					e.i = -e.i;
+					break;
+				 case 0:
+					e.i = 0;
+				}
 				dp[3] = cp[0];
 				dp[4] = cp[1];
 				dp[5] = cp[2];
@@ -93,8 +110,13 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 				dp[0] = cp[2];
 				dp[1] = cp[1];
 				dp[2] = cp[0];
-				if (Symmetric)
+				switch (SignCh2)
+				{case -1:
 					e.i = -e.i;
+					break;
+				 case 0:
+					e.i = 0;
+				}
 				dp[3] = cp[2];
 				dp[4] = cp[1];
 				dp[5] = cp[0];
@@ -105,23 +127,34 @@ void PCMoutput::convert(const unique_num_array<fftw_real>& src, const unique_num
 		{	int16_t* dp = (int16_t*)dst.begin();
 			while (sp != spe)
 			{	dp[0] = (int16_t)floor(*sp++ * Gain + myrand());
-				dp[1] = Symmetric ? -dp[0] : dp[0];
+				dp[1] = SignCh2 * dp[0];
 				dp += 2;
 		}	}
 		break;
 	 case Format::I16_SWAP:
 		{	int16_t* dp = (int16_t*)dst.begin();
-			if (Symmetric)
+			switch (SignCh2)
+			{case -1:
 				while (sp != spe)
 				{	int16_t s = (int16_t)floor(*sp++ * Gain + myrand());
 					*dp++ = bswap(s);
 					*dp++ = bswap(-s);
 				}
-			else
+				break;
+			 case 1:
 				while (sp != spe)
-				{	dp[0] = dp[1] = bswap((int16_t)floor(*sp++ * Gain + myrand()));
+				{	dp[1] = dp[0] = bswap((int16_t)floor(*sp++ * Gain + myrand()));
 					dp += 2;
-		}		}
+				}
+				break;
+			 case 0:
+				while (sp != spe)
+				{	dp[0] = bswap((int16_t)floor(*sp++ * Gain + myrand()));
+					dp[1] = 0;
+					dp += 2;
+				}
+			}
+		}
 		break;
 	}
 }

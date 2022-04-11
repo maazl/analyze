@@ -46,7 +46,7 @@ void AnalyzeIn::AggEntry::finish(unsigned harm)
 }
 
 
-AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin)
+AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin, int ch)
 {
 	// frequency
 	double f = bin * Parent.N2f;
@@ -55,7 +55,7 @@ AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin
 	if (f > Parent.Cfg.fmax)
 		return AboveMax;
 
-	Ch = Parent.SD.Harmonics[bin] < 0;
+	Ch = ch;
 	FFTAgg& curagg = Agg[Ch];
 	// retrieve coefficients
 	Complex I(Parent.FFTBuffer[1][bin], bin && bin != Parent.Cfg.N / 2 ? Parent.FFTBuffer[1][Parent.Cfg.N - bin] : 0);
@@ -89,7 +89,7 @@ AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin
 	return Ready;
 }
 
-void AnalyzeIn::PrintHdr(FILE* dst)
+void AnalyzeIn::PrintHdr(FILE* dst) const
 {
   //     1   2    3      4    5      6    7      8       9       10      11     12
 	fputs("#f\t|U|\targ U\t|I|\targ I\t|Z|\targ Z\tZ real\tZ imag\tweight\tdelay\tchan", dst);
@@ -98,9 +98,9 @@ void AnalyzeIn::PrintHdr(FILE* dst)
 	fputc('\n', dst);
 }
 
-void AnalyzeIn::FFTWorker::PrintBin(FILE* dst) const
+void AnalyzeIn::PrintBin(FILE* dst, const FFTWorker& fft) const
 {
-	const FFTAgg& curagg = Agg[Ch];
+	const AggEntry& curagg = fft.ret();
 	Complex Z = polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg);
 	fprintf(dst, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%6i",
 		// f      |Hl|                arg l                          |Hr|         arg r
@@ -108,8 +108,8 @@ void AnalyzeIn::FFTWorker::PrintBin(FILE* dst) const
 		// |Z|              arg Z                          Z re      Z im
 		curagg.Val[0].Zabs, curagg.Val[0].Zarg * M_180_PI, Z.real(), Z.imag(),
 		// weight        delay            channel
-		curagg.Val[0].W, curagg.Val[0].D, Ch);
-	for (unsigned h = 1; h < Parent.Cfg.harmonic; ++h)
+		curagg.Val[0].W, curagg.Val[0].D, fft.ch());
+	for (unsigned h = 1; h < Cfg.harmonic; ++h)
 	{	const AggEntry::VE& val = curagg.Val[h];
 		Z = polar(val.Zabs, val.Zarg);
 		fprintf(dst, "\t%8g\t%8g\t%8g\t%8g",
@@ -326,11 +326,11 @@ bool AnalyzeIn::Setup()
 
 void AnalyzeIn::Run()
 {
-	if (Cfg.infile)
+	if (FIn)
 		// discard first samples
-		PCMIn.discard(FIn, Cfg.discsamp, InBufferTmp);
+		PCMIn.discard(FIn, Cfg.discsamp + (size_t)(Cfg.predelay * Cfg.N), InBufferTmp);
 
-	NeedSync = Cfg.sync || Cfg.predelay;
+	NeedSync = Cfg.sync;
 	NextSamples = Cfg.N;
 	SyncPhaseVector = 0;
 	SyncWeight = 0;
@@ -346,18 +346,19 @@ void AnalyzeIn::Run()
 	// operation loop
 	unsigned loop = Cfg.loops * Cfg.addloop;
 	if (Cfg.sweep)
-	{	loop *= SD.FCount;
+		loop *= SD.FCount;
+	if (Cfg.sweep || Cfg.chirp)
 		loop <<= Cfg.stereo;
-	}
 	unsigned addloops = 0;
 	unsigned block = 0;
+	bool ch2 = 0;
 	do
 	{
 		if (FIn)
 		{resync:
 			//fprintf(stderr, "loop block = %u, nsync = %i, nextsamp = %u\n", block, NeedSync, NextSamples);
-			if (sweep && !addloops && !NeedSync && !block)
-				// frequency setup delay for sweep mode
+			if (!addloops && !NeedSync && !block)
+				// frequency setup delay
 				PCMIn.discard(FIn, Cfg.N * (unsigned)ceil(Cfg.predelay), InBufferTmp);
 
 			// Read NextSamples and keep Cfg.N - NextSamples if > 0.
@@ -431,18 +432,20 @@ void AnalyzeIn::Run()
 		if (sweep)
 			sweep->DoSweep(block);
 		else if (Cfg.mfft & Cfg.mpca)
-			DoFFTPCA();
+			DoFFTPCA(ch2);
 		else if (Cfg.mpca)
 			DoPCA();
 		else if (Cfg.mfft)
-			DoFFT();
+			DoFFT(ch2);
 		else if (Cfg.mxy)
 			DoXY();
 
 		Cfg.plot.execute();
 
 		if (++block == Cfg.loops)
-			block = 0;
+		{	block = 0;
+			ch2 ^= Cfg.stereo && Cfg.chirp;
+		}
 	} while (--loop && !termrq);
 
 	if (Cfg.gainoutfile)
@@ -627,7 +630,7 @@ void AnalyzeIn::DoPCA()
 		res[0], res[1], 2. / Cfg.srate / res[2], res[3], 1. / 2 * Cfg.srate * res[2] / M_2PI / res[0], Cfg.srate * res[4] / 2);
 }
 
-void AnalyzeIn::DoFFT()
+void AnalyzeIn::DoFFT(bool ch2)
 {
 	ExecuteFFT();
 
@@ -648,20 +651,25 @@ void AnalyzeIn::DoFFT()
 	// write data
 	FILEguard tout = NULL;
 	if (Cfg.datafile)
-	{	tout = checkedopen(Cfg.datafile, "wt");
-		PrintHdr(tout);
-	}
+		if (ch2)
+		{	tout = checkedopen(Cfg.datafile, "r+t");
+			fseek(tout, FileStart, SEEK_SET);
+		}
+		else
+		{	tout = checkedopen(Cfg.datafile, "wt");
+			PrintHdr(tout);
+		}
 
 	for (size_t len = 0; len <= Cfg.N / 2; ++len)
 	{	// do calculations and aggregations
-		switch (fft.StoreBin(len))
+		switch (fft.StoreBin(len, SD.Harmonics[len] < 0 ^ch2))
 		{default:
 			//case FFTbin::Aggregated:
 			continue;
 		 case FFTWorker::Ready:
 			// write
 			if (tout)
-				fft.PrintBin(tout);
+				PrintBin(tout, fft);
 		}
 
 		const AggEntry& calc = fft.ret();
@@ -684,6 +692,12 @@ void AnalyzeIn::DoFFT()
 		d2sum = calc.Val[0].W * sqr(z.imag());
 	}
 
+	if (tout)
+		if (!ch2)
+			FileStart = ftell(tout);
+		else
+			fputc('#', tout); // turn residual content into comment since there is no standard way to truncate a file
+
 	// calculate summary
 	double R = Rsum / wsum;
 	double RE = sqrt((R2sum / wsum - sqr(R)) / (nsum - 1));
@@ -705,7 +719,7 @@ void AnalyzeIn::DoFFT()
 		fprintf(stderr, "delay [ms]\t%12g\n", 1E3 / M_2PI * LinPhase);
 }
 
-void AnalyzeIn::DoFFTPCA()
+void AnalyzeIn::DoFFTPCA(bool ch2)
 {	// FFT
 	ExecuteFFT();
 
@@ -714,9 +728,15 @@ void AnalyzeIn::DoFFTPCA()
 	// write data
 	FILEguard tout = NULL;
 	if (Cfg.datafile)
-	{	tout = checkedopen(Cfg.datafile, "wt");
-		PrintHdr(tout);
-	}
+		if (Cfg.datafile)
+			if (ch2)
+			{	tout = checkedopen(Cfg.datafile, "r+t");
+				fseek(tout, FileStart, SEEK_SET);
+			}
+			else
+			{	tout = checkedopen(Cfg.datafile, "wt");
+				PrintHdr(tout);
+			}
 
 	PCA<2> pcaRe;
 	PCA<3> pcaIm;
@@ -729,7 +749,7 @@ void AnalyzeIn::DoFFTPCA()
 	// 1st line
 	for (size_t len = 0; len <= Cfg.N / 2; ++len)
 	{	// do calculations and aggregations
-		switch (fft.StoreBin(len))
+		switch (fft.StoreBin(len, SD.Harmonics[len] < 0 ^ ch2))
 		{default:
 			//case FFTbin::Aggregated:
 			//case FFTbin::Skip:
@@ -737,7 +757,7 @@ void AnalyzeIn::DoFFTPCA()
 		 case FFTWorker::Ready:
 			// write
 			if (tout)
-				fft.PrintBin(tout);
+				PrintBin(tout, fft);
 		}
 
 		const AggEntry& calc = fft.ret();
@@ -758,6 +778,12 @@ void AnalyzeIn::DoFFTPCA()
 		pcaRe.Store(PCAdataRe, calc.Val[0].W);
 		pcaIm.Store(PCAdataIm, calc.Val[0].W);
 	}
+
+	if (tout)
+		if (!ch2)
+			FileStart = ftell(tout);
+		else
+			fputc('#', tout); // turn residual content into comment since there is no standard way to truncate a file
 
 	// calculate summary
 	VectorD<1> resRe = pcaRe.Result();

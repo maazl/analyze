@@ -94,11 +94,15 @@ class PCMinput : public PCMIO
 class PCMoutput : public PCMIO
 {public: // public config
 	const fftw_real Gain;
-	const bool Symmetric;
+	const signed char SignCh2;
  private:
 	unique_num_array<char> Buffer;
  public:
-	PCMoutput(Format fmt, fftw_real gain = 1., bool symmetric = false);
+	/// Setup PCM converter
+	/// @param fmt Sample format
+	/// @param gain Gain factor
+	/// @param signch2 Sign of channel 2 samples: 1 = same as channel 1, -1 = inverse, 0 = channel 1 only
+	PCMoutput(Format fmt, fftw_real gain = 1., signed char signch2 = 1);
 	void convert(const unique_num_array<fftw_real>& src, const unique_num_array<char>& dst);
 	void convert(const unique_num_array<fftw_real>& src1, const unique_num_array<fftw_real>& src2, const unique_num_array<char>& dst);
 	void write(FILE* out, const unique_num_array<fftw_real>& src);
