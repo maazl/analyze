@@ -86,10 +86,12 @@ void PolarFileInterpolation::CalcInterpolation(double f)
 		double arg0 = atan2(Input[0][i+1], Input[0][i]);
 		double abs1 = sqrt(sqr(Input[1][i]) + sqr(Input[1][i+1]));
 		double arg1 = atan2(Input[1][i+1], Input[1][i]);
+		arg1 -= M_2PI * floor((arg1 - arg0)/M_2PI + .5);
 		double abs = abs0 * (1-f) + abs1 * f;
 		if (std::isnan(arg0)) arg0 = 0;
 		if (std::isnan(arg1)) arg1 = 0;
-		double arg = (arg0 * (1-f) * abs0 + abs1 * f * abs1) / ((1-f) * abs0 + f * abs1);
+		//double arg = (arg0 * (1-f) * abs0 + abs1 * f * abs1) / ((1-f) * abs0 + f * abs1);
+		double arg = arg0 * (1-f) + arg1 * f;
 		Result[i] = abs * cos(arg);
 		Result[i+1] = abs * sin(arg);
 	}
