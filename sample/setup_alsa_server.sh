@@ -3,13 +3,13 @@
 pulseaudio -k
 amixer -c SB -sq <mixer.in;
 
-device="-D hw:2,0"
+device="-D hw:0,0"
 #device="-D sysdefault"
 format="-r 192000 -f S16_LE -c 2 --disable-resample"
 vumeter="-V stereo"
-#recopt="--buffer-size 65536"
+recopt="--buffer-size 1048576 -F 100000"
 
-buffer="4M"
+#buffer="4M"
 
 # examine current terminal emulation
 term=`eval "$(xprop -notype -id "$WINDOWID" 32i '=$0' _NET_WM_PID)"; ps -o comm= -p "$_NET_WM_PID"`
