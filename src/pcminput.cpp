@@ -181,7 +181,8 @@ void PCMinput::StoreDiffAdd()
 }
 
 void PCMinput::discard(FILE* in, size_t count, const unique_num_array<char>& buffer) const
-{	count *= BytesPerSample;
+{	//fprintf(stderr, "discard: %zi\n", count);
+	count *= BytesPerSample;
 	while (count > buffer.size())
 	{	fread2(buffer.get(), buffer.size(), in);
 		count -= buffer.size();

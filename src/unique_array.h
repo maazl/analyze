@@ -10,6 +10,8 @@
 template<class T> struct is_complex : std::false_type {};
 template<class T> struct is_complex<std::complex<T>> : std::true_type {};*/
 
+inline void nodeleter(void*) {}
+
 /// Array of T with ownership. Like \see std::unique_ptr<T[]> but with size tracking.
 /// @tparam T Element type.
 template <typename T>
@@ -23,6 +25,7 @@ class unique_array : public std::unique_ptr<T[],void (*)(void*)>
  public:
 	constexpr unique_array() noexcept : base(nullptr, operator delete[]), Size(0) {}
 	explicit unique_array(size_t size) : base(new T[size], operator delete[]), Size(size) {}
+	template <size_t N> unique_array(T(&arr)[N]) : base(arr, &nodeleter), Size(N) {}
 	unique_array(unique_array<T>&& r) : base(move(r)), Size(r.Size) { r.Size = 0; }
 	void reset(size_t size = 0) { base::reset(size ? new T[size] : nullptr); Size = size; }
 	void swap(unique_array<T>&& other) noexcept { base::swap(other); std::swap(Size, other.Size); }
@@ -47,7 +50,7 @@ class unique_num_array : public unique_array<T>
 	unique_num_array(unique_num_array<T>&& r) : unique_array<T>(move(r)) {}
 	unique_num_array() {}
 	unique_num_array<T> slice(size_t start, size_t count) const noexcept
-	{	assert(start + count <= this->size()); return unique_num_array<T>(this->begin() + start, count, [](void*){}); }
+	{	assert(start + count <= this->size()); return unique_num_array<T>(this->begin() + start, count, &nodeleter); }
  public: // math operations, require some numeric type T
 	void clear() const { std::memset(this->begin(), 0, this->size() * sizeof(T)); }
 	const unique_num_array<T>& operator =(const unique_num_array<T>& r) const { this->assign(r); return *this; }

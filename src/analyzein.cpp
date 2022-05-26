@@ -75,6 +75,7 @@ AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin
 
 	curagg.add(f, I, U, curagg.Harm, Parent.Cfg.weightfn);
 
+	//fprintf(stderr, "FFT\t%g\t%g\n", curagg.Val[0].W, curagg.NextF);
 	if (!curagg.Val[0].W)
 		return Aggregated; // no weight so far => discard always
 
@@ -230,15 +231,17 @@ AnalyzeIn::AnalyzeIn(const Config& cfg, const SetupData& sd)
 		IntBuffer[1].reset(Cfg.N);
 		DiffBuffer[0].reset(Cfg.N);
 		DiffBuffer[1].reset(Cfg.N);
-		FFTBuffer[0].reset(3 * Cfg.N + 1);
-		FFTBuffer[1].reset(3 * Cfg.N + 1);
+		FFTBuffer[0].reset(3 * Cfg.N);
+		FFTBuffer[1].reset(3 * Cfg.N);
 	} else
-	{	FFTBuffer[0].reset(Cfg.N + 1);
-		FFTBuffer[1].reset(Cfg.N + 1);
+	{	FFTBuffer[0].reset(Cfg.N);
+		FFTBuffer[1].reset(Cfg.N);
 	}
-	if (Cfg.crosscorr | Cfg.sync)
-	{	CCBuffer1.reset(Cfg.N);
-		CCBuffer2.reset(Cfg.N);
+	if (Cfg.crosscorr || Cfg.sync || Cfg.irfile)
+	{	TmpBuffer[0].reset(Cfg.N);
+		TmpBuffer[1].reset(Cfg.N);
+		if (Cfg.irfile && Cfg.stereo)
+			TmpBuffer[2].reset(Cfg.N);
 	}
 	WSums.reset(Cfg.N / 2 + 1);
 	WSums.clear();
@@ -338,6 +341,11 @@ void AnalyzeIn::Run()
 	unique_ptr<SweepWorker> sweep;
 	if (Cfg.sweep)
 		sweep.reset(new SweepWorker(*this));
+	if (Cfg.irfile)
+	{	IRWorker[0].reset(new ImpulseResponseWorker(*this, TmpBuffer));
+		if (Cfg.stereo)
+			IRWorker[1].reset(new ImpulseResponseWorker(*this, TmpBuffer + 1));
+	}
 
 	if (Cfg.zerooutfile)
 		ZeroPart = Cfg.normalize ? 1 : 2; // 2 point or 3 point calibration
@@ -448,6 +456,9 @@ void AnalyzeIn::Run()
 		}
 	} while (--loop && !termrq);
 
+	if (Cfg.sweep && IRWorker[0])
+		FinishImpulseResponse();
+
 	if (Cfg.gainoutfile)
 	{	FILEguard fz(Cfg.gainoutfile, "wb");
 		fputs("#f\treal\timag\tabs\targ\n", fz);
@@ -555,13 +566,10 @@ void AnalyzeIn::DoSync()
 		in = InBuffer[1].get();
 	}
 	// forward transformation
-	fftwf_execute_r2r(P, in, FFTBuffer[0].get());
-
-	// append constant zero to FFT result to simplify analysis
-	FFTBuffer[0][Cfg.N] = 0;
+	fftwf_execute_r2r(P, in, TmpBuffer[0].get());
 
 	// cross correlate with design function
-	Complex ccv = ExecuteCrossCorrelation(FFTBuffer[0], SD.Design) / SNRAC;
+	Complex ccv = ExecuteCrossCorrelation(TmpBuffer[0], SD.Design) / SNRAC;
 	double level = abs(ccv);
 	if (SyncWeight > 0 && level < abs(SyncPhaseVector) / SyncWeight * Cfg.syncend)
 	{	fprintf(stderr, "End of sync signal after %f cycles.\n", SyncWeight);
@@ -664,12 +672,17 @@ void AnalyzeIn::DoFFT(bool ch2)
 	{	// do calculations and aggregations
 		switch (fft.StoreBin(len, SD.Harmonics[len] < 0 ^ch2))
 		{default:
-			//case FFTbin::Aggregated:
 			continue;
 		 case FFTWorker::Ready:
 			// write
 			if (tout)
 				PrintBin(tout, fft);
+			// paas data to inpulse response worker
+			auto& irworker = IRWorker[SD.Harmonics[len] < 0];
+			if (irworker)
+			{ const AggEntry& curagg = fft.ret();
+				irworker->Feed(curagg.F, polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg));
+			}
 		}
 
 		const AggEntry& calc = fft.ret();
@@ -717,6 +730,9 @@ void AnalyzeIn::DoFFT(bool ch2)
 		1E6 * Cfg.rref * L / M_2PI, 1E6 * Cfg.rref * LE / M_2PI);
 	if (Cfg.crosscorr)
 		fprintf(stderr, "delay [ms]\t%12g\n", 1E3 / M_2PI * LinPhase);
+
+	if (IRWorker[0])
+		FinishImpulseResponse();
 }
 
 void AnalyzeIn::DoFFTPCA(bool ch2)
@@ -728,15 +744,14 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 	// write data
 	FILEguard tout = NULL;
 	if (Cfg.datafile)
-		if (Cfg.datafile)
-			if (ch2)
-			{	tout = checkedopen(Cfg.datafile, "r+t");
-				fseek(tout, FileStart, SEEK_SET);
-			}
-			else
-			{	tout = checkedopen(Cfg.datafile, "wt");
-				PrintHdr(tout);
-			}
+		if (ch2)
+		{	tout = checkedopen(Cfg.datafile, "r+t");
+			fseek(tout, FileStart, SEEK_SET);
+		}
+		else
+		{	tout = checkedopen(Cfg.datafile, "wt");
+			PrintHdr(tout);
+		}
 
 	PCA<2> pcaRe;
 	PCA<3> pcaIm;
@@ -751,13 +766,17 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 	{	// do calculations and aggregations
 		switch (fft.StoreBin(len, SD.Harmonics[len] < 0 ^ ch2))
 		{default:
-			//case FFTbin::Aggregated:
-			//case FFTbin::Skip:
 			continue;
 		 case FFTWorker::Ready:
 			// write
 			if (tout)
 				PrintBin(tout, fft);
+			// paas data to inpulse response worker
+			auto& irworker = IRWorker[SD.Harmonics[len] < 0];
+			if (irworker)
+			{ const AggEntry& curagg = fft.ret();
+				irworker->Feed(curagg.F, polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg));
+			}
 		}
 
 		const AggEntry& calc = fft.ret();
@@ -808,6 +827,9 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 	, R0, C0 * 1E6, L0 * 1E6);
 	if (Cfg.crosscorr)
 		fprintf(stderr, "delay [ms]\t%12g\n", 1E3 / M_2PI * LinPhase);
+
+	if (IRWorker[0])
+		FinishImpulseResponse();
 }
 
 AnalyzeIn::SweepWorker::SweepWorker(AnalyzeIn& parent)
@@ -852,6 +874,10 @@ void AnalyzeIn::SweepWorker::DoSweep(unsigned block)
 
 	if (Out)
 		Print();
+
+	ImpulseResponseWorker* irw = Parent.IRWorker[Channel].get();
+	if (irw)
+		irw->Feed(SweepFrequency * Parent.N2f, Ana[1].Xi / Ana[0].Xi);
 }
 
 void AnalyzeIn::SweepWorker::Print()
@@ -866,7 +892,7 @@ void AnalyzeIn::SweepWorker::Print()
 		f, U, arg(Ana[1].Xi) * M_180_PI, I, arg(Ana[0].Xi) * M_180_PI,
 		// |Hl|/|Hr| phil-phir          re        im
 		abs(Z), delay.Phase * M_180_PI, Z.real(), Z.imag(),
-		// weight                     delay           channel
+		// weight                     delay                                                                channel
 		Parent.Cfg.weightfn(U, I, f), delay.Unwrap(arg(Z), (SweepFrequency - LastFrequency) * Parent.N2f), Channel);
 	Unwrapper* phase = Phase[Channel];
 	for (unsigned h = 2; h <= Parent.Cfg.harmonic; ++h, ++phase)
@@ -955,9 +981,6 @@ void AnalyzeIn::ExecuteFFT()
 		FFTBuffer[1].slice(0, Cfg.purgech + 1) *= minscale;
 		FFTBuffer[1].slice(Cfg.N - Cfg.purgech, Cfg.purgech) *= minscale;
 	}
-	// append constant zero to FFT result to simplify analysis
-	FFTBuffer[0][Cfg.N] = 0;
-	FFTBuffer[1][Cfg.N] = 0;
 
 	// Calculate cross correlation to compensate for constant group delay.
 	if (Cfg.crosscorr)
@@ -977,25 +1000,26 @@ Complex AnalyzeIn::ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in
 {	assert(in1.size() == in2.size());
 	// calculate in1[] * conjugate(in2[])
 	// f(0)
-	CCBuffer1[0] = in1[0] * in2[0];
+	TmpBuffer[0][0] = in1[0] * in2[0];
 	// f(1..N/2-1)
-	for (unsigned i = 1; i < Cfg.N / 2; ++i)
+	const unsigned n2 = Cfg.N / 2;
+	for (unsigned i = 1; i < n2 / 2; ++i)
 	{	Complex c = Complex(in1[i], in1[Cfg.N - i]) * Complex(in2[i], -in2[Cfg.N - i]);
-		CCBuffer1[i] = c.real();
-		CCBuffer1[Cfg.N - i] = c.imag();
+		TmpBuffer[0][i] = c.real();
+		TmpBuffer[0][Cfg.N - i] = c.imag();
 	}
 	// f(N/2)
-	CCBuffer1[Cfg.N / 2] = in1[Cfg.N / 2] * in2[Cfg.N / 2];
+	TmpBuffer[0][n2] = in1[n2] * in2[n2];
 
 	// do the cross correlation
-	fftwf_execute_r2r(PI, CCBuffer1.get(), CCBuffer2.get());
+	fftwf_execute_r2r(PI, TmpBuffer[0].get(), TmpBuffer[1].get());
 
 	// use the result
 	const double phiinc = M_2PI / Cfg.N;
 	Complex r = 0;
 	double sum = 0;
 	for (unsigned i = 0; i < Cfg.N; ++i)
-	{	double amp = CCBuffer2[i];
+	{	double amp = TmpBuffer[1][i];
 		amp *= amp;
 		//fprintf(stderr, "CC %i\t%g\t%g\n", i, CCBuffer2[i], amp);
 		r += polar(amp, phiinc * i);
@@ -1004,4 +1028,68 @@ Complex AnalyzeIn::ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in
 	r /= sum;
 	//fprintf(stderr, "CC %g, %g°\n", abs(r), arg(r) * M_180_PI);
 	return r;
+}
+
+AnalyzeIn::ImpulseResponseWorker::ImpulseResponseWorker(AnalyzeIn& parent, const unique_num_array<fftw_real>* buffers)
+:	Parent(parent)
+,	Buffers(buffers)
+,	Interpolation(1)
+,	NextBin(0)
+{	auto& data = Interpolation.Feed();
+	data.clear();
+}
+
+void AnalyzeIn::ImpulseResponseWorker::Feed(double f, Complex value)
+{	if (Interpolation.Last()[0])
+		Process();
+	auto& data = Interpolation.Feed();
+	data[0] = f;
+	data[1] = value.real();
+	data[2] = value.imag();
+}
+
+void AnalyzeIn::ImpulseResponseWorker::Finish()
+{	Process();
+	if (NextBin < Parent.Cfg.N/2)
+	{	auto& data = Interpolation.Feed();
+		data.clear();
+		data[0] = Parent.Cfg.srate / 2.; // Nyquist frequency
+		Process();
+	}
+
+	FILEguard f = fopen("irf.dat", "w");
+	fputs("#\n", f);
+	unsigned n2 = Parent.Cfg.N/2;
+	for (unsigned i = 0; i <= n2; ++i)
+		fprintf(f, "%g\t%g\t%g\n", i * Parent.N2f, Buffers[0][i], i && i != n2 ? Buffers[0][Parent.Cfg.N-i] : 0);
+
+	fftwf_execute_r2r(Parent.PI, Buffers[0].get(), Buffers[1].get());
+}
+
+void AnalyzeIn::ImpulseResponseWorker::Process()
+{	double f;
+	while ((f = (double)NextBin / Parent.Cfg.N * Parent.Cfg.srate) <= Interpolation.Last()[0])
+	{	auto& data = Interpolation.Interpolate(f);
+		Buffers[0][NextBin] = data[1];
+		if (NextBin == Parent.Cfg.N / 2)
+			break;
+		if (NextBin)
+			Buffers[0][Parent.Cfg.N - NextBin] = data[2];
+		++NextBin;
+	}
+}
+
+void AnalyzeIn::FinishImpulseResponse()
+{
+	if (IRWorker[1])
+		IRWorker[1]->Finish(); // process channel 2 first because the target buffer of channel 1 aliases the source buffer of channel 2.
+	IRWorker[0]->Finish();
+
+	FILEguard f = fopen(Cfg.irfile, "w");
+	fputs(IRWorker[1] ? "#Ch1\tCh2\n" : "#Ch1\n", f);
+	for (unsigned i = 0; i < Cfg.N; ++i)
+		if (IRWorker[1])
+			fprintf(f, "%g\t%g\n", TmpBuffer[1][i], TmpBuffer[2][i]);
+		else
+			fprintf(f, "%g\n", TmpBuffer[1][i]);
 }

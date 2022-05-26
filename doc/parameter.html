@@ -20,7 +20,7 @@
     <blockquote>
       <pre><var>key</var>=<var>value</var>
 <var>key</var>
-<var>key</var>=
+<var>key</var>=(over)write FFT data file on the fly
 @<var>includefile</var>
 #<var>comment</var></pre>
     </blockquote>
@@ -326,6 +326,12 @@
           <td><a href="#output">output data</a></td>
         </tr>
         <tr>
+          <td><a href="#_outch"><tt>outch</tt></a></td>
+          <td>output channel</td>
+          <td><tt>0</tt> (all)</td>
+          <td><a href="#output">output data</a></td>
+        </tr>
+        <tr>
           <td><a href="#_pch"><tt>pch</tt></a></td>
           <td>purge first frequency channels</td>
           <td><tt>1</tt> (purge DC)<tt> </tt></td>
@@ -470,6 +476,12 @@
           <td><a href="#_wd"><tt>wd</tt></a></td>
           <td>(over)write FFT data file on the fly<br>
           </td>
+          <td>off</td>
+          <td><a href="#FFT">FFT parameter</a></td>
+        </tr>
+        <tr>
+          <td><a href="#_wir"><tt>wir</tt></a></td>
+          <td>(over)write impulse response data file on the fly</td>
           <td>off</td>
           <td><a href="#FFT">FFT parameter</a></td>
         </tr>
@@ -624,6 +636,9 @@
       <dt><tt><a name="_gain"></a><b>gain</b>=<var>dB</var></tt> - master gain</dt>
       <dd>Apply this value in dB to the to 0dB FSR (<u>f</u>ull <u>s</u>can <u>r</u>ange) normalized reference output. Because of
         the scaling only negative values are reasonable.</dd>
+      <dt><tt><b><a name="_outch"></a>outch</b>=number</tt> - output channel</dt>
+      <dd><tt>0</tt> = all (default), <tt>1</tt> = left, <tt>2</tt> = right, <tt>3</tt> = both, right channel inverted (same as <a
+          href="_symmout"><tt>symmout</tt></a>)</dd>
       <dt><a name="_symmout"></a><b><tt>symmout</tt></b> - symmetric stereo output</dt>
       <dd>Invert the output of the second channel of single channel reference. This cannot be combined with <a href="#_stereo"><tt>stereo</tt></a>.</dd>
       <dt><a name="_scale"></a><tt><b>scale</b>=<var>power</var></tt> - noise type</dt>
@@ -648,8 +663,9 @@
         Using this option effectively disables all options related to the design spectrum creation, first of all <a href="#_fmin"><tt>fmin</tt></a>
         and <a href="#_fmax"><tt>fmax</tt></a>.</dd>
       <dt><b><tt><a name="_wspec"></a>wspec</tt></b>[<tt>=<var>filename</var></tt>] - write design spectrum of the reference signal</dt>
-      <dd>Writes the frequency domain reference signal to <var><tt>filename</tt></var> or <tt>spectrum.dat</tt> if <var><tt>filename</tt></var>
-        is omitted. See <a href="fileformat.html#spectrum_dat">→&nbsp;file format</a>.</dd>
+      <dd>Writes the frequen</dd>
+      <dd>cy domain reference signal to <var><tt>filename</tt></var> or <tt>spectrum.dat</tt> if <var><tt>filename</tt></var> is
+        omitted. See <a href="fileformat.html#spectrum_dat">→&nbsp;file format</a>.</dd>
       <dt><tt><a name="_wref"></a><b>wref</b></tt>[<tt>=<var>filename</var></tt>] - write time domain reference data</dt>
       <dd>Writes one cycle of the reference signal to <var><tt>filename</tt></var>. If the filename is omitted <tt>ref.dat</tt> is
         used. See <a href="fileformat.html#ref_dat">→&nbsp;file format</a>.<br>
@@ -773,6 +789,9 @@ This
       <dt><tt><a name="_wd"></a><b>wd</b></tt>[<tt>=<var>filename</var></tt>] - write FFT data<tt> </tt></dt>
       <dd>Write detailed result of FFT analysis to <var><tt>filename</tt></var>. If <tt>=<var>filename</var></tt> is omitted the
         data is written to file <tt>data.dat</tt>. <a href="fileformat.html#data_dat">→ file format</a></dd>
+      <dt><tt><a name="_wir"></a><b>wir</b></tt>[<tt>=<var>filename</var></tt>] - write FFT data<tt> </tt></dt>
+      <dd>Write impulse response result of FFT analysis to <var><tt>filename</tt></var>. If <tt>=<var>filename</var></tt> is
+        omitted the data is written to file <tt>ir.dat</tt>. <a href="fileformat.html#ir_dat">→ file format</a></dd>
       <dt><tt><a name="_win"></a><b>win</b>=<var>typ</var></tt> - window function</dt>
       <dd>Apply window function to data before FFT. The following window functions are implemented:<br>
         <tt>win=0</tt> – rectangular = none (default)<br>

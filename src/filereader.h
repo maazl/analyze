@@ -35,9 +35,9 @@ class Interpolation
 {protected:
 	/// The last two rows read from file.
 	/// @remarks This is a (small) ring buffer.
-	const std::array<const unique_array<double>, 2> Input;
+	const std::array<const unique_num_array<double>, 2> Input;
 	/// Result row returned by \see Interpolate.
-	const unique_array<double> Result;
+	const unique_num_array<double> Result;
  private:
 	/// Current index into \see Input with the \e last row read.
 	bool Current = false;
@@ -60,22 +60,35 @@ class Interpolation
 	/// @details When the function returns you have to fill \e all data values in the returned array.
 	/// No other member function should be called unless this is completed.
 	/// The first value is the key column and must be strictly monotonic on consecutive calls.
-	const unique_array<double>& Feed() { return Input[Current ^= true]; }
+	const unique_num_array<double>& Feed() { return Input[Current ^= true]; }
 	/// Return the last row read. This is equivalent to the last value returned by \see Feed().
 	/// @pre The function must not be called before at least one row have been filled with \see Feed().
-	const unique_array<double>& Last() const { return Input[Current]; }
+	const unique_num_array<double>& Last() const { return Input[Current]; }
 	/// Return the last row read. This is equivalent to the one before last value returned by \see Feed().
 	/// @pre The function must not be called before at least two rows have been filled with \see Feed().
-	const unique_array<double>& Prev() const { return Input[!Current]; }
+	const unique_num_array<double>& Prev() const { return Input[!Current]; }
 	/// Get interpolated column values.
 	/// @param key Key value to be used
-	virtual const unique_array<double>& Interpolate(double key);
+	virtual const unique_num_array<double>& Interpolate(double key);
+};
+
+/// Variant of \see Interpolation for complex numbers that does the interpolation in polar coordinates.
+class PolarInterpolation : public virtual Interpolation
+{protected:
+	virtual void CalcInterpolation(double f);
+ public:
+	/// Create an interpolation.
+	/// @param count Number of complex number columns to interpolate \e excluding the first key column.
+	/// Each complex number must span over two columns with the real component first and the imaginary part second.
+	/// The key column is always real. So in fact \code 2 * count + 1 \endcode columns are processed.
+	/// The data might contain additional columns. They are ignored.
+	PolarInterpolation(unsigned count) : Interpolation(count << 1U) {}
 };
 
 /// @brief Helper class to interpolate numeric values in a file using the first column as index.
 /// @details The class does not read the entire file into memory.
 /// Instead it uses stream processing to keep only needed data.
-class FileInterpolation : protected Interpolation, protected FileReader
+class FileInterpolation : protected virtual Interpolation, protected FileReader
 {protected:
 	virtual bool ReadLine();
  public:
@@ -89,21 +102,23 @@ class FileInterpolation : protected Interpolation, protected FileReader
 	/// The passed value must be strictly monotonic,
 	/// i.e. larger than on any previous call to this function for this instance.
 	/// @details The function automatically reads more data from the input stream as needed.
-	const unique_array<double>& Get(double key);
+	const unique_num_array<double>& Get(double key);
 };
 
 /// Variant of \see FileInterpolation for complex numbers that does the interpolation in polar coordinates.
-class PolarFileInterpolation : public FileInterpolation
-{protected:
-	virtual void CalcInterpolation(double f);
- public:
+class PolarFileInterpolation : public FileInterpolation, protected PolarInterpolation
+{public:
 	/// Create an interpolation from filename.
 	/// @param filename File name.
 	/// @param count Number of complex number columns to interpolate \e excluding the first key column.
 	/// Each complex number must span over two columns with the real component first and the imaginary part second.
 	/// The key column is always real. So in fact \code 2 * count + 1 \endcode columns are read.
 	/// The file might contain additional columns. They are ignored.
-	PolarFileInterpolation(const char* filename, unsigned count) : FileInterpolation(filename, count << 1) {}
+	PolarFileInterpolation(const char* filename, unsigned count)
+	:	Interpolation(count << 1U)
+	,	FileInterpolation(filename, 0)
+	,	PolarInterpolation(0)
+	{}
 };
 
 

@@ -69,6 +69,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("orc",    "column to overwrite denominator (reference)", Cfg.overwrt[1].column)
 ,	MkOpt("orf",    "file name to overwrite denominator (reference)", Cfg.overwrt[1].file)
 ,	MkDOp("out",    "name of reference output file, stdout by default", Cfg.outfile, "-")
+,	MkOpt("outch",  "output cannel, 0 = all, 1 = left, 2 = right, 3 = right inverted", Cfg.outch, 0U, 3U)
 ,	MkOpt("pch",    "purge first frequency channels", Cfg.purgech)
 ,	MkDOp("phcc",   "fit group delay", Cfg.crosscorr, true)
 ,	MkOpt("phl",    "subtract constant group delay", Cfg.linphase)
@@ -87,7 +88,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("setupout","print string to stdout at program start", Cfg.setup.out)
 ,	MkOpt("smooth", "smoothen frequency limits (relative)", Cfg.smooth, 0., 1.)
 ,	MkDOp("stereo", "two channel mode", Cfg.stereo, true)
-,	MkDOp("symmout","symmetric output", Cfg.symmout, true)
+,	MkSet("symmout","symmetric output", Cfg.outch, 3U)
 ,	MkDOp("sync",   "synchronize cycles before start", Cfg.sync, 2U)
 ,	MkOpt("syncch", "synchronization channel", Cfg.syncch, 1U, 3U)
 ,	MkOpt("syncend","decrease of cross correlation to identify end of sync", Cfg.syncend, .1, .99)
@@ -164,8 +165,8 @@ int main(int argc, char* argv[])
 			die(34, "Options initout/plotout/postout cannot be used when writing PCM data to stdout.");
 		if (!Cfg.loops && (Cfg.sweep || Cfg.zerooutfile))
 			die(34, "Cannot use infinite loop in sweep or zero calibration mode.");
-		if (Cfg.stereo & Cfg.symmout)
-			die(34, "Symmetric output not supported in multi channel mode.");
+		if (Cfg.stereo & Cfg.outch)
+			die(34, "Output channel selection not supported in multi channel mode.");
 
 		if (Cfg.fmin > Cfg.fmax)
 			die(34, "Frequency range [%g,%g) empty.", Cfg.fmin, Cfg.fmax);

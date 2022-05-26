@@ -12,6 +12,7 @@
 #include <memory>
 
 #include "unique_array.h"
+#include "filereader.h"
 
 typedef float fftw_real;
 
@@ -56,7 +57,7 @@ struct Config
 	const char* outfile = nullptr;    ///< PCM output file name
 	double      outgain = 0.;         ///< output gain
 	bool        nohdr = false;        ///< no WAV header
-	bool        symmout = false;      ///< symmetric output
+	unsigned    outch = 0;            ///< output channel
 	const char* rspecfile = nullptr;  ///< file name for frequency domain reference data input
 	const char* specfile = nullptr;   ///< file name for frequency domain reference data output
 	const char* reffile = nullptr;    ///< file name for time domain reference data
@@ -77,6 +78,7 @@ struct Config
 	action      post;                 ///< action to take after program completion
 	// FFT parameter
 	const char* datafile = nullptr;   ///< filename for analysis data
+	const char* irfile = nullptr;     ///< filename for impulse response data
 	unsigned    winfn = 0;            ///< window function: 0 = rectangle, 1 = Bartlett, 2 = Hanning, 3 = Hamming, 4 = Blackman, 5 = Blackman-Harris
 	const char* windowfile = nullptr; ///< file name for window data
 	double      fmin = 1E-3;          ///< minimum frequency for FFT analysis
@@ -194,8 +196,7 @@ class AnalyzeIn : public ITask
 	unique_fftw_arr<fftw_real> DiffBuffer[2];///< Buffer for differential (XY mode only)
 	unique_fftw_arr<fftw_real> OvrBuffer[2];///< Buffer for overridden numerator/denominator
 	unique_fftw_arr<fftw_real> FFTBuffer[2];///< Buffer for FFT(inbuffer[])
-	unique_fftw_arr<fftw_real> CCBuffer1;   ///< Buffer for cross correlation temporary data
-	unique_fftw_arr<fftw_real> CCBuffer2;   ///< Buffer for cross correlation of outbuffer
+	unique_fftw_arr<fftw_real> TmpBuffer[3];///< Buffers for temporary data
 	unique_num_array<fftw_real> Window;     ///< Buffer for window function
 
 	unique_num_array<fftw_real> Input[2];   ///< First Cfg.N samples slice of InBuffer
@@ -209,6 +210,9 @@ class AnalyzeIn : public ITask
 	unique_fftwf_plan PI;                   ///< FFT plan for inverse transformation
 
 	class FFTWorker;
+	class ImpulseResponseWorker;
+
+	std::unique_ptr<ImpulseResponseWorker> IRWorker[2];
 
  private:
 	/// Do the main work
@@ -226,6 +230,9 @@ class AnalyzeIn : public ITask
 	void DoFFTPCA(bool ch2);
 	/// Analyze samples in InBuffer by hysteresis analysis
 	void DoXY();
+
+	void FinishImpulseResponse();
+
 	void ExecuteFFT();
 	/// Calculate cross correlation
 	/// @param in1 FFT of the first input.
@@ -319,6 +326,7 @@ class AnalyzeIn : public ITask
 		{	unsigned Bins;///< Number of bins accumulated
 		 	unsigned Harm;///< number of used entries in Val
 			double NextF;///< Next frequency
+			FFTAgg() : Bins(0), Harm(0), NextF(0) {}
 		};
 
 		AnalyzeIn& Parent;
@@ -370,7 +378,25 @@ class AnalyzeIn : public ITask
 		SweepWorker(AnalyzeIn& parent);
 		void DoSweep(unsigned block);
 	 private:
+		SweepWorker(const SweepWorker&) = delete;
+		void operator=(const SweepWorker&) = delete;
 		void Print();
+	};
+
+	class ImpulseResponseWorker
+	{private:
+		const AnalyzeIn& Parent;
+		const unique_num_array<fftw_real>* Buffers;
+		PolarInterpolation Interpolation;
+		unsigned NextBin;
+	 private:
+		void Process();
+		ImpulseResponseWorker(const ImpulseResponseWorker&) = delete;
+		void operator=(const ImpulseResponseWorker&) = delete;
+	 public:
+		ImpulseResponseWorker(AnalyzeIn& parent, const unique_num_array<fftw_real>* buffers);
+		void Feed(double f, Complex value);
+		void Finish();
 	};
 };
 

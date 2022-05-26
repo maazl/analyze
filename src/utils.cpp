@@ -64,7 +64,8 @@ void wavheader(FILE* fo, size_t nsamp, size_t sfreq)
 
 void fread2(void* data, size_t count, FILE* stream)
 {	while (count)
-	{	size_t read = fread(data, 1, count, stream);
+	{	size_t read = min(count, 262144UL);
+		read = fread(data, 1, read, stream);
 		if (read == 0)
 			die(27, "Failed to read %zu bytes: %s", count, ferror(stream) ? strerror(errno) : "end of file");
 		count -= read;

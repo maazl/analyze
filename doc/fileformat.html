@@ -14,7 +14,7 @@
       it works</a><br>
     <a href="#data_dat">▾&nbsp;FFT data</a> <a href="#spectrum_dat">▾&nbsp;Reference spectrum</a> <a href="#ref_dat">▾&nbsp;Reference
       signal</a> <a href="#gain_dat">▾&nbsp;Gain correction</a> <a href="#zero_dat">▾&nbsp;Matrix correction</a> <a href="#window_dat">▾&nbsp;Window
-      function</a> <a href="#raw_dat">▾&nbsp;Raw samples</a><br>
+      function</a> <a href="#raw_dat">▾&nbsp;Raw samples </a><a href="#ir_dat">▾&nbsp;Impulse response</a>
     <p>All files are <em>ASCII, with tab separated, numeric columns</em>. There is a header line starting with a <span style="font-family: monospace;">#</span>.
       This line is ignored on read.<br>
       Applications like Gnuplot can process this files directly as well as LibreOffice and even Excel can read them out of the box
@@ -562,7 +562,7 @@
             <td>-</td>
             <td>line number<br>
             </td>
-            <td>sample index <var>n</var><br>
+            <td>Sample index <var>n</var><br>
             </td>
           </tr>
           <tr>
@@ -587,7 +587,7 @@
             <td>-</td>
             <td>line number<br>
             </td>
-            <td>sample index <var>n</var><br>
+            <td>Sample index <var>n</var><br>
             </td>
           </tr>
           <tr>
@@ -604,6 +604,38 @@
           </tr>
         </tbody>
       </table>
+    </blockquote>
+    <h2><a name="ir_dat"></a> <tt>ir.dat</tt> - impulse response data</h2>
+    <blockquote>
+      <table cellspacing="0" cellpadding="3" border="1">
+        <tbody>
+          <tr>
+            <th>Column</th>
+            <th>Symbol</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td>-</td>
+            <td>line number<br>
+            </td>
+            <td>Sample index <var>n</var><br>
+            </td>
+          </tr>
+          <tr>
+            <td>$1</td>
+            <td><var>A<sub>1</sub>(n)</var></td>
+            <td>Impulse response sample value (channel 1)<br>
+            </td>
+          </tr>
+          <tr>
+            <td>$2</td>
+            <td><var>A<sub>2</sub>(n)</var></td>
+            <td>Impulse response sample value (channel 2) - optional</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>The column for the second channel is omitted unless multi channel mode (<a href="parameter.html#_stereo"><tt>stereo</tt></a>)
+        is activated.</p>
     </blockquote>
   </body>
 </html>

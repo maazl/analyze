@@ -46,11 +46,19 @@
       risk of sample drops. You definitely must avoid sample rate conversions.</p>
     <p>Independent of your hardware I recommend <b>16 bits per sample</b>. Using more usually adds no value. But it might make
       things worse because some sound devices do not perform well when choosing the maximum bit depth at the maximum sample rate.</p>
+    <h3>Buffering</h3>
+    <p>When using large FFT sizes (2<sup>18</sup> and more, parameter <a href="parameter.html#_fftlen"><tt>-fftlen</tt></a>) be
+      sure to <em>use sufficiently large buffers for the recording</em> application to prevent buffer overflows. Analyze will not
+      read pipe data while it is processing a block of data. I recommend to buffer at least one FFT length of input data.</p>
+    <p>For <tt>arecord</tt> you can use e.g. <tt>--buffer-size 1048576 -F 100000</tt>. The second parameter is strictly speaking
+      not required, but by default <tt>arecord</tt> uses only 4 buffers which may cause a quite slow update rate.</p>
+    <p>A sufficiently large pipe buffer between the recording application and Analyze would do the job as well, but there is no
+      portable way to ensure this.</p>
     <h3>PulseAudio</h3>
     <p>Although the entire process will work with PulseAudio in principle <em>I recommend not to use it</em>. The chance to get
       unexpected resampling artifacts or stray sounds from other applications is significantly higher with PulseAudio. You can
-      simply bypass PulseAudio by choosing the appropriate sound device for <tt>arecord</tt> and <tt>aplay</tt>. Young might need
-      to terminate the PulseAudio daemon by <tt>pulseaudio -k</tt> before to get the device unlocked.</p>
+      simply bypass PulseAudio by choosing the appropriate sound device for <tt>arecord</tt> and <tt>aplay</tt>. You might need to
+      terminate the PulseAudio daemon by <tt>pulseaudio -k</tt> before to get the device unlocked.</p>
     <h2><a name="hardware"></a>External hardware setup</h2>
     <p>While the software setup is always basically the same the hardware varies with the desired measurements.</p>
     <p>Channel map:</p>

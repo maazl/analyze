@@ -43,11 +43,11 @@ void Interpolation::CalcInterpolation(double f)
 }
 
 Interpolation::Interpolation(unsigned count)
-:	Input{ unique_array<double>(count + 1), unique_array<double>(count + 1) }
+:	Input{ unique_num_array<double>(count + 1), unique_num_array<double>(count + 1) }
 ,	Result(count + 1)
 {}
 
-const unique_array<double>& Interpolation::Interpolate(double key)
+const unique_num_array<double>& Interpolation::Interpolate(double key)
 {	double f = (key-Input[0][0]) / (Input[1][0]-Input[0][0]);
 	//fprintf(stderr, "Interpolate: %f\t%f\t%f\t%f\t%i\n", Input[0][0], Input[1][0], key, f, Current);
 	if (f <= 0.)
@@ -72,7 +72,7 @@ FileInterpolation::FileInterpolation(const char* filename, unsigned count)
 		die(27, "Source file '%s' must contain at least 2 data lines.", FileName);
 }
 
-const unique_array<double>& FileInterpolation::Get(double key)
+const unique_num_array<double>& FileInterpolation::Get(double key)
 {	// Read enough data
 	if (In)
 		while (Last()[0] < key && ReadLine());
@@ -80,7 +80,7 @@ const unique_array<double>& FileInterpolation::Get(double key)
 }
 
 
-void PolarFileInterpolation::CalcInterpolation(double f)
+void PolarInterpolation::CalcInterpolation(double f)
 {	for (unsigned i = 1; i < Result.size(); i += 2)
 	{	double abs0 = sqrt(sqr(Input[0][i]) + sqr(Input[0][i+1]));
 		double arg0 = atan2(Input[0][i+1], Input[0][i]);
