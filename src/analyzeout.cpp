@@ -61,7 +61,7 @@ AnalyzeOut::AnalyzeOut(const Config& cfg)
 ,	FmaxI(min((unsigned)floor((2*cfg.fmax - FmaxSmo)/N2f), cfg.N/2))
 ,	OutLevel(fromdB(cfg.outgain))
 ,	LoopCount(CalcLoopCount(cfg))
-,	PCMOut(cfg.format, 1., (Cfg.outch == 0 || !(Cfg.stereo && (Cfg.sweep || Cfg.chirp))) - (Cfg.outch == 3))
+,	PCMOut(cfg.format, 1., (Cfg.outch == 0 && !(Cfg.stereo && (Cfg.sweep || Cfg.chirp))) - (Cfg.outch == 3))
 {	Design.reset(cfg.N);
 	Harmonics.reset(cfg.N/2 + 1);
 	OutBuf.reset(cfg.N * PCMOut.BytesPerSample);
@@ -141,15 +141,14 @@ void AnalyzeOut::CreateDesign()
 	double sumamp = 0;
 	for (unsigned i = FminI; i <= FmaxI; ++i)
 	{	double f = i * N2f;
-		if (!Cfg.sweep && !Cfg.chirp)
+		if (i && !Cfg.sweep && !Cfg.chirp)
 		{	// skip used harmonics
 			for (unsigned j = 2; j < Cfg.harmonic && i*j <= Cfg.N/2; ++j)
 				if (Harmonics[i*j])
 					goto next_f; // continue in outer loop
 			// lock harmonics
-			if (i)
-				for (unsigned j = 2; i*j <= Cfg.N/2; ++j)
-					Harmonics[i*j] = j * sign;
+			for (unsigned j = 2; j < Cfg.harmonic && i*j <= Cfg.N/2; ++j)
+				Harmonics[i*j] = j * sign;
 		}
 		Harmonics[i] = sign;
 		++FCount;
@@ -171,7 +170,7 @@ void AnalyzeOut::CreateDesign()
 		// next frequency
 		if (Cfg.stereo & !Cfg.sweep & !Cfg.chirp)
 			sign = -sign;
-		//fprintf(stderr, "f %i %i\n", i, (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5));
+		//fprintf(stderr, "f %i %i %i\n", i, (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5), sign);
 		i = (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5);
 	 next_f:;
 	}
