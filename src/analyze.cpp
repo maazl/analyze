@@ -174,10 +174,10 @@ int main(int argc, char* argv[])
 			die(34, "Frequency range [%g,%g) empty.", Cfg.fmin, Cfg.fmax);
 		if (Cfg.famin > Cfg.famax)
 			die(34, "Analysis frequency range [%g,%g) empty.", Cfg.famin, Cfg.famax);
-		if (Cfg.fmin < (double)Cfg.srate/Cfg.N)
-			Cfg.fmin = (double)Cfg.srate/Cfg.N;
-		if (Cfg.fmax > Cfg.srate/2)
-			Cfg.fmax = Cfg.srate/2;
+		if (Cfg.fmin < Cfg.srate/Cfg.N)
+			Cfg.fmin = Cfg.srate/Cfg.N;
+		if (Cfg.fmax > Cfg.srate/2.)
+			Cfg.fmax = Cfg.srate/2.;
 		if (Cfg.famin < Cfg.fmin)
 			Cfg.famin = Cfg.fmin;
 		if (Cfg.famax > Cfg.fmax)

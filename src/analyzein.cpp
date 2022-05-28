@@ -70,7 +70,7 @@ AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin
 	if (curagg.Bins == 0)
 	{	// init
 		curagg.next();
-		curagg.NextF = f * (1 + Parent.Cfg.fbinsc) - Parent.N2f;
+		curagg.NextF = Parent.N2f * (Parent.Cfg.binsz - 2.) + f * Parent.Cfg.fbinsc;
 	}
 
 	curagg.add(f, I, U, curagg.Harm, Parent.Cfg.weightfn);
@@ -217,7 +217,7 @@ AnalyzeIn::AnalyzeIn(const Config& cfg, const SetupData& sd)
 	// setup input
 :	Cfg(cfg)
 ,	SD(sd)
-,	N2f((double)Cfg.srate / Cfg.N)
+,	N2f(Cfg.srate / Cfg.N)
 ,	PCMIn(Cfg.format, Cfg.diffmode, &Cfg.gainadj)
 ,	LinPhase(Cfg.linphase * M_2PI)
 {	// allocate buffers
@@ -257,7 +257,7 @@ AnalyzeIn::AnalyzeIn(const Config& cfg, const SetupData& sd)
 
 bool AnalyzeIn::Setup()
 {	// adjust fmax
-	double fmax = min(Cfg.fmax, (double)Cfg.srate/2);
+	double fmax = min(Cfg.fmax, Cfg.srate/2.);
 
 	CreateWindow(Window, Cfg.winfn);
 	// write window data
@@ -973,7 +973,7 @@ void AnalyzeIn::DoXY()
 		fputs("#t\tU\tI\t∫U\t∫I\tΔU\tΔI\n", fout);
 		for (unsigned len = 0; len < Cfg.N; ++len, ++Up, ++Ip)
 			fprintf(fout, "%f\t%g\t%g\t%g\t%g\t%g\t%g\n",
-				(double)len / Cfg.srate * Cfg.harmonic, *Up, *Ip, Up[Cfg.N], Ip[Cfg.N], Up[2 * Cfg.N], Ip[2 * Cfg.N]);
+				len / Cfg.srate * Cfg.harmonic, *Up, *Ip, Up[Cfg.N], Ip[Cfg.N], Up[2 * Cfg.N], Ip[2 * Cfg.N]);
 	}
 }
 

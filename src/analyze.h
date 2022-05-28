@@ -35,7 +35,7 @@ struct Config
 {	// general options
 	bool        help = false;         ///< Show detailed help screen
 	const char* cfgout = nullptr;     ///< write effective configuration to this file
-	unsigned    srate = 48000;        ///< sampling rate
+	double      srate = 48000.;       ///< sampling rate
 	Format      format = Format::I16;///< read/write samples format
 	bool        swapbytes = false;    ///< swap bytes on PCM input
 	unsigned    N = 8192;             ///< FFT or analysis block length

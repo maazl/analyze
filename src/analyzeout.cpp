@@ -52,7 +52,7 @@ unsigned AnalyzeOut::CalcLoopCount(const Config& cfg)
 
 AnalyzeOut::AnalyzeOut(const Config& cfg)
 :	Cfg(cfg)
-,	N2f((double)cfg.srate / cfg.N)
+,	N2f(cfg.srate / cfg.N)
 ,	MinQuant(Freq2EnergyQuantile(cfg.fmin))
 ,	MaxQuant(Freq2EnergyQuantile(cfg.fmax))
 ,	FminSmo(cfg.smooth ? EnergyQuantile2Freq(MinQuant + cfg.smooth * (MaxQuant-MinQuant) / 2.) : cfg.fmin)
@@ -80,7 +80,7 @@ bool AnalyzeOut::Setup()
 		secs *= FCount;
 	if (Cfg.sweep || Cfg.chirp)
 		secs <<= Cfg.stereo;
-	secs = (unsigned)((uint64_t)secs * Cfg.N / Cfg.srate);
+	secs = (unsigned)(secs / N2f);
 	fprintf(stderr, "Measurement time %u:%02u:%02u (loop count %u)\n",
 		secs / 3600, secs / 60 % 60, secs % 60, LoopCount);
 
@@ -286,7 +286,7 @@ void AnalyzeOut::Run()
 				count *= FCount;
 			if (Cfg.sync)
 				count += Cfg.sync + 1;
-			PCMOut.WAVheader(FOut, Cfg.N * count, Cfg.srate);
+			PCMOut.WAVheader(FOut, Cfg.N * count, (size_t)Cfg.srate);
 		}
 
 		// Sync preamble
