@@ -291,7 +291,7 @@ class AnalyzeIn : public ITask
 			/*Unwrapper::Unwrap(phase);
 			fprintf(stderr, "lph = %f, ph = %f, df = %f => ph = %f, delay = %f\n", lph, phase, deltaf, Phase, (Phase - lph) / deltaf);
 			return Delay = (Phase - lph) / deltaf;*/
-			return Delay = (Unwrapper::Unwrap(phase) - lph) / deltaf;
+			return Delay = (lph - Unwrapper::Unwrap(phase)) / deltaf;
 		}
 	};
 
