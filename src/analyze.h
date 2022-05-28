@@ -98,7 +98,7 @@ struct Config
 	unsigned    sync = 0;             ///< synchronize cycles before start of measurement
 	unsigned    syncch = 3;           ///< sync channel 1 = left, 2 = right, 3 = both
 	//bool        syncfall = true;      ///< use all frequencies in the interval [famin, famax] rather than the design function
-	double      synclevel = .2;       ///< minimum SNR ratio of successful synchronization compared to the SNR of the autocorrelation function
+	double      synclevel = .5;       ///< minimum SNR ratio of successful synchronization compared to the SNR of the autocorrelation function
 	double      syncend = .8;         ///< decrease of cross correlation level that is identified as end of sync.
 	double      predelay = .95;       ///< gap before a measurement starts or after a frequency change in units of FFT cycles (N).
 	// calibration options

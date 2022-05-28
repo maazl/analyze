@@ -2,5 +2,5 @@
 if [ ! "$1" ]; then
   echo "usage: $0 @<configfile>";
 else
-  nice -1 ../analyze $@ | nice -2 gnuplot setup.gp -;
+  nice -5 ../analyze $@ | nice -10 gnuplot setup.gp -;
 fi;
