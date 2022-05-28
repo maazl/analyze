@@ -769,16 +769,16 @@
       <dd>Use an equal distributed weight function. Use this if your input SNR has no correlation with the signal amplitude at a
         certain frequency.</dd>
       <dt><tt><a name="_bin"></a><b>bin</b>=<var>size</var></tt> - average <var><tt>size</tt></var> FFT channels</dt>
-      <dd>Calculates the average over <var><tt>size</tt></var> subsequent frequency channels before any further processing. The
-        averaging is done in polar coordinates so phase noise does not degrade the amplitude.<br>
+      <dd>Calculates the average over <var><tt>size</tt></var> subsequent frequency channels before any further processing.
+        Fractional numbers (larger than 1) are accepted too and are effective if <a href="#_fbin"><tt>fbin</tt></a> is also used.<br>
+        The averaging is done in polar coordinates so phase noise does not degrade the amplitude.<br>
         This could be used to reduce noise if the measurement response is not likely to change fast with frequency. But if your
         reference signal is periodic you should prefer a shorter block length together with <a href="#_al">averaging input samples</a>.
       </dd>
       <dt><tt><a name="_fbin"></a><b>fbin</b>=<var>factor</var></tt> - average FFT channels logarithmically</dt>
-      <dd>Calculates the average over <var><tt>size</tt></var> subsequent frequency channels to get approximately logarithmic
-        frequency bins. The channels are averaged as long as they fit into the interval [<var>f</var>,&nbsp;<var>f</var>&nbsp;·&nbsp;(<tt><var>factor</var></tt>&nbsp;+&nbsp;1)].
-This
-        option is particularly useful if the properties of the object tend to change over log&nbsp;<var>f</var> rather than <var>f</var>.
+      <dd>Calculates the average over subsequent frequency channels to get approximately logarithmic frequency bins. The channels
+        are averaged as long as they fit into the interval [<var>f</var>,&nbsp;<var>f</var>&nbsp;· <tt><var>factor</var></tt>].
+        This option is particularly useful if the properties of the object tend to change over log&nbsp;<var>f</var> rather than <var>f</var>.
         In other words if the result is shown with logarithmic frequency axis.</dd>
       <dt><tt><a name="_finc"></a><b>finc</b>=<var>channels</var></tt>, <tt><a name="_flog"></a><b>flog</b>=<var>factor</var></tt>
         - linear and logarithmic increment for used frequencies </dt>

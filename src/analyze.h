@@ -88,8 +88,8 @@ struct Config
 	double      f_inc = 1;            ///< Absolute increment for harmonic table calculation
 	double      f_log = 1;            ///< Relative increment for harmonic table calculation
 	unsigned    purgech = 1;          ///< set the first FFT frequencies to 0
-	unsigned    binsz = 1;            ///< binsize in FFT channels
-	double      fbinsc = 0;           ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
+	double      binsz = 1;            ///< binsize in FFT channels
+	double      fbinsc = 1;           ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
 	double      linphase = 0;         ///< linear phase correction [s]
 	bool        crosscorr = false;    ///< Calculate and remove time delay by cross correlation
 	unsigned    harmonic = 1;         ///< analyze up to # harmonics
@@ -342,6 +342,9 @@ class AnalyzeIn : public ITask
 
 	 public:
 		FFTWorker(AnalyzeIn& parent) : Parent(parent) {}
+		/// Aggregate FFT bin
+		/// @param bin FFT bin, [0, Cfg.N/2]
+		/// @param ch Channel, 0 for 1st channel.
 		StoreRet StoreBin(unsigned bin, int ch);
 		/// Current channel
 		int ch() const { return Ch; }

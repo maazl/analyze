@@ -23,7 +23,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 {	MkDOp("ainc",   "incremental mode", Cfg.incremental, true)
 ,	MkOpt("al",     "average over multiple cycles of samples", Cfg.addloop)
 ,	MkSet("aref",   "append reference data file (instead of overwriting)", Cfg.refmode, "a")
-,	MkOpt("bin",    "average FFT channels", Cfg.binsz)
+,	MkOpt("bin",    "average FFT channels", Cfg.binsz, 1., 1000.)
 ,	MkOpt("bn",     nullptr, Cfg.N) // for compatibility
 ,	MkDOp("chirp",  "use chirp reference", Cfg.chirp, 1.)
 ,	MkDOp("dcfg",   "dump effective configuration to file", Cfg.cfgout, "current.cfg")
@@ -31,7 +31,7 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("exec",   nullptr, Cfg.plot.shell)
 ,	MkOpt("famax",  "upper frequency range for LCR analysis", Cfg.famax)
 ,	MkOpt("famin",  "lower frequency range for LCR analysis", Cfg.famin)
-,	MkOpt("fbin",   "average FFT channels with logarithmic bandwidth", Cfg.fbinsc)
+,	MkOpt("fbin",   "average FFT channels with logarithmic bandwidth", Cfg.fbinsc, 1.0, 2.0)
 ,	MkSet("ff32",   "32 bit floating point format", Cfg.format, Format::F32)
 ,	MkOpt("fftlen", "analysis block size", Cfg.N)
 ,	MkSet("fi16",   "16 bit integer format", Cfg.format, Format::I16)
