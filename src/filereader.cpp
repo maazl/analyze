@@ -37,7 +37,7 @@ bool FileReader::ReadLine(const unique_array<double>& dest)
 
 
 void Interpolation::CalcInterpolation(double f)
-{	for (unsigned i = 0; i < Result.size(); ++i)
+{	for (unsigned i = 1; i < Result.size(); ++i)
 		Result[i] = Input[0][i] * (1-f) + Input[1][i] * f;
 	//fprintf(stderr, "Calc: %f\t%f\t%f\n", Result[0], Result[1], Result[2]);
 }
@@ -55,6 +55,7 @@ const unique_num_array<double>& Interpolation::Interpolate(double key)
 	if (f >= 1.)
 		return Input[1];
 	CalcInterpolation(f);
+	Result[0] = key;
 	return Result;
 }
 

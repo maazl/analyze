@@ -342,9 +342,9 @@ void AnalyzeIn::Run()
 	if (Cfg.sweep)
 		sweep.reset(new SweepWorker(*this));
 	if (Cfg.irfile)
-	{	IRWorker[0].reset(new ImpulseResponseWorker(*this, TmpBuffer));
+	{	IRWorker[0].reset(new ImpulseResponseWorker(*this, TmpBuffer[1], TmpBuffer[0]));
 		if (Cfg.stereo)
-			IRWorker[1].reset(new ImpulseResponseWorker(*this, TmpBuffer + 1));
+			IRWorker[1].reset(new ImpulseResponseWorker(*this, TmpBuffer[2], TmpBuffer[1]));
 	}
 
 	if (Cfg.zerooutfile)
@@ -555,21 +555,22 @@ void AnalyzeIn::DoSync()
 	}
 
 	// select channels
-	fftw_real* in;
 	switch (Cfg.syncch)
 	{default:
-		InBuffer[0].slice(Cfg.N - NextSamples, NextSamples) += InBuffer[1].slice(Cfg.N - NextSamples, NextSamples);
+		TmpBuffer[0] = InBuffer[0];
+		TmpBuffer[0] += InBuffer[1];
+		break;
 	 case 1:
-		in = InBuffer[0].get();
+		TmpBuffer[0] = InBuffer[0];
 		break;
 	 case 2:
-		in = InBuffer[1].get();
+		TmpBuffer[0] = InBuffer[1];
 	}
 	// forward transformation
-	fftwf_execute_r2r(P, in, TmpBuffer[0].get());
+	fftwf_execute_r2r(P, TmpBuffer[0].get(), TmpBuffer[1].get());
 
 	// cross correlate with design function
-	Complex ccv = ExecuteCrossCorrelation(TmpBuffer[0], SD.Design) / SNRAC;
+	Complex ccv = ExecuteCrossCorrelation(TmpBuffer[1], SD.Design) / SNRAC;
 	double level = abs(ccv);
 	if (SyncWeight > 0 && level < abs(SyncPhaseVector) / SyncWeight * Cfg.syncend)
 	{	fprintf(stderr, "End of sync signal after %f cycles.\n", SyncWeight);
@@ -670,7 +671,11 @@ void AnalyzeIn::DoFFT(bool ch2)
 
 	for (size_t len = 0; len <= Cfg.N / 2; ++len)
 	{	// do calculations and aggregations
-		switch (fft.StoreBin(len, SD.Harmonics[len] < 0 ^ch2))
+		int ch = SD.Harmonics[len];
+		if (!ch)
+			continue; // Skip unused frequency
+		ch = (ch < 0) ^ ch2;
+		switch (fft.StoreBin(len, ch))
 		{default:
 			continue;
 		 case FFTWorker::Ready:
@@ -678,7 +683,7 @@ void AnalyzeIn::DoFFT(bool ch2)
 			if (tout)
 				PrintBin(tout, fft);
 			// paas data to inpulse response worker
-			auto& irworker = IRWorker[SD.Harmonics[len] < 0];
+			auto& irworker = IRWorker[ch];
 			if (irworker)
 			{ const AggEntry& curagg = fft.ret();
 				irworker->Feed(curagg.F, polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg));
@@ -764,7 +769,11 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 	// 1st line
 	for (size_t len = 0; len <= Cfg.N / 2; ++len)
 	{	// do calculations and aggregations
-		switch (fft.StoreBin(len, SD.Harmonics[len] < 0 ^ ch2))
+		int ch = SD.Harmonics[len];
+		if (!ch)
+			continue; // Skip unused frequency
+		ch = (ch < 0) ^ ch2;
+		switch (fft.StoreBin(len, ch))
 		{default:
 			continue;
 		 case FFTWorker::Ready:
@@ -772,7 +781,7 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 			if (tout)
 				PrintBin(tout, fft);
 			// paas data to inpulse response worker
-			auto& irworker = IRWorker[SD.Harmonics[len] < 0];
+			auto& irworker = IRWorker[ch];
 			if (irworker)
 			{ const AggEntry& curagg = fft.ret();
 				irworker->Feed(curagg.F, polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg));
@@ -1021,7 +1030,7 @@ Complex AnalyzeIn::ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in
 	for (unsigned i = 0; i < Cfg.N; ++i)
 	{	double amp = TmpBuffer[1][i];
 		amp *= amp;
-		//fprintf(stderr, "CC %i\t%g\t%g\n", i, CCBuffer2[i], amp);
+		//fprintf(stderr, "CC %i\t%g\t%g\n", i, TmpBuffer[1][i], amp);
 		r += polar(amp, phiinc * i);
 		sum += amp;
 	}
@@ -1030,13 +1039,18 @@ Complex AnalyzeIn::ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in
 	return r;
 }
 
-AnalyzeIn::ImpulseResponseWorker::ImpulseResponseWorker(AnalyzeIn& parent, const unique_num_array<fftw_real>* buffers)
+AnalyzeIn::ImpulseResponseWorker::ImpulseResponseWorker(AnalyzeIn& parent, const unique_num_array<fftw_real>& fd, const unique_num_array<fftw_real>& td)
 :	Parent(parent)
-,	Buffers(buffers)
+,	FD(fd)
+,	TD(td)
 ,	Interpolation(1)
-,	NextBin(0)
+{	Reset();
+}
+
+void AnalyzeIn::ImpulseResponseWorker::Reset()
 {	auto& data = Interpolation.Feed();
 	data.clear();
+	NextBin = 0;
 }
 
 void AnalyzeIn::ImpulseResponseWorker::Feed(double f, Complex value)
@@ -1049,7 +1063,10 @@ void AnalyzeIn::ImpulseResponseWorker::Feed(double f, Complex value)
 }
 
 void AnalyzeIn::ImpulseResponseWorker::Finish()
-{	Process();
+{	if (!Interpolation.Last()[0])
+		return; // nothing to do
+
+	Process();
 	if (NextBin < Parent.Cfg.N/2)
 	{	auto& data = Interpolation.Feed();
 		data.clear();
@@ -1057,39 +1074,41 @@ void AnalyzeIn::ImpulseResponseWorker::Finish()
 		Process();
 	}
 
-	FILEguard f = fopen("irf.dat", "w");
+	/*FILEguard f = fopen("irf.dat", "w");
 	fputs("#\n", f);
 	unsigned n2 = Parent.Cfg.N/2;
 	for (unsigned i = 0; i <= n2; ++i)
-		fprintf(f, "%g\t%g\t%g\n", i * Parent.N2f, Buffers[0][i], i && i != n2 ? Buffers[0][Parent.Cfg.N-i] : 0);
+		fprintf(f, "%g\t%g\t%g\n", i * Parent.N2f, FD[i], i && i != n2 ? FD[Parent.Cfg.N-i] : 0);*/
 
-	fftwf_execute_r2r(Parent.PI, Buffers[0].get(), Buffers[1].get());
+	fftwf_execute_r2r(Parent.PI, FD.get(), TD.get());
+
+	Reset();
 }
 
 void AnalyzeIn::ImpulseResponseWorker::Process()
 {	double f;
-	while ((f = (double)NextBin / Parent.Cfg.N * Parent.Cfg.srate) <= Interpolation.Last()[0])
+	while ((f = NextBin * Parent.N2f) <= Interpolation.Last()[0])
 	{	auto& data = Interpolation.Interpolate(f);
-		Buffers[0][NextBin] = data[1];
+		FD[NextBin] = data[1];
 		if (NextBin == Parent.Cfg.N / 2)
 			break;
 		if (NextBin)
-			Buffers[0][Parent.Cfg.N - NextBin] = data[2];
+			FD[Parent.Cfg.N - NextBin] = data[2];
 		++NextBin;
 	}
 }
 
 void AnalyzeIn::FinishImpulseResponse()
 {
-	if (IRWorker[1])
-		IRWorker[1]->Finish(); // process channel 2 first because the target buffer of channel 1 aliases the source buffer of channel 2.
 	IRWorker[0]->Finish();
+	if (IRWorker[1])
+		IRWorker[1]->Finish();
 
 	FILEguard f = fopen(Cfg.irfile, "w");
-	fputs(IRWorker[1] ? "#Ch1\tCh2\n" : "#Ch1\n", f);
+	fputs(IRWorker[1] ? "#t\tCh1\tCh2\n" : "#Ch1\n", f);
 	for (unsigned i = 0; i < Cfg.N; ++i)
 		if (IRWorker[1])
-			fprintf(f, "%g\t%g\n", TmpBuffer[1][i], TmpBuffer[2][i]);
+			fprintf(f, "%g\t%g\t%g\n", i / Cfg.srate, TmpBuffer[0][i], TmpBuffer[1][i]);
 		else
-			fprintf(f, "%g\n", TmpBuffer[1][i]);
+			fprintf(f, "%g\t%g\n", i / Cfg.srate, TmpBuffer[0][i]);
 }

@@ -392,7 +392,8 @@ class AnalyzeIn : public ITask
 	class ImpulseResponseWorker
 	{private:
 		const AnalyzeIn& Parent;
-		const unique_num_array<fftw_real>* Buffers;
+		const unique_num_array<fftw_real>& FD;
+		const unique_num_array<fftw_real>& TD;
 		PolarInterpolation Interpolation;
 		unsigned NextBin;
 	 private:
@@ -400,7 +401,11 @@ class AnalyzeIn : public ITask
 		ImpulseResponseWorker(const ImpulseResponseWorker&) = delete;
 		void operator=(const ImpulseResponseWorker&) = delete;
 	 public:
-		ImpulseResponseWorker(AnalyzeIn& parent, const unique_num_array<fftw_real>* buffers);
+		/// Create impulse response worker
+		/// @param fd Place frequency domain data here
+		/// @param td Place time domain result here
+		ImpulseResponseWorker(AnalyzeIn& parent, const unique_num_array<fftw_real>& fd, const unique_num_array<fftw_real>& td);
+		void Reset();
 		void Feed(double f, Complex value);
 		void Finish();
 	};
