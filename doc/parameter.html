@@ -220,6 +220,20 @@
           <td><a href="#FFT">FFT parameter</a></td>
         </tr>
         <tr>
+          <td><a href="#_h1"><tt>h1</tt></a></td>
+          <td>use 1st (left) channel only for weight</td>
+          <td><br>
+          </td>
+          <td><a href="#FFT">FFT parameter</a></td>
+        </tr>
+        <tr>
+          <td><a href="#_h2"><tt>h2</tt></a></td>
+          <td>use 2nd (right) channel only for weight</td>
+          <td><br>
+          </td>
+          <td><a href="#FFT">FFT parameter</a></td>
+        </tr>
+        <tr>
           <td><a href="#_harm"><tt>harm</tt></a></td>
           <td>take <var>n</var> harmonics into account<br>
           </td>
@@ -744,6 +758,11 @@
         calculation of calibration etc. It could be used to remove artifacts at the frequency limits for graphical output. </dd>
       <dt><tt><a name="_h_f"></a><b>h/f</b></tt> - use <tt>1/<var>f</var></tt> weight</dt>
       <dd>This weight function can be useful for measurements with pink noise.</dd>
+      <dt><b><tt><a name="_h1"></a>h1</tt></b> - use 1st channel for weight</dt>
+      <dd>Use the 1st channel (left) and ignore the 2nd channel (right, reference) when calculating the weight.</dd>
+      <dt><b><tt><a name="_h2"></a>h2</tt></b> - use 2nd channel for weight</dt>
+      <dd>Use the 2nd channel (right, reference) and ignore the 1st channel (left) when calculating weight.<br>
+        This is useful for transfer function measurements when the 1st channel is noisy.</dd>
       <dt><tt><a name="_hd"></a><b>hd</b></tt> - weight function for differential mode</dt>
       <dd>Use adapted weight function for <a href="#_diff">differential input mode</a>.</dd>
       <dt><tt><a name="_he"></a><b>he</b></tt> - disable weights</dt>

@@ -112,6 +112,12 @@ struct Config
 	{	return (unsigned)ceil(lpause / N * srate); }
 
 	// weight functions
+	static double GetWeight1(double a1, double a2, double)
+	{	return a1;
+	}
+	static double GetWeight2(double a1, double a2, double)
+	{	return a2;
+	}
 	static double GetWeight(double a1, double a2, double)
 	{	double w = 1. / (1. / sqr(a1) + 1. / sqr(a2));
 		if (!std::isfinite(w))

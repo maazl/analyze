@@ -46,6 +46,8 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkDOp("gg",     "generate gain calibration file", Cfg.gainoutfile, "gain.dat")
 ,	MkDOp("gr",     "use gain calibration file", Cfg.gaininfile, "gain.dat")
 ,	MkSet("h/f",    "use 1/f weight", Cfg.weightfn, &Config::Get1_fWeight)
+,	MkSet("h1",     "use channel 1 only (response) for weight", Cfg.weightfn, &Config::GetWeight1)
+,	MkSet("h2",     "use channel 1 only (reference) for weight", Cfg.weightfn, &Config::GetWeight2)
 ,	MkOpt("harm",   "take harmonics into account", Cfg.harmonic, 1U, HA_MAX)
 ,	MkSet("hd",     "use weight function for differential input mode", Cfg.weightfn, &Config::GetWeightD)
 ,	MkSet("he",     "disable weight function", Cfg.weightfn, &Config::GetConstWeight)
