@@ -312,6 +312,12 @@
           <td><a href="#control">control options</a></td>
         </tr>
         <tr>
+          <td><a href="#_mova"><tt>mova</tt></a></td>
+          <td>Use moving average filter for FFT bins</td>
+          <td>off</td>
+          <td><a href="#FFT">FFT parameter</a></td>
+        </tr>
+        <tr>
           <td><a href="#_msweep"><tt>msweep</tt></a></td>
           <td>use <a href="measure.html#sweep">sweep mode</a></td>
           <td><br>
@@ -780,6 +786,8 @@
         are averaged as long as they fit into the interval [<var>f</var>,&nbsp;<var>f</var>&nbsp;· <tt><var>factor</var></tt>].
         This option is particularly useful if the properties of the object tend to change over log&nbsp;<var>f</var> rather than <var>f</var>.
         In other words if the result is shown with logarithmic frequency axis.</dd>
+      <dt><b><tt><a name="_mova"></a>mova</tt></b> - use moving average filter for FFT bins</dt>
+      <dd>This option causes the generated FFT bins to overlap.</dd>
       <dt><tt><a name="_finc"></a><b>finc</b>=<var>channels</var></tt>, <tt><a name="_flog"></a><b>flog</b>=<var>factor</var></tt>
         - linear and logarithmic increment for used frequencies </dt>
       <dd>This is intended to be used with custom, discrete energy distributions. Subsequent used frequencies have at least the
@@ -810,7 +818,11 @@
         data is written to file <tt>data.dat</tt>. <a href="fileformat.html#data_dat">→ file format</a></dd>
       <dt><tt><a name="_wir"></a><b>wir</b></tt>[<tt>=<var>filename</var></tt>] - write FFT data<tt> </tt></dt>
       <dd>Write impulse response result of FFT analysis to <var><tt>filename</tt></var>. If <tt>=<var>filename</var></tt> is
-        omitted the data is written to file <tt>ir.dat</tt>. <a href="fileformat.html#ir_dat">→ file format</a></dd>
+        omitted the data is written to file <tt>ir.dat</tt>. <a href="fileformat.html#ir_dat">→ file format</a><br>
+        You should not use frequency bins (options <a href="#_bin"><span style="font-family: monospace;">bin</span></a>, <a href="#_fbin"><span
+            style="font-family: monospace;">fbin</span></a>, <a href="#_finc"><span style="font-family: monospace;">finc</span></a>,
+        <a href="#_flog"><span style="font-family: monospace;">flog</span></a>) when recording an impulse response, to avoid pre
+        echo artifacts.</dd>
       <dt><tt><a name="_win"></a><b>win</b>=<var>typ</var></tt> - window function</dt>
       <dd>Apply window function to data before FFT. The following window functions are implemented:<br>
         <tt>win=0</tt> – rectangular = none (default)<br>

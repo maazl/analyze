@@ -16,7 +16,7 @@
 
 typedef float fftw_real;
 
-typedef double (*WeightFn)(double, double, double);
+typedef double (*WeightFn)(double a1, double a2, double f);
 
 struct filecolumn        ///< configuration reference to a column within a file
 {	const char* file;      ///< ... file
@@ -76,6 +76,7 @@ struct Config
 	action      init;                 ///< action to take before any data processing
 	action      plot;                 ///< action to take after analysis step
 	action      post;                 ///< action to take after program completion
+	bool        freqstereo() const { return stereo & !sweep & !chirp; }
 	// FFT parameter
 	const char* datafile = nullptr;   ///< filename for analysis data
 	const char* irfile = nullptr;     ///< filename for impulse response data
@@ -89,8 +90,9 @@ struct Config
 	double      f_log = 1;            ///< Relative increment for harmonic table calculation
 	unsigned    purgech = 1;          ///< set the first FFT frequencies to 0
 	double      binsz = 1;            ///< binsize in FFT channels
-	double      fbinsc = 1;           ///< logarithmic binsize: fmin/fmax = 1 + fbinsc
+	double      fbinsc = 1;           ///< logarithmic binsize: fmin/fmax = fbinsc
 	double      linphase = 0;         ///< linear phase correction [s]
+	bool        mova = false;         ///< Use moving average filter for FFT bins
 	bool        crosscorr = false;    ///< Calculate and remove time delay by cross correlation
 	unsigned    harmonic = 1;         ///< analyze up to # harmonics
 	WeightFn    weightfn = &Config::GetWeight;///< weight function
@@ -217,6 +219,7 @@ class AnalyzeIn : public ITask
 
 	class FFTWorker;
 	class ImpulseResponseWorker;
+	class AggEntry;
 
 	std::unique_ptr<ImpulseResponseWorker> IRWorker[2];
 
@@ -249,7 +252,7 @@ class AnalyzeIn : public ITask
 	Complex ExecuteCrossCorrelation(const unique_num_array<fftw_real>& in1, const unique_num_array<fftw_real>& in2);
 
 	void PrintHdr(FILE* dst) const;
-	void PrintBin(FILE* dst, const FFTWorker& fft) const;
+	void PrintBin(FILE* dst, const AggEntry& curagg, int ch) const;
 
 	static void ReadColumn(const filecolumn& src, const unique_fftw_arr<fftw_real>& dst);
 	static void CreateWindow(const unique_num_array<fftw_real>& dst, int type);
@@ -277,12 +280,7 @@ class AnalyzeIn : public ITask
 		double Unwrap(double phase)
 		{	return Phase = phase - M_2PI * floor((phase - Phase) / M_2PI + .5);
 		}
-	};
-
-	struct GroupDelay : public Unwrapper
-	{	double Delay;
 		/// Unwrap phase and calculate gropup delay.
-		/// The unwrapped phase can be extracted by operator double() after the call.
 		/// @param phase current calculated phase
 		/// @param deltaf frequency difference to the last phase
 		/// @return group delay
@@ -290,66 +288,74 @@ class AnalyzeIn : public ITask
 		{	double lph = Phase;
 			/*Unwrapper::Unwrap(phase);
 			fprintf(stderr, "lph = %f, ph = %f, df = %f => ph = %f, delay = %f\n", lph, phase, deltaf, Phase, (Phase - lph) / deltaf);
-			return Delay = (Phase - lph) / deltaf;*/
-			return Delay = (lph - Unwrapper::Unwrap(phase)) / deltaf;
+			return (Phase - lph) / deltaf;*/
+			return (lph - Unwrap(phase)) / deltaf;
 		}
 	};
 
-	struct AggEntry
-	{	struct VE
-		{	double Uabs; ///< Magnitude of numerator
-			double Uarg; ///< Phase of numerator
-			double Zabs; ///< Magnitude of quotient
-			double Zarg; ///< Phase of quotient
-			double D;    ///< Group delay
-			double W;    ///< weight sum
+	class AggEntry
+	{public:
+		class VE
+		{	double Uabs_;
+			double Uarg_;
+			double Zabs_;
+			double Zarg_;
+			double D;
+			double W;
+			struct L
+			{	Unwrapper Uarg; ///< last phase of numerator
+				Unwrapper Zarg; ///< last phase of quotient
+			} last[2];
+		 public:
+			void reset() { memset(this, 0, (char*)&last - (char*)this); }
+			void add(double f, Complex I, Complex U, WeightFn wfn, bool sub, double lF);
+			double Uabs() const { return Uabs_/W; } ///< Magnitude of numerator
+			double Uarg() const { return Uarg_/W; } ///< Phase of numerator
+			double Zabs() const { return Zabs_/W; } ///< Magnitude of quotient
+			double Zarg() const { return Zarg_/W; } ///< Phase of quotient
+			double delay() const { return D/W; }    ///< Group delay
+			double weight() const { return W; }     ///< Weight sum
 		};
-		double F;
-		double Iabs;   ///< Magnitude of denominator
-		double Iarg;   ///< Phase of denominator
-		VE Val[HA_MAX];///< Values per harmonic
-		AggEntry() { memset(this, 0, sizeof *this); }
-		void next() { memset(this, 0, (char*)&lF - (char*)this); }
-		void add(double f, Complex I, Complex* U, unsigned harm, WeightFn wfn);
-		void finish(unsigned harm);
 	 private:
-		double lF;     ///< last frequency (for numerical derivative)
-		Unwrapper lIarg;///< last phase of denominator
-		Unwrapper lUarg[HA_MAX];///< last phase of numerator
-		GroupDelay lZarg[HA_MAX];///< last phase of quotient
+		double F;
+		double Iabs_;
+		double Iarg_;
+		VE Val[HA_MAX];   ///< Values per harmonic
+		struct L
+		{	double F;       ///< last frequency (for numerical derivative)
+			Unwrapper Iarg; ///< last phase of denominator
+			L() : F(0) {}
+		} last[2];
+	 public:
+		void reset();
+		AggEntry() { reset(); }
+		void add(double f, Complex I, Complex* U, unsigned harm, WeightFn wfn, bool sub);
+		double freq() const { return F/Val[0].weight(); }     ///< Frequency
+		double Iabs() const { return Iabs_/Val[0].weight(); } ///< Magnitude of denominator
+		double Iarg() const { return Iarg_/Val[0].weight(); } ///< Phase of denominator
+		/// Get values for harmonic.
+		/// @param harm Number of harmonic, starting from 1 for the fundamental.
+		const VE& value(unsigned harm) const { --harm; assert(harm < HA_MAX); return Val[harm]; }
 	};
 
-	class FFTWorker
-	{public:
-		enum StoreRet
-		{	BelowMin,    ///< frequency less than fmin
-			AboveMax,    ///< frequency above fmax
-			Aggregated,  ///< bin used for aggregation only
-			Ready        ///< calculated values available
-		};
-	 private:
-		struct FFTAgg : AggEntry
-		{	unsigned Bins;///< Number of bins accumulated
-		 	unsigned Harm;///< number of used entries in Val
-			double NextF;///< Next frequency
-			FFTAgg() : Bins(0), Harm(0), NextF(0) {}
-		};
+	class FFTWorker : protected AggEntry
+	{	unsigned Bins;  ///< Number of bins accumulated
+		unsigned Harm;  ///< number of used entries in Val
+
+		unsigned Bin;   ///< Current bin, ~0 for invalid
+		unsigned MaxBin;///< Maximum frequency bin in the current aggregate
 
 		AnalyzeIn& Parent;
+		const int Ch;   ///< Channel, 1 = 1st channel, -1 = 2nd channel
 
-		int Ch;        ///< Channel, i.e. index to Agg
-		FFTAgg Agg[2]; ///< Aggregation per channel
+		void nextbin();
+		void aggregate(bool sub);
 
 	 public:
-		FFTWorker(AnalyzeIn& parent) : Parent(parent) {}
-		/// Aggregate FFT bin
-		/// @param bin FFT bin, [0, Cfg.N/2]
-		/// @param ch Channel, 0 for 1st channel.
-		StoreRet StoreBin(unsigned bin, int ch);
-		/// Current channel
-		int ch() const { return Ch; }
-		/// Retrieve aggregated information for harmonic of current frequency and channel
-		const AggEntry& ret() const { return Agg[Ch]; }
+		FFTWorker(AnalyzeIn& parent, unsigned ch);
+		/// Iterate through the results.
+		/// @return (possibly) aggregated result, null if iteration has finished.
+		const AggEntry* next();
 	};
 
 	class SweepWorker
@@ -378,7 +384,7 @@ class AnalyzeIn : public ITask
 		unsigned SweepFrequency; ///< Current frequency index
 		unsigned Channel;        ///< Current channel
 		SweepBin Ana[1 + HA_MAX];///< Reference & per harmonic
-		GroupDelay Delay[2];     ///< per channel group delay
+		Unwrapper Delay[2];      ///< per channel group delay
 		Unwrapper Phase[2][HA_MAX-1];///< per channel & harmonic
 
 		unsigned LastFrequency;

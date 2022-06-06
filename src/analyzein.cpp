@@ -9,86 +9,114 @@
 using namespace std;
 
 
-void AnalyzeIn::AggEntry::add(double f, Complex I, Complex* U, unsigned harm, WeightFn wfn)
-{	double w = wfn(abs(*U), abs(I), f);
+void AnalyzeIn::AggEntry::VE::add(double f, Complex I, Complex U, WeightFn wfn, bool sub, double lF)
+{	L& l = last[sub];
+	double w = wfn(abs(U), abs(I), f) * (-sub|1);
+	Uabs_ += abs(U) * w;
+	Uarg_ += l.Uarg.Unwrap(arg(U)) * w;
+	Complex Z(U / I);
+	Zabs_ += abs(Z) * w;
+	D += l.Zarg.Unwrap(arg(Z), f - lF) * w;
+	Zarg_ += l.Zarg.Phase * w;
+	W += w;
+}
+
+void AnalyzeIn::AggEntry::reset()
+{	memset(this, 0, (char*)Val - (char*)this);
+	VE* val = Val;
+	VE* end = val + HA_MAX;
+	do
+		val->reset();
+	while (++val != end);
+}
+
+void AnalyzeIn::AggEntry::add(double f, Complex I, Complex* U, unsigned harm, WeightFn wfn, bool sub)
+{	L& l = last[sub];
+	double w = wfn(abs(*U), abs(I), f) * (-sub|1);
 	F += f * w;
-	Iabs += abs(I) * w;
-	Iarg += lIarg.Unwrap(arg(I)) * w;
+	Iabs_ += abs(I) * w;
+	Iarg_ += l.Iarg.Unwrap(arg(I)) * w;
 	VE* val = Val;
 	for (unsigned i = 0; i < harm; ++i, ++U, ++val)
-	{	w = wfn(abs(*U), abs(I), f);
-		val->Uabs += abs(*U) * w;
-		val->Uarg += lUarg[i].Unwrap(arg(*U)) * w;
-		Complex Z(*U / I);
-		val->Zabs += abs(Z) * w;
-		val->D += lZarg[i].Unwrap(arg(Z), f - lF) * w;
-		val->Zarg += lZarg[i].Phase * w;
-		val->W += w;
-	}
-	lF = f;
+		val->add(f, I, *U, wfn, sub, l.F);
+	l.F = f;
 }
 
-void AnalyzeIn::AggEntry::finish(unsigned harm)
-{
-	VE* val = Val;
-	double w = val->W;
-	F /= w;
-	Iabs /= w;
-	Iarg /= w;
-	for (unsigned i = 0; i < harm; ++i, ++val)
-	{	w = val->W;
-		val->Uabs /= w;
-		val->Uarg /= w;
-		val->Zabs /= w;
-		val->Zarg /= w;
-		val->D    /= w * M_2PI;
-	}
+AnalyzeIn::FFTWorker::FFTWorker(AnalyzeIn& parent, unsigned ch)
+:	Bins(0)
+,	Harm(0)
+,	Bin(~0)
+,	Parent(parent)
+,	Ch(-ch|1)
+{	nextbin();
+	MaxBin = Bin;
 }
 
-
-AnalyzeIn::FFTWorker::StoreRet AnalyzeIn::FFTWorker::StoreBin(const unsigned bin, int ch)
-{
-	// frequency
-	double f = bin * Parent.N2f;
+void AnalyzeIn::FFTWorker::nextbin()
+{next:
+	//fprintf(stderr, "nextf: %u\n", Bin);
+	if (++Bin > Parent.Cfg.N / 2)
+	{end:
+		Bin = ~0;
+		return;
+	}
+	if (Parent.SD.Harmonics[Bin] != Ch)
+		goto next; // skip unused frequency
+	double f = Bin * Parent.N2f;
 	if (f < Parent.Cfg.fmin)
-		return BelowMin;
+		goto next; // skip below fmin
 	if (f > Parent.Cfg.fmax)
-		return AboveMax;
+		goto end; // after fmax
+}
 
-	Ch = ch;
-	FFTAgg& curagg = Agg[Ch];
+void AnalyzeIn::FFTWorker::aggregate(bool sub)
+{	//fprintf(stderr, "agg(%i)\t%u %u\n", sub, Bin, MaxBin);
+	double	f = Bin * Parent.N2f;
 	// retrieve coefficients
-	Complex I(Parent.FFTBuffer[1][bin], bin && bin != Parent.Cfg.N / 2 ? Parent.FFTBuffer[1][Parent.Cfg.N - bin] : 0);
+	Complex I(Parent.FFTBuffer[1][Bin], Bin && Bin != Parent.Cfg.N / 2 ? Parent.FFTBuffer[1][Parent.Cfg.N - Bin] : 0);
 	Complex U[HA_MAX];
 	// phase correction
 	Complex phase(cos(Parent.LinPhase * f), sin(Parent.LinPhase * f));
 	// calc U per harmonic
-	curagg.Harm = 0;
-	for (unsigned hb = bin; curagg.Harm < Parent.Cfg.harmonic && hb < Parent.Cfg.N / 2; hb += bin)
-		U[curagg.Harm++] = Complex(Parent.FFTBuffer[0][hb], hb && hb != Parent.Cfg.N / 2 ? Parent.FFTBuffer[0][Parent.Cfg.N - hb] : 0) * phase;
+	Harm = 0;
+	for (unsigned hb = Bin; Harm < Parent.Cfg.harmonic && hb < Parent.Cfg.N / 2; hb += Bin)
+		U[Harm++] = Complex(Parent.FFTBuffer[0][hb], hb && hb != Parent.Cfg.N / 2 ? Parent.FFTBuffer[0][Parent.Cfg.N - hb] : 0) * phase;
 
-	if (curagg.Bins == 0)
-	{	// init
-		curagg.next();
-		curagg.NextF = Parent.N2f * (Parent.Cfg.binsz - 2.) + f * Parent.Cfg.fbinsc;
+	add(f, I, U, Harm, Parent.Cfg.weightfn, sub);
+	Bins += (-sub|1);
+
+	nextbin();
+	//fprintf(stderr, "agg %u %u\t%g\t%g\n", Bin, Bins, f, value(1).weight());
+}
+
+const AnalyzeIn::AggEntry* AnalyzeIn::FFTWorker::next()
+{	if (Bin == ~0) // beyond the end
+		return nullptr;
+
+	if (!Parent.Cfg.mova)
+	{	reset();
+		Bins = 0;
+		MaxBin = (unsigned)floor((Parent.Cfg.binsz - 1) + Bin * Parent.Cfg.fbinsc);
+		do
+			aggregate(false);
+		while (Bin <= MaxBin);
+	} else
+	{	if (Bins)
+			aggregate(true); // remove old aggregate
+		unsigned minbin = Bin;
+		Bin = MaxBin;
+		MaxBin = (unsigned)floor((Parent.Cfg.binsz - 1) + minbin * Parent.Cfg.fbinsc);
+		do
+			aggregate(false);
+		while (Bin <= MaxBin);
+		MaxBin = Bin;
+		if (Bin != ~0)
+			Bin = minbin;
 	}
 
-	curagg.add(f, I, U, curagg.Harm, Parent.Cfg.weightfn);
-
-	//fprintf(stderr, "FFT\t%g\t%g\n", curagg.Val[0].W, curagg.NextF);
-	if (!curagg.Val[0].W)
-		return Aggregated; // no weight so far => discard always
-
-	++curagg.Bins;
-
-	if (f < curagg.NextF)
-		return Aggregated;
-
-	curagg.finish(curagg.Harm);
-	curagg.Bins = 0;
-	//Zcache = polar(curagg->Zabs, curagg->Zarg);
-	return Ready;
+	return this;
 }
+
 
 void AnalyzeIn::PrintHdr(FILE* dst) const
 {
@@ -99,24 +127,26 @@ void AnalyzeIn::PrintHdr(FILE* dst) const
 	fputc('\n', dst);
 }
 
-void AnalyzeIn::PrintBin(FILE* dst, const FFTWorker& fft) const
+void AnalyzeIn::PrintBin(FILE* dst, const AggEntry& curagg, int ch) const
 {
-	const AggEntry& curagg = fft.ret();
-	Complex Z = polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg);
+	const AggEntry::VE& val = curagg.value(1);
+	Complex Z = polar(val.Zabs(), val.Zarg());
 	fprintf(dst, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%6i",
-		// f      |Hl|                arg l                          |Hr|         arg r
-		curagg.F, curagg.Val[0].Uabs, curagg.Val[0].Uarg * M_180_PI, curagg.Iabs, curagg.Iarg * M_180_PI,
-		// |Z|              arg Z                          Z re      Z im
-		curagg.Val[0].Zabs, curagg.Val[0].Zarg * M_180_PI, Z.real(), Z.imag(),
-		// weight        delay            channel
-		curagg.Val[0].W, curagg.Val[0].D, fft.ch());
-	for (unsigned h = 1; h < Cfg.harmonic; ++h)
-	{	const AggEntry::VE& val = curagg.Val[h];
-		Z = polar(val.Zabs, val.Zarg);
+		// f           |Hl|        arg l                  |Hr|           arg r
+		curagg.freq(), val.Uabs(), val.Uarg() * M_180_PI, curagg.Iabs(), curagg.Iarg() * M_180_PI,
+		// |Z|      arg Z                  Z re      Z im
+		val.Zabs(), val.Zarg() * M_180_PI, Z.real(), Z.imag(),
+		// weight     delay        channel
+		val.weight(), val.delay(), ch);
+
+	for (unsigned h = 2; h <= Cfg.harmonic; ++h)
+	{	const AggEntry::VE& val = curagg.value(h);
+		Z = polar(val.Zabs(), val.Zarg());
 		fprintf(dst, "\t%8g\t%8g\t%8g\t%8g",
 		// |Hl|/|Hr| phil-phir           re        im
-			val.Zabs, val.Zarg * M_180_PI, Z.real(), Z.imag());
+			val.Zabs(), val.Zarg() * M_180_PI, Z.real(), Z.imag());
 	}
+
 	fputc('\n', dst);
 }
 
@@ -643,8 +673,6 @@ void AnalyzeIn::DoFFT(bool ch2)
 {
 	ExecuteFFT();
 
-	FFTWorker fft(*this);
-
 	// calc some sums
 	double wsum = 0;
 	int nsum = 0;
@@ -669,46 +697,45 @@ void AnalyzeIn::DoFFT(bool ch2)
 			PrintHdr(tout);
 		}
 
-	for (size_t len = 0; len <= Cfg.N / 2; ++len)
-	{	// do calculations and aggregations
-		int ch = SD.Harmonics[len];
-		if (!ch)
-			continue; // Skip unused frequency
-		ch = (ch < 0) ^ ch2;
-		switch (fft.StoreBin(len, ch))
-		{default:
-			continue;
-		 case FFTWorker::Ready:
+	unsigned ch = 0;
+	do
+	{	FFTWorker fft(*this, ch);
+
+		const AggEntry* calc;
+		while ((calc = fft.next()) != nullptr)
+		{	auto& val = calc->value(1);
+
 			// write
 			if (tout)
-				PrintBin(tout, fft);
-			// paas data to inpulse response worker
-			auto& irworker = IRWorker[ch];
+				PrintBin(tout, *calc, ch|ch2);
+			const double f = calc->freq();
+			const Complex z = polar(val.Zabs(), val.Zarg());
+
+			// pass data to inpulse response worker
+			auto& irworker = IRWorker[ch|ch2];
 			if (irworker)
-			{ const AggEntry& curagg = fft.ret();
-				irworker->Feed(curagg.F, polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg));
-			}
+				irworker->Feed(f, z);
+
+			if (f < Cfg.famin || f > Cfg.famax)
+				continue;
+			//fprintf(stderr, "FW %12g %12g\n", calc.f(), calc.W());
+			// average
+			++nsum;
+			double w = val.weight();
+			wsum += w;
+			// resistivity
+			Rsum += w * z.real();
+			R2sum += w * sqr(z.real());
+			// L & C
+			L2sum += w * sqr(f);
+			// LCsum += weight; == wsum
+			C2sum += w / sqr(f);
+			Lsum += w * z.imag() * f;
+			Csum += w * z.imag() / f;
+			d2sum = w * sqr(z.imag());
 		}
 
-		const AggEntry& calc = fft.ret();
-		if (calc.F < Cfg.famin || calc.F > Cfg.famax)
-			continue;
-		const Complex z = polar(calc.Val[0].Zabs, calc.Val[0].Zarg);
-		//fprintf(stderr, "FW %12g %12g\n", calc.f(), calc.W());
-		// average
-		++nsum;
-		wsum += calc.Val[0].W;
-		// resistivity
-		Rsum += calc.Val[0].W * z.real();
-		R2sum += calc.Val[0].W * sqr(z.real());
-		// L & C
-		L2sum += calc.Val[0].W * sqr(calc.F);
-		// LCsum += weight; == wsum
-		C2sum += calc.Val[0].W / sqr(calc.F);
-		Lsum += calc.Val[0].W * z.imag() * calc.F;
-		Csum += calc.Val[0].W * z.imag() / calc.F;
-		d2sum = calc.Val[0].W * sqr(z.imag());
-	}
+	} while (++ch <= Cfg.freqstereo());
 
 	if (tout)
 		if (!ch2)
@@ -744,8 +771,6 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 {	// FFT
 	ExecuteFFT();
 
-	FFTWorker fft(*this);
-
 	// write data
 	FILEguard tout = NULL;
 	if (Cfg.datafile)
@@ -766,46 +791,43 @@ void AnalyzeIn::DoFFTPCA(bool ch2)
 	PCAdataRe[1] = 1;
 	//PCAdataIm[1] = 1;
 
-	// 1st line
-	for (size_t len = 0; len <= Cfg.N / 2; ++len)
-	{	// do calculations and aggregations
-		int ch = SD.Harmonics[len];
-		if (!ch)
-			continue; // Skip unused frequency
-		ch = (ch < 0) ^ ch2;
-		switch (fft.StoreBin(len, ch))
-		{default:
-			continue;
-		 case FFTWorker::Ready:
+	unsigned ch = 0;
+	do
+	{	FFTWorker fft(*this, ch);
+
+		const AggEntry* calc;
+		while ((calc = fft.next()) != nullptr)
+		{	auto& val = calc->value(1);
+
 			// write
 			if (tout)
-				PrintBin(tout, fft);
-			// paas data to inpulse response worker
-			auto& irworker = IRWorker[ch];
+				PrintBin(tout, *calc, ch|ch2);
+			const double f = calc->freq();
+			const Complex z = polar(val.Zabs(), val.Zarg());
+
+			// pass data to inpulse response worker
+			auto& irworker = IRWorker[ch|ch2];
 			if (irworker)
-			{ const AggEntry& curagg = fft.ret();
-				irworker->Feed(curagg.F, polar(curagg.Val[0].Zabs, curagg.Val[0].Zarg));
-			}
+				irworker->Feed(f, z);
+
+			if (f < Cfg.famin || f > Cfg.famax)
+				continue;
+			// component analysis
+			PCAdataRe[0] = z.real();
+			//PCAdataRe[2] = 1/af;
+			//PCAdataRe[3] = f;
+			PCAdataIm[0] = z.imag(); // fit imaginary part in conductivity
+			PCAdataIm[1] = 1. / f;
+			PCAdataIm[2] = f;
+			//PCAdataIm[3] = 1/af;
+			//fprintf(stderr, "Re: %12g %12g %12g %12g\n", calc.f(), PCAdataRe[0], PCAdataRe[1], calc.W());
+
+			// add values
+			double w = calc->value(1).weight();
+			pcaRe.Store(PCAdataRe, w);
+			pcaIm.Store(PCAdataIm, w);
 		}
-
-		const AggEntry& calc = fft.ret();
-		if (calc.F < Cfg.famin || calc.F > Cfg.famax)
-			continue;
-		const Complex z = polar(calc.Val[0].Zabs, calc.Val[0].Zarg);
-		// component analysis
-		PCAdataRe[0] = z.real();
-		//PCAdataRe[2] = 1/af;
-		//PCAdataRe[3] = f;
-		PCAdataIm[0] = z.imag(); // fit imaginary part in conductivity
-		PCAdataIm[1] = 1. / calc.F;
-		PCAdataIm[2] = calc.F;
-		//PCAdataIm[3] = 1/af;
-		//fprintf(stderr, "Re: %12g %12g %12g %12g\n", calc.f(), PCAdataRe[0], PCAdataRe[1], calc.W());
-
-		// add values
-		pcaRe.Store(PCAdataRe, calc.Val[0].W);
-		pcaIm.Store(PCAdataIm, calc.Val[0].W);
-	}
+	} while (++ch <= Cfg.freqstereo());
 
 	if (tout)
 		if (!ch2)
@@ -895,7 +917,7 @@ void AnalyzeIn::SweepWorker::Print()
 	double U = abs(Ana[1].Xi);
 	double I = abs(Ana[0].Xi);
 	Complex Z = Ana[1].Xi / Ana[0].Xi;
-	GroupDelay& delay = Delay[Channel];
+	Unwrapper& delay = Delay[Channel];
 	fprintf(Out, "%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%8g\t%6i",
 		// f |Hl| phil                   |Hr| phir
 		f, U, arg(Ana[1].Xi) * M_180_PI, I, arg(Ana[0].Xi) * M_180_PI,

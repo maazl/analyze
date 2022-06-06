@@ -60,7 +60,8 @@ static constexpr const reference<const OptionDesc> OptMap[] =
 ,	MkOpt("loops",  "number of loops", Cfg.loops)
 ,	MkOpt("lp",     "pause at matrix calibration", Cfg.lpause, 0., 100.)
 ,	MkSet("mfft",   "enable operation mode FFT", Cfg.mfft, true)
-,	MkDOp("minmax", "Show minimum and maxoimum values of input data", Cfg.minmax, true)
+,	MkDOp("minmax", "Show minimum and maximum values of input data", Cfg.minmax, true)
+,	MkDOp("mova",   "Use moving average filter for FFT bins", Cfg.mova, true)
 ,	MkSet("mpca",   "enable operation mode PCA", Cfg.mpca, true)
 ,	MkDOp("mst",    nullptr, Cfg.stereo, true)
 ,	MkSet("msweep", "use sweep mode", Cfg.sweep, true)
@@ -169,6 +170,9 @@ int main(int argc, char* argv[])
 			die(34, "Cannot use infinite loop in sweep or zero calibration mode.");
 		if (Cfg.stereo & Cfg.outch)
 			die(34, "Output channel selection not supported in multi channel mode.");
+
+		if (Cfg.mova && Cfg.binsz == 1. && Cfg.fbinsc == 1.)
+			fputs("Warning: option mova is pointless without bin or fbin.\n", stderr);
 
 		if (Cfg.fmin > Cfg.fmax)
 			die(34, "Frequency range [%g,%g) empty.", Cfg.fmin, Cfg.fmax);

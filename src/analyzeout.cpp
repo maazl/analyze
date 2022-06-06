@@ -168,7 +168,7 @@ void AnalyzeOut::CreateDesign()
 			maxamp = Design[i];
 
 		// next frequency
-		if (Cfg.stereo & !Cfg.sweep & !Cfg.chirp)
+		if (Cfg.freqstereo())
 			sign = -sign;
 		//fprintf(stderr, "f %i %i %i\n", i, (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5), sign);
 		i = (unsigned)floor(i * Cfg.f_log + Cfg.f_inc - .5);
