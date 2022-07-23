@@ -286,10 +286,10 @@ class AnalyzeIn : public ITask
 		/// @return group delay
 		double Unwrap(double phase, double deltaf)
 		{	double lph = Phase;
-			/*Unwrapper::Unwrap(phase);
+			/*Unwrap(phase);
 			fprintf(stderr, "lph = %f, ph = %f, df = %f => ph = %f, delay = %f\n", lph, phase, deltaf, Phase, (Phase - lph) / deltaf);
-			return (Phase - lph) / deltaf;*/
-			return (lph - Unwrap(phase)) / deltaf;
+			return (lph - Phase) / deltaf / M_2PI;*/
+			return (lph - Unwrap(phase)) / deltaf / M_2PI;
 		}
 	};
 
